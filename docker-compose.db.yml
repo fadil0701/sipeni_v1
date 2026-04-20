@@ -1,0 +1,42 @@
+# MySQL untuk deployment VM (opsional, jika tidak pakai DB eksternal).
+# Jalankan bersama app:
+#   docker compose -f docker-compose.yml -f docker-compose.db.yml up -d
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: simantik-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    # Tidak diexpose ke publik; hanya jaringan internal docker.
+    volumes:
+      - si_peni_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  simantik:
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+
+  simantik-queue:
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+
+volumes:
+  si_peni_mysql_data:

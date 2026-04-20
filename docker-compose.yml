@@ -1,0 +1,43 @@
+services:
+  simantik:
+    build:
+      context: .
+      network: host
+      args:
+        HTTP_PROXY: "http://10.15.3.20:80"
+        HTTPS_PROXY: "http://10.15.3.20:80"
+        NO_PROXY: "localhost,127.0.0.1,mysql,.local"
+    image: si-peni-simantik
+    container_name: simantik-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      HTTP_PROXY: "http://10.15.3.20:80"
+      HTTPS_PROXY: "http://10.15.3.20:80"
+      NO_PROXY: "localhost,127.0.0.1,mysql,.local"
+      http_proxy: "http://10.15.3.20:80"
+      https_proxy: "http://10.15.3.20:80"
+      no_proxy: "localhost,127.0.0.1,mysql,.local"
+    # Expose ke jaringan lokal VM (akses via IP host:9001)
+    ports:
+      - "0.0.0.0:9001:80"
+
+  # Worker queue: image sama dengan app (tanpa duplikasi build)
+  simantik-queue:
+    image: si-peni-simantik
+    container_name: simantik-queue
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      HTTP_PROXY: "http://10.15.3.20:80"
+      HTTPS_PROXY: "http://10.15.3.20:80"
+      NO_PROXY: "localhost,127.0.0.1,mysql,.local"
+      http_proxy: "http://10.15.3.20:80"
+      https_proxy: "http://10.15.3.20:80"
+      no_proxy: "localhost,127.0.0.1,mysql,.local"
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    depends_on:
+      simantik:
+        condition: service_started
