@@ -70,6 +70,7 @@
                             id="id_unit_kerja" 
                             name="id_unit_kerja" 
                             required
+                            onchange="loadByUnitKerja(this.value)"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_unit_kerja') border-red-500 @enderror"
                         >
                             <option value="">Pilih Unit Kerja</option>
@@ -307,6 +308,49 @@
 @push('scripts')
 <script>
 let penerimaanDetails = [];
+const urlPegawaiByUnit = @json(url('/api/master/pegawai-by-unit'));
+const urlGudangByUnit = @json(url('/api/master/gudang-by-unit'));
+const oldGudangAsal = @json(old('id_gudang_asal'));
+const oldPegawai = @json(old('id_pegawai_pengirim'));
+
+function loadByUnitKerja(unitId) {
+    const asalSel = document.getElementById('id_gudang_asal');
+    const pegawaiSel = document.getElementById('id_pegawai_pengirim');
+    if (!unitId) {
+        asalSel.innerHTML = '<option value="">Pilih Gudang Asal</option>';
+        pegawaiSel.innerHTML = '<option value="">Pilih Pegawai Pengirim</option>';
+        return;
+    }
+
+    asalSel.innerHTML = '<option value="">Memuat Gudang...</option>';
+    fetch(`${urlGudangByUnit}/${unitId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            asalSel.innerHTML = '<option value="">Pilih Gudang Asal</option>';
+            (data.data || []).forEach(g => {
+                if (g.jenis_gudang !== 'UNIT') return;
+                const opt = document.createElement('option');
+                opt.value = g.id_gudang;
+                opt.textContent = g.label;
+                asalSel.appendChild(opt);
+            });
+            if (oldGudangAsal) asalSel.value = String(oldGudangAsal);
+        });
+
+    pegawaiSel.innerHTML = '<option value="">Memuat Pegawai...</option>';
+    fetch(`${urlPegawaiByUnit}/${unitId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            pegawaiSel.innerHTML = '<option value="">Pilih Pegawai Pengirim</option>';
+            (data.data || []).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.label;
+                pegawaiSel.appendChild(opt);
+            });
+            if (oldPegawai) pegawaiSel.value = String(oldPegawai);
+        });
+}
 
 // Load detail penerimaan
 function loadPenerimaanDetail(penerimaanId) {
@@ -353,6 +397,7 @@ function loadPenerimaanDetail(penerimaanId) {
                 // Auto-set unit kerja dan gudang
                 if (data.penerimaan.unit_kerja) {
                     document.getElementById('id_unit_kerja').value = data.penerimaan.unit_kerja;
+                    loadByUnitKerja(data.penerimaan.unit_kerja);
                 }
 
                 // Set id_distribusi jika ada
@@ -427,6 +472,9 @@ function loadDetailRetur(details) {
 
 // Load penerimaan detail jika sudah dipilih
 document.addEventListener('DOMContentLoaded', function() {
+    const unitId = document.getElementById('id_unit_kerja').value;
+    if (unitId) loadByUnitKerja(unitId);
+
     const penerimaanId = document.getElementById('id_penerimaan').value;
     if (penerimaanId) {
         loadPenerimaanDetail(penerimaanId);

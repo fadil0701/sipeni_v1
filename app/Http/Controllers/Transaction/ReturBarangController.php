@@ -11,17 +11,20 @@ use App\Models\PenerimaanBarang;
 use App\Models\TransaksiDistribusi;
 use App\Models\MasterUnitKerja;
 use App\Models\MasterPegawai;
+use App\Models\User;
 use App\Models\MasterGudang;
 use App\Models\MasterSatuan;
 use App\Models\DataInventory;
 use App\Models\DataStock;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class ReturBarangController extends Controller
 {
     public function index(Request $request)
     {
+        /** @var User $user */
         $user = Auth::user();
         $query = ReturBarang::with(['penerimaan', 'distribusi', 'unitKerja', 'gudangAsal', 'gudangTujuan', 'pegawaiPengirim']);
 
@@ -71,6 +74,7 @@ class ReturBarangController extends Controller
 
     public function create(Request $request)
     {
+        /** @var User $user */
         $user = Auth::user();
         
         // Filter penerimaan yang sudah diterima dan belum diretur semua
@@ -143,6 +147,16 @@ class ReturBarangController extends Controller
             'detail.*.keterangan' => 'nullable|string',
         ]);
 
+        if (! $this->isPegawaiInUnit((int) $validated['id_pegawai_pengirim'], (int) $validated['id_unit_kerja'])) {
+            return back()->withErrors(['id_pegawai_pengirim' => 'Pegawai pengirim harus berasal dari unit kerja yang dipilih.'])->withInput();
+        }
+        if (! $this->isGudangAsalInUnit((int) $validated['id_gudang_asal'], (int) $validated['id_unit_kerja'])) {
+            return back()->withErrors(['id_gudang_asal' => 'Gudang asal harus gudang UNIT pada unit kerja yang dipilih.'])->withInput();
+        }
+        if (! $this->isGudangPusat((int) $validated['id_gudang_tujuan'])) {
+            return back()->withErrors(['id_gudang_tujuan' => 'Gudang tujuan harus gudang PUSAT.'])->withInput();
+        }
+
         DB::beginTransaction();
         try {
             // Generate nomor retur
@@ -192,7 +206,7 @@ class ReturBarangController extends Controller
                 ->with('success', 'Retur barang berhasil dibuat.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error creating retur barang: ' . $e->getMessage());
+            Log::error('Error creating retur barang: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage());
         }
     }
@@ -216,6 +230,7 @@ class ReturBarangController extends Controller
 
     public function edit($id)
     {
+        /** @var User $user */
         $user = Auth::user();
         $retur = ReturBarang::with('detailRetur')->findOrFail($id);
         
@@ -286,6 +301,16 @@ class ReturBarangController extends Controller
             'detail.*.keterangan' => 'nullable|string',
         ]);
 
+        if (! $this->isPegawaiInUnit((int) $validated['id_pegawai_pengirim'], (int) $validated['id_unit_kerja'])) {
+            return back()->withErrors(['id_pegawai_pengirim' => 'Pegawai pengirim harus berasal dari unit kerja yang dipilih.'])->withInput();
+        }
+        if (! $this->isGudangAsalInUnit((int) $validated['id_gudang_asal'], (int) $validated['id_unit_kerja'])) {
+            return back()->withErrors(['id_gudang_asal' => 'Gudang asal harus gudang UNIT pada unit kerja yang dipilih.'])->withInput();
+        }
+        if (! $this->isGudangPusat((int) $validated['id_gudang_tujuan'])) {
+            return back()->withErrors(['id_gudang_tujuan' => 'Gudang tujuan harus gudang PUSAT.'])->withInput();
+        }
+
         DB::beginTransaction();
         try {
             // Update retur
@@ -323,7 +348,7 @@ class ReturBarangController extends Controller
                 ->with('success', 'Retur barang berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error updating retur barang: ' . $e->getMessage());
+            Log::error('Error updating retur barang: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage());
         }
     }
@@ -349,7 +374,7 @@ class ReturBarangController extends Controller
                 ->with('success', 'Retur barang berhasil dihapus.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error deleting retur barang: ' . $e->getMessage());
+            Log::error('Error deleting retur barang: ' . $e->getMessage());
             return redirect()->route('transaction.retur-barang.index')
                 ->with('error', 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage());
         }
@@ -393,8 +418,11 @@ class ReturBarangController extends Controller
      */
     public function terima(Request $request, $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan admin_gudang yang bisa terima retur
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -512,7 +540,7 @@ class ReturBarangController extends Controller
                 ->with('success', 'Retur barang berhasil diterima dan stock telah diupdate.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error accepting retur barang: ' . $e->getMessage());
+            Log::error('Error accepting retur barang: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan saat menerima retur: ' . $e->getMessage());
         }
     }
@@ -522,8 +550,11 @@ class ReturBarangController extends Controller
      */
     public function tolak(Request $request, $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan admin_gudang yang bisa tolak retur
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -567,6 +598,31 @@ class ReturBarangController extends Controller
         
         return redirect()->route('transaction.retur-barang.show', $retur->id_retur)
             ->with('success', 'Retur barang berhasil diajukan untuk persetujuan.');
+    }
+
+    private function isPegawaiInUnit(int $idPegawai, int $idUnitKerja): bool
+    {
+        return MasterPegawai::query()
+            ->where('id', $idPegawai)
+            ->where('id_unit_kerja', $idUnitKerja)
+            ->exists();
+    }
+
+    private function isGudangAsalInUnit(int $idGudang, int $idUnitKerja): bool
+    {
+        return MasterGudang::query()
+            ->where('id_gudang', $idGudang)
+            ->where('id_unit_kerja', $idUnitKerja)
+            ->where('jenis_gudang', 'UNIT')
+            ->exists();
+    }
+
+    private function isGudangPusat(int $idGudang): bool
+    {
+        return MasterGudang::query()
+            ->where('id_gudang', $idGudang)
+            ->where('jenis_gudang', 'PUSAT')
+            ->exists();
     }
 }
 

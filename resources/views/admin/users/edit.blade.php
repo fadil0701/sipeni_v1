@@ -135,11 +135,29 @@
                 </div>
             </div>
 
-            <!-- Menu yang Dapat Diakses -->
+            @unless($canDelegateAllPermissions)
+                <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4 text-sm text-indigo-900">
+                    <p class="font-medium">Modul yang dapat Anda centang mengikuti level akses Anda</p>
+                    <p class="mt-1 text-indigo-800">Hanya modul menu yang selaras dengan permission Anda yang tersedia. Modul lain yang sudah ada pada user ditampilkan di bawah sebagai informasi (tetap disimpan).</p>
+                </div>
+            @endunless
+
+            @if(isset($lockedModules) && $lockedModules->isNotEmpty())
+                <div class="mb-4 border border-amber-200 rounded-lg bg-amber-50/80 p-4">
+                    <p class="text-sm font-semibold text-amber-900 mb-2">Modul menu yang sudah aktif (di luar cakupan pengaturan Anda)</p>
+                    <ul class="text-sm text-amber-950 space-y-1 list-disc pl-5">
+                        @foreach($lockedModules as $lm)
+                            <li><span class="font-medium">{{ $lm->display_name }}</span> <code class="text-xs bg-amber-100 px-1 rounded">{{ $lm->name }}</code></li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <!-- Modul menu sidebar (filter tampilan; hak route tetap dari role) -->
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
                 <div class="flex items-center justify-between mb-4">
                     <label class="block text-sm font-medium text-gray-700">
-                        Menu yang Dapat Diakses
+                        Modul menu yang dapat Anda atur
                     </label>
                     <label class="flex items-center text-sm text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
                         <input 
@@ -153,15 +171,18 @@
                 
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     @php
-                        $userModules = $user->modules->pluck('name')->toArray();
+                        $assignableDefault = array_values(array_intersect(
+                            $user->modules->pluck('name')->toArray(),
+                            $modules->pluck('name')->toArray()
+                        ));
                     @endphp
-                    @foreach($modules as $module)
+                    @forelse($modules as $module)
                         <label class="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-white cursor-pointer transition-colors">
                             <input 
                                 type="checkbox" 
                                 name="modules[]" 
                                 value="{{ $module->name }}"
-                                {{ in_array($module->name, old('modules', $userModules)) ? 'checked' : '' }}
+                                {{ in_array($module->name, old('modules', $assignableDefault)) ? 'checked' : '' }}
                                 class="module-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                             >
                             <div class="ml-3 flex-1">
@@ -171,10 +192,12 @@
                                 @endif
                             </div>
                         </label>
-                    @endforeach
+                    @empty
+                        <p class="text-sm text-gray-600 col-span-full py-2">Tidak ada modul menu pada level akses Anda yang dapat diatur. Hubungi admin penuh jika perlu mengubah modul untuk user ini.</p>
+                    @endforelse
                 </div>
                 <p class="mt-3 text-xs text-gray-500">
-                    Pilih menu yang dapat diakses oleh user ini. Permission detail dapat diatur di <strong>Manajemen Role</strong>.
+                    Membatasi grup menu yang <em>tampil</em> di sidebar untuk user ini. Izin akses ke halaman dan aksi diatur lewat <strong>role</strong> di atas; kedua pengaturan bekerja bersamaan.
                 </p>
             </div>
         </div>

@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\InventoryItem;
 use App\Models\PermintaanBarang;
 use App\Models\DataStock;
+use App\Models\ApprovalFlowDefinition;
+use App\Models\ApprovalLog;
 use App\Enums\PermintaanBarangStatus;
 
 class DashboardController extends Controller
@@ -34,6 +36,46 @@ class DashboardController extends Controller
             ->limit(5)
             ->with('pemohon')
             ->get();
+
+        // Tracking permintaan -> approval (tahap saat ini)
+        $trackingItems = collect();
+        $trackingStepMax = (int) (ApprovalFlowDefinition::query()
+            ->where('modul_approval', 'PERMINTAAN_BARANG')
+            ->max('step_order') ?? 4);
+
+        if ($latestRequests->isNotEmpty()) {
+            $requestIds = $latestRequests->pluck('id_permintaan');
+            $approvalLogs = ApprovalLog::query()
+                ->with('approvalFlow')
+                ->where('modul_approval', 'PERMINTAAN_BARANG')
+                ->whereIn('id_referensi', $requestIds)
+                ->orderBy('id_referensi')
+                ->orderByDesc('created_at')
+                ->get()
+                ->groupBy('id_referensi');
+
+            $trackingItems = $latestRequests->map(function ($req) use ($approvalLogs, $trackingStepMax) {
+                $logs = $approvalLogs->get($req->id_permintaan, collect());
+                $current = $logs->firstWhere('status', 'MENUNGGU') ?? $logs->first();
+
+                $currentStep = (int) ($current?->approvalFlow?->step_order ?? 1);
+                $progressPercent = (int) round(($currentStep / max(1, $trackingStepMax)) * 100);
+
+                $displayStatus = $current?->status
+                    ?? strtoupper((string) ($req->status?->value ?? $req->status ?? '-'));
+                $displayStepName = $current?->approvalFlow?->nama_step ?? 'Pengajuan';
+
+                return [
+                    'no_permintaan' => $req->no_permintaan,
+                    'pemohon' => $req->pemohon->nama_pegawai ?? '-',
+                    'tanggal' => $req->tanggal_permintaan,
+                    'status' => $displayStatus,
+                    'step_name' => $displayStepName,
+                    'step_order' => $currentStep,
+                    'progress_percent' => max(8, min(100, $progressPercent)),
+                ];
+            });
+        }
 
         // Get latest assets - sesuai ERD: inventory_item -> data_inventory -> master_data_barang
         $latestAssets = InventoryItem::whereHas('inventory', function ($query) {
@@ -85,6 +127,8 @@ class DashboardController extends Controller
             'totalStock',
             'activeRequests',
             'latestRequests',
+            'trackingItems',
+            'trackingStepMax',
             'latestAssets',
             'latestTransactions',
             'requestStatusData'

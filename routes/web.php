@@ -18,6 +18,7 @@ use App\Http\Controllers\Master\KategoriBarangController;
 use App\Http\Controllers\Master\JenisBarangController;
 use App\Http\Controllers\Master\SubjenisBarangController;
 use App\Http\Controllers\Master\DataBarangController;
+use App\Http\Controllers\Master\StrukturBarangImportController;
 use App\Http\Controllers\Master\SatuanController;
 use App\Http\Controllers\Master\SumberAnggaranController;
 use App\Http\Controllers\Inventory\DataStockController;
@@ -33,6 +34,7 @@ use App\Http\Controllers\Procurement\PaketPengadaanController;
 use App\Http\Controllers\Procurement\ProsesPengadaanController;
 use App\Http\Controllers\Finance\PembayaranController;
 use App\Http\Controllers\Report\ReportController;
+use App\Http\Controllers\Api\MasterLookupController;
 
 // Authentication Routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -46,15 +48,19 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('user.dashboard');
     
-    // Assets
-    Route::get('/assets', [AssetController::class, 'index'])->name('user.assets');
-    Route::get('/assets/{id}', [AssetController::class, 'show'])->name('user.assets.show');
+    // Portal unit (nama route = permission; middleware role memicu pengecekan permission lewat route name)
+    Route::get('/assets', [AssetController::class, 'index'])->name('user.assets.index')->middleware(['role:admin,pegawai']);
+    Route::get('/assets/{id}', [AssetController::class, 'show'])->name('user.assets.show')->middleware(['role:admin,pegawai']);
     
-    // Requests
-    Route::get('/requests', [RequestController::class, 'index'])->name('user.requests');
-    Route::get('/requests/create', [RequestController::class, 'create'])->name('user.requests.create');
-    Route::post('/requests', [RequestController::class, 'store'])->name('user.requests.store');
-    Route::get('/requests/{id}', [RequestController::class, 'show'])->name('user.requests.show');
+    Route::get('/requests', [RequestController::class, 'index'])->name('user.requests.index')->middleware(['role:admin,pegawai']);
+    Route::get('/requests/create', [RequestController::class, 'create'])->name('user.requests.create')->middleware(['role:admin,pegawai']);
+    Route::post('/requests', [RequestController::class, 'store'])->name('user.requests.store')->middleware(['role:admin,pegawai']);
+    Route::get('/requests/{id}', [RequestController::class, 'show'])->name('user.requests.show')->middleware(['role:admin,pegawai']);
+
+    // Lookup master (ruangan & pegawai per unit kerja) — untuk form yang ter-filter dinamis
+    Route::get('api/master/gudang-by-unit/{id_unit_kerja}', [MasterLookupController::class, 'gudangByUnit'])->name('api.master.gudang-by-unit');
+    Route::get('api/master/ruangan-by-unit/{id_unit_kerja}', [MasterLookupController::class, 'ruanganByUnit'])->name('api.master.ruangan-by-unit');
+    Route::get('api/master/pegawai-by-unit/{id_unit_kerja}', [MasterLookupController::class, 'pegawaiByUnit'])->name('api.master.pegawai-by-unit');
     
     // Master Manajemen - Admin only
     Route::prefix('master-manajemen')->name('master-manajemen.')->middleware(['role:admin'])->group(function () {
@@ -73,6 +79,10 @@ Route::middleware(['auth'])->group(function () {
     
     // Master Data - Admin & Admin Gudang
     Route::prefix('master-data')->name('master-data.')->middleware(['role:admin,admin_gudang'])->group(function () {
+        Route::get('import-struktur-barang', [StrukturBarangImportController::class, 'index'])->name('import-struktur-barang.index');
+        Route::post('import-struktur-barang', [StrukturBarangImportController::class, 'import'])->name('import-struktur-barang.import');
+        Route::get('import-struktur-barang/template/download', [StrukturBarangImportController::class, 'downloadTemplate'])->name('import-struktur-barang.template');
+
         Route::resource('aset', AsetController::class)->middleware(['role:admin']);
         Route::resource('kode-barang', KodeBarangController::class)->middleware(['role:admin']);
         Route::resource('kategori-barang', KategoriBarangController::class)->middleware(['role:admin']);

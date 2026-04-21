@@ -405,9 +405,52 @@
 @push('scripts')
 <script>
 let detailIndex = {{ $pemakaian->detailPemakaian->count() }};
+const urlPegawaiByUnit = @json(url('/api/master/pegawai-by-unit'));
+const urlGudangByUnit = @json(url('/api/master/gudang-by-unit'));
+const oldGudang = @json(old('id_gudang', $pemakaian->id_gudang));
+const oldPegawai = @json(old('id_pegawai_pemakai', $pemakaian->id_pegawai_pemakai));
 
 function loadGudangByUnit(unitId) {
-    // Filter gudang berdasarkan unit kerja bisa ditambahkan di sini
+    const gudangSelect = document.getElementById('id_gudang');
+    const pegawaiSelect = document.getElementById('id_pegawai_pemakai');
+    if (!unitId) {
+        gudangSelect.innerHTML = '<option value="">Pilih Gudang</option>';
+        pegawaiSelect.innerHTML = '<option value="">Pilih Pegawai Pemakai</option>';
+        return;
+    }
+
+    gudangSelect.innerHTML = '<option value="">Memuat Gudang...</option>';
+    fetch(`${urlGudangByUnit}/${unitId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            gudangSelect.innerHTML = '<option value="">Pilih Gudang</option>';
+            (data.data || []).forEach(g => {
+                if (g.jenis_gudang !== 'UNIT') return;
+                const opt = document.createElement('option');
+                opt.value = g.id_gudang;
+                opt.textContent = g.label;
+                gudangSelect.appendChild(opt);
+            });
+            if (oldGudang) {
+                gudangSelect.value = String(oldGudang);
+            }
+        });
+
+    pegawaiSelect.innerHTML = '<option value="">Memuat Pegawai...</option>';
+    fetch(`${urlPegawaiByUnit}/${unitId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            pegawaiSelect.innerHTML = '<option value="">Pilih Pegawai Pemakai</option>';
+            (data.data || []).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.label;
+                pegawaiSelect.appendChild(opt);
+            });
+            if (oldPegawai) {
+                pegawaiSelect.value = String(oldPegawai);
+            }
+        });
 }
 
 function loadInventoryByGudang(gudangId) {
@@ -456,6 +499,11 @@ function updateInventoryInfo(select) {
 
 // Update info untuk item yang sudah ada saat halaman dimuat
 document.addEventListener('DOMContentLoaded', function() {
+    const unitId = document.getElementById('id_unit_kerja').value;
+    if (unitId) {
+        loadGudangByUnit(unitId);
+    }
+
     const inventorySelects = document.querySelectorAll('.select-inventory');
     inventorySelects.forEach(select => {
         updateInventoryInfo(select);

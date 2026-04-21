@@ -10,6 +10,13 @@
 - **Sebelum**: 296 permissions (termasuk store dan update)
 - **Sesudah**: 229 permissions
 - **Dihapus**: 67 permission yang duplikat
+- **UI Role terbaru**: checklist otomatis menyederhanakan alias operasional
+  (`store` ditampilkan sebagai `create`, `update` sebagai `edit`, `delete` sebagai `destroy`).
+- **UI Role lanjutan**: action proses yang saling terkait disatukan menjadi satu grup
+  `workflow` per resource (mis. `ajukan/approve/reject/verifikasi/...`).
+- **UI Role terbaru (group mode)**: checklist kini berbasis kelompok resource/alur
+  (contoh: Draft Distribusi + Compile Distribusi + Distribusi menjadi satu item
+  `Akses Distribusi`), bukan lagi daftar action per route.
 
 ### 3. Mapping Permission
 Sistem sekarang otomatis memetakan:
@@ -69,6 +76,9 @@ Semua view yang menggunakan `PermissionHelper::canAccess()` tetap berfungsi:
 Saat assign permission ke role:
 - Cukup checklist `create` untuk memberikan akses create + store
 - Cukup checklist `edit` untuk memberikan akses edit + update
+- Permission teknis modul `api` disembunyikan dari checklist role agar UI lebih fokus ke permission bisnis.
+- Untuk action proses (workflow), satu centang akan menyimpan seluruh action terkait resource tersebut
+  agar konfigurasi tidak pecah dan tidak rancu.
 
 ## 🎯 Keuntungan
 

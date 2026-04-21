@@ -78,14 +78,14 @@
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Unit Kerja & Ruangan</h3>
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div>
-                        <label for="id_unit_kerja" class="block text-sm font-medium text-gray-700 mb-2">
+                        {{-- id BUKAN "id_unit_kerja": hindari Choices.js global di layout agar nilai & change event konsisten --}}
+                        <label for="id_unit_kerja_register_aset" class="block text-sm font-medium text-gray-700 mb-2">
                             Unit Kerja <span class="text-red-500">*</span>
                         </label>
                         <select 
-                            id="id_unit_kerja" 
+                            id="id_unit_kerja_register_aset" 
                             name="id_unit_kerja" 
                             required
-                            onchange="filterRuangan(this.value)"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_unit_kerja') border-red-500 @enderror"
                         >
                             <option value="">Pilih Unit Kerja</option>
@@ -101,11 +101,12 @@
                     </div>
                     
                     <div>
-                        <label for="id_ruangan" class="block text-sm font-medium text-gray-700 mb-2">
+                        {{-- id BUKAN "id_ruangan": layout mem-init Choices.js untuk #id_ruangan sehingga filter opsi tidak pernah konsisten --}}
+                        <label for="id_ruangan_register_aset" class="block text-sm font-medium text-gray-700 mb-2">
                             Ruangan <span class="text-gray-500">(Opsional)</span>
                         </label>
                         <select 
-                            id="id_ruangan" 
+                            id="id_ruangan_register_aset" 
                             name="id_ruangan" 
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_ruangan') border-red-500 @enderror"
                         >
@@ -226,13 +227,43 @@
     </form>
 </div>
 
+{{-- Daftar ruangan dari server (tidak mengandalkan DOM setelah Choices.js mengubah <select>) --}}
+@php
+    $ruanganOptionsForJs = $ruangans->map(fn ($r) => [
+        'id_ruangan' => (int) $r->id_ruangan,
+        'id_unit_kerja' => (int) $r->id_unit_kerja,
+        'label' => $r->nama_ruangan.' ('.($r->unitKerja->nama_unit_kerja ?? '-').')',
+    ])->values();
+@endphp
+<script type="application/json" id="register-aset-ruangan-json">@json($ruanganOptionsForJs)</script>
+
 @push('scripts')
 <script>
+var REGISTER_ASET_SELECT_RUANGAN = 'id_ruangan_register_aset';
+var REGISTER_ASET_SELECT_UNIT_KERJA = 'id_unit_kerja_register_aset';
+
+function loadRegisterAsetRoomOptionsFromServer() {
+    if (window.__registerAsetAllRooms !== undefined) {
+        return window.__registerAsetAllRooms;
+    }
+    const el = document.getElementById('register-aset-ruangan-json');
+    if (!el || !el.textContent) {
+        window.__registerAsetAllRooms = [];
+        return window.__registerAsetAllRooms;
+    }
+    try {
+        window.__registerAsetAllRooms = JSON.parse(el.textContent);
+    } catch (e) {
+        window.__registerAsetAllRooms = [];
+    }
+    return window.__registerAsetAllRooms;
+}
+
 function generateNomorRegister() {
     const itemSelect = document.getElementById('id_item');
     const inventoryHidden = document.getElementById('id_inventory');
-    const unitKerjaSelect = document.getElementById('id_unit_kerja');
-    const ruanganSelect = document.getElementById('id_ruangan');
+    const unitKerjaSelect = document.getElementById(REGISTER_ASET_SELECT_UNIT_KERJA);
+    const ruanganSelect = document.getElementById(REGISTER_ASET_SELECT_RUANGAN);
     const nomorRegisterInput = document.getElementById('nomor_register');
     
     if (!itemSelect || !unitKerjaSelect || !nomorRegisterInput) return;
@@ -271,67 +302,65 @@ function generateNomorRegister() {
 }
 
 function filterRuangan(unitKerjaId) {
-    const ruanganSelect = document.getElementById('id_ruangan');
+    const ruanganSelect = document.getElementById(REGISTER_ASET_SELECT_RUANGAN);
     if (!ruanganSelect) return;
-    
-    const options = ruanganSelect.querySelectorAll('option');
-    
-    // Tampilkan semua opsi
-    options.forEach(option => {
-        if (option.value === '') {
-            option.style.display = 'block'; // Tampilkan opsi kosong
-        } else {
-            const unitKerjaOption = option.dataset.unitKerja;
-            if (unitKerjaId === '' || unitKerjaOption === unitKerjaId) {
-                option.style.display = 'block';
-            } else {
-                option.style.display = 'none';
-            }
+
+    const uid = unitKerjaId !== undefined && unitKerjaId !== null && String(unitKerjaId).trim() !== ''
+        ? String(unitKerjaId)
+        : '';
+
+    const rooms = loadRegisterAsetRoomOptionsFromServer();
+    const previousValue = ruanganSelect.value;
+
+    ruanganSelect.innerHTML = '';
+    ruanganSelect.add(new Option('Pilih Ruangan', ''));
+
+    rooms.forEach(function (r) {
+        if (uid !== '' && String(r.id_unit_kerja) !== uid) {
+            return;
         }
+        const option = new Option(r.label, String(r.id_ruangan));
+        option.dataset.unitKerja = String(r.id_unit_kerja);
+        ruanganSelect.add(option);
     });
-    
-    // Reset pilihan jika ruangan yang dipilih tidak sesuai dengan unit kerja
-    if (unitKerjaId && ruanganSelect.value) {
-        const selectedOption = ruanganSelect.options[ruanganSelect.selectedIndex];
-        if (selectedOption.dataset.unitKerja !== unitKerjaId) {
-            ruanganSelect.value = '';
-        }
-    }
-    
-    // Generate nomor register setelah filter ruangan
+
+    const stillExists = Array.from(ruanganSelect.options).some(function (opt) {
+        return opt.value === previousValue;
+    });
+    ruanganSelect.value = stillExists ? previousValue : '';
+
     generateNomorRegister();
 }
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
+    loadRegisterAsetRoomOptionsFromServer();
+
     const itemSelect = document.getElementById('id_item');
-    const unitKerjaSelect = document.getElementById('id_unit_kerja');
-    const ruanganSelect = document.getElementById('id_ruangan');
-    
-    // Filter ruangan berdasarkan unit kerja yang dipilih
-    if (unitKerjaSelect && unitKerjaSelect.value) {
+    const unitKerjaSelect = document.getElementById(REGISTER_ASET_SELECT_UNIT_KERJA);
+    const ruanganSelect = document.getElementById(REGISTER_ASET_SELECT_RUANGAN);
+
+    function onUnitKerjaChanged() {
+        if (!unitKerjaSelect) return;
         filterRuangan(unitKerjaSelect.value);
     }
-    
-    // Generate nomor register saat inventory item berubah
+
+    if (unitKerjaSelect && unitKerjaSelect.value) {
+        onUnitKerjaChanged();
+    }
+
     if (itemSelect) {
         itemSelect.addEventListener('change', generateNomorRegister);
     }
-    
-    // Generate nomor register saat unit kerja berubah
+
     if (unitKerjaSelect) {
-        unitKerjaSelect.addEventListener('change', function() {
-            filterRuangan(this.value);
-            generateNomorRegister();
-        });
+        unitKerjaSelect.addEventListener('change', onUnitKerjaChanged);
     }
-    
-    // Generate nomor register saat ruangan berubah
+
     if (ruanganSelect) {
         ruanganSelect.addEventListener('change', generateNomorRegister);
     }
-    
-    // Generate awal jika sudah ada nilai
+
     generateNomorRegister();
 });
 </script>

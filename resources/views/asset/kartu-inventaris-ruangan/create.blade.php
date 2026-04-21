@@ -35,8 +35,15 @@
                     >
                         <option value="">Pilih Register Aset</option>
                         @foreach($registerAsets as $registerAset)
-                            <option value="{{ $registerAset->id_register_aset }}" {{ old('id_register_aset') == $registerAset->id_register_aset ? 'selected' : '' }}>
+                            <option
+                                value="{{ $registerAset->id_register_aset }}"
+                                data-id-unit-kerja="{{ $registerAset->id_unit_kerja }}"
+                                {{ old('id_register_aset') == $registerAset->id_register_aset ? 'selected' : '' }}
+                            >
                                 {{ $registerAset->nomor_register }} - {{ $registerAset->inventory->dataBarang->nama_barang ?? '-' }}
+                                @if($registerAset->unitKerja)
+                                    — {{ $registerAset->unitKerja->nama_unit_kerja }}
+                                @endif
                             </option>
                         @endforeach
                     </select>
@@ -50,21 +57,16 @@
             <!-- Form Fields -->
             <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                    <label for="id_ruangan" class="block text-sm font-medium text-gray-700 mb-2">
+                    <label for="kir_create_id_ruangan" class="block text-sm font-medium text-gray-700 mb-2">
                         Ruangan <span class="text-red-500">*</span>
                     </label>
                     <select 
-                        id="id_ruangan" 
+                        id="kir_create_id_ruangan" 
                         name="id_ruangan" 
                         required
                         class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_ruangan') border-red-500 @enderror"
                     >
-                        <option value="">Pilih Ruangan</option>
-                        @foreach($ruangans as $ruangan)
-                            <option value="{{ $ruangan->id_ruangan }}" {{ old('id_ruangan') == $ruangan->id_ruangan ? 'selected' : '' }}>
-                                {{ $ruangan->nama_ruangan }} ({{ $ruangan->unitKerja->nama_unit_kerja ?? '-' }})
-                            </option>
-                        @endforeach
+                        <option value="">Pilih register aset terlebih dahulu</option>
                     </select>
                     @error('id_ruangan')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -72,21 +74,16 @@
                 </div>
 
                 <div>
-                    <label for="id_penanggung_jawab" class="block text-sm font-medium text-gray-700 mb-2">
+                    <label for="kir_create_id_penanggung_jawab" class="block text-sm font-medium text-gray-700 mb-2">
                         Penanggung Jawab <span class="text-red-500">*</span>
                     </label>
                     <select 
-                        id="id_penanggung_jawab" 
+                        id="kir_create_id_penanggung_jawab" 
                         name="id_penanggung_jawab" 
                         required
                         class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_penanggung_jawab') border-red-500 @enderror"
                     >
-                        <option value="">Pilih Penanggung Jawab</option>
-                        @foreach($pegawais as $pegawai)
-                            <option value="{{ $pegawai->id }}" {{ old('id_penanggung_jawab') == $pegawai->id ? 'selected' : '' }}>
-                                {{ $pegawai->nama_pegawai }} ({{ $pegawai->unitKerja->nama_unit_kerja ?? '-' }})
-                            </option>
-                        @endforeach
+                        <option value="">Pilih register aset terlebih dahulu</option>
                     </select>
                     @error('id_penanggung_jawab')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -128,4 +125,73 @@
         </div>
     </form>
 </div>
+
+@push('scripts')
+<script>
+(function () {
+    const API_RUANGAN = @json(url('/api/master/ruangan-by-unit'));
+    const API_PEGAWAI = @json(url('/api/master/pegawai-by-unit'));
+    const regSel = document.getElementById('id_register_aset');
+    const ruangSel = document.getElementById('kir_create_id_ruangan');
+    const pjSel = document.getElementById('kir_create_id_penanggung_jawab');
+    const oldRuangan = @json(old('id_ruangan'));
+    const oldPj = @json(old('id_penanggung_jawab'));
+
+    function fillSelect(selectEl, placeholder, rows, valueKey, labelKey) {
+        if (!selectEl) return;
+        const prev = selectEl.value;
+        selectEl.innerHTML = '';
+        const opt0 = document.createElement('option');
+        opt0.value = '';
+        opt0.textContent = placeholder;
+        selectEl.appendChild(opt0);
+        (rows || []).forEach(function (row) {
+            const o = document.createElement('option');
+            o.value = String(row[valueKey]);
+            o.textContent = row[labelKey];
+            selectEl.appendChild(o);
+        });
+        const want = oldRuangan && selectEl === ruangSel ? String(oldRuangan) : (oldPj && selectEl === pjSel ? String(oldPj) : prev);
+        if (want && Array.from(selectEl.options).some(function (op) { return op.value === want; })) {
+            selectEl.value = want;
+        }
+    }
+
+    async function loadForUnit(unitId) {
+        if (!unitId) {
+            fillSelect(ruangSel, 'Pilih register aset terlebih dahulu', [], 'id_ruangan', 'label');
+            fillSelect(pjSel, 'Pilih register aset terlebih dahulu', [], 'id', 'label');
+            return;
+        }
+        try {
+            const [rRes, pRes] = await Promise.all([
+                fetch(API_RUANGAN + '/' + encodeURIComponent(unitId), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } }),
+                fetch(API_PEGAWAI + '/' + encodeURIComponent(unitId), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } }),
+            ]);
+            const rJson = await rRes.json();
+            const pJson = await pRes.json();
+            fillSelect(ruangSel, 'Pilih Ruangan', rJson.data || [], 'id_ruangan', 'label');
+            fillSelect(pjSel, 'Pilih Penanggung Jawab', pJson.data || [], 'id', 'label');
+        } catch (e) {
+            fillSelect(ruangSel, 'Gagal memuat ruangan', [], 'id_ruangan', 'label');
+            fillSelect(pjSel, 'Gagal memuat pegawai', [], 'id', 'label');
+        }
+    }
+
+    function onRegisterChange() {
+        if (!regSel) return;
+        const opt = regSel.options[regSel.selectedIndex];
+        const unitId = opt ? opt.getAttribute('data-id-unit-kerja') : '';
+        loadForUnit(unitId);
+    }
+
+    if (regSel) {
+        regSel.addEventListener('change', onRegisterChange);
+        if (regSel.value) {
+            onRegisterChange();
+        }
+    }
+})();
+</script>
+@endpush
 @endsection

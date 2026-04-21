@@ -14,7 +14,11 @@
     <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-center">
         <div>
             <h2 class="text-xl font-semibold text-gray-900">Detail Role</h2>
-            <p class="text-sm text-gray-600 mt-1">Role: <span class="font-semibold">{{ $role->display_name }}</span></p>
+            <p class="text-sm text-gray-600 mt-1">
+                <span class="font-semibold text-gray-900">{{ $role->display_name }}</span>
+                <span class="text-gray-400">·</span>
+                <code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{{ $role->name }}</code>
+            </p>
         </div>
         <a 
             href="{{ route('admin.roles.edit', $role->id) }}" 
@@ -30,14 +34,15 @@
     <div class="p-6">
         <div class="grid grid-cols-1 gap-6">
             <div>
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Role</h3>
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi role</h3>
                 <dl class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                     <div>
-                        <dt class="text-sm font-medium text-gray-500 mb-1">Nama Role</dt>
-                        <dd class="text-sm font-semibold text-gray-900">{{ $role->name }}</dd>
+                        <dt class="text-sm font-medium text-gray-500 mb-1">Kode role (internal)</dt>
+                        <dd class="text-sm font-mono text-gray-900">{{ $role->name }}</dd>
+                        <p class="text-xs text-gray-500 mt-1">Digunakan di logika sistem; jangan diubah sembarangan jika sudah dipakai integrasi.</p>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500 mb-1">Display Name</dt>
+                        <dt class="text-sm font-medium text-gray-500 mb-1">Nama tampilan</dt>
                         <dd class="text-sm font-semibold text-gray-900">{{ $role->display_name }}</dd>
                     </div>
                     @if($role->description)
@@ -50,26 +55,26 @@
             </div>
 
             <div>
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Hak Akses (Permissions) ({{ $role->permissions->count() }})</h3>
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Hak akses (permission) — {{ $role->permissions->count() }} entri</h3>
                 @if($role->permissions->count() > 0)
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
-                        @foreach($role->permissions->groupBy('module') as $module => $modulePermissions)
-                            <div class="mb-4">
-                                <h4 class="text-sm font-semibold text-gray-900 mb-2 uppercase tracking-wide">
-                                    {{ str_replace('-', ' ', $module) }}
+                        @foreach($permissionGroups as $group)
+                            <div class="mb-6 last:mb-0">
+                                <h4 class="text-sm font-semibold text-gray-900 mb-2">
+                                    {{ $group['label'] }}
                                 </h4>
-                                <div class="space-y-1 pl-4">
-                                    @foreach($modulePermissions as $permission)
-                                        <div class="flex items-start">
-                                            <svg class="w-4 h-4 text-green-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <div class="space-y-2 pl-1">
+                                    @foreach($group['items'] as $permission)
+                                        <div class="flex items-start border-b border-gray-100 pb-2 last:border-0">
+                                            <svg class="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                                             </svg>
                                             <div>
-                                                <span class="text-sm text-gray-700 font-medium">{{ $permission->display_name }}</span>
+                                                <span class="text-sm text-gray-800 font-medium">{{ $permission->display_name }}</span>
                                                 @if($permission->description)
-                                                    <p class="text-xs text-gray-500 mt-0.5">{{ $permission->description }}</p>
+                                                    <p class="text-xs text-gray-600 mt-0.5">{{ $permission->description }}</p>
                                                 @endif
-                                                <p class="text-xs text-gray-400 mt-0.5 font-mono">{{ $permission->name }}</p>
+                                                <p class="text-xs text-gray-400 mt-1 font-mono">{{ $permission->name }}</p>
                                             </div>
                                         </div>
                                     @endforeach
@@ -78,12 +83,12 @@
                         @endforeach
                     </div>
                 @else
-                    <p class="text-sm text-gray-500">Role ini belum memiliki hak akses. <a href="{{ route('admin.roles.edit', $role->id) }}" class="text-blue-600 hover:text-blue-800">Tambahkan hak akses</a></p>
+                    <p class="text-sm text-gray-500">Role ini belum memiliki hak akses. <a href="{{ route('admin.roles.edit', $role->id) }}" class="text-blue-600 hover:text-blue-800">Atur di halaman edit</a></p>
                 @endif
             </div>
 
             <div>
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Users dengan Role Ini ({{ $role->users->count() }})</h3>
+                <h3 class="text-lg font-medium text-gray-900 mb-4">User dengan role ini ({{ $role->users->count() }})</h3>
                 @if($role->users->count() > 0)
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
@@ -91,7 +96,7 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal Dibuat</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Terdaftar</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
@@ -113,4 +118,3 @@
     </div>
 </div>
 @endsection
-

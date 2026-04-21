@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DistribusiStatus;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -28,8 +29,21 @@ class TransaksiDistribusi extends Model
 
     protected $casts = [
         'tanggal_distribusi' => 'datetime',
-        'status_distribusi' => DistribusiStatus::class,
     ];
+
+    protected function statusDistribusi(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => DistribusiStatus::normalizeStored(
+                $value !== null ? (string) $value : null
+            ),
+            set: fn ($value) => [
+                'status_distribusi' => $value instanceof DistribusiStatus
+                    ? $value->value
+                    : DistribusiStatus::normalizeStored((string) $value)->value,
+            ],
+        );
+    }
 
     // Relationships
     public function permintaan(): BelongsTo

@@ -4,7 +4,14 @@ Selamat datang di dokumentasi Sistem Informasi Manajemen Terintegrasi (SI-MANTIK
 
 ## 📖 Daftar Dokumentasi
 
-### 1. [Alur Transaksi Barang - Step by Step Guide](./ALUR_TRANSAKSI.md)
+### 1. [Hak Akses, Role, dan Delegasi Permission](./HAK_AKSES_ROLE_DAN_DELEGASI.md)
+Penjelasan teknis: permission = nama route, modul sidebar vs permission role, sinkronisasi `permission:sync-routes`, class `PermissionModule` / `AssignablePermissions`, serta perilaku Manajemen Role dan User (delegasi untuk non-admin).
+
+**Untuk:** Developer dan admin yang mengonfigurasi akses sistem.
+
+---
+
+### 2. [Alur Transaksi Barang - Step by Step Guide](./ALUR_TRANSAKSI.md)
 Panduan lengkap penggunaan sistem transaksi barang mulai dari permintaan hingga penerimaan dan retur.
 
 **Isi:**
@@ -18,7 +25,7 @@ Panduan lengkap penggunaan sistem transaksi barang mulai dari permintaan hingga 
 
 ---
 
-### 2. [Diagram Alur Transaksi](./DIAGRAM_ALUR_TRANSAKSI.md)
+### 3. [Diagram Alur Transaksi](./DIAGRAM_ALUR_TRANSAKSI.md)
 Diagram visual dan flowchart lengkap alur transaksi barang.
 
 **Isi:**
@@ -40,8 +47,9 @@ Diagram visual dan flowchart lengkap alur transaksi barang.
 2. Lihat [Diagram Alur Transaksi](./DIAGRAM_ALUR_TRANSAKSI.md) untuk memahami workflow secara visual
 
 ### Untuk Developer:
-1. Review [Diagram Alur Transaksi](./DIAGRAM_ALUR_TRANSAKSI.md) untuk memahami arsitektur sistem
-2. Lihat kode di folder `app/Http/Controllers/Transaction/` untuk implementasi detail
+1. Baca [Hak Akses, Role, dan Delegasi Permission](./HAK_AKSES_ROLE_DAN_DELEGASI.md) untuk konfigurasi permission dan panel admin.
+2. Review [Diagram Alur Transaksi](./DIAGRAM_ALUR_TRANSAKSI.md) untuk memahami arsitektur sistem.
+3. Lihat kode di folder `app/Http/Controllers/Transaction/` untuk implementasi detail.
 
 ---
 
@@ -92,7 +100,7 @@ Jika ada pertanyaan atau butuh bantuan:
 
 ## 📝 Changelog
 
-### Version 1.0 ({{ date('d/m/Y') }})
+### Version 1.0
 - ✅ Dokumentasi Alur Transaksi lengkap
 - ✅ Diagram Alur Transaksi visual
 - ✅ Role & Permission Matrix
@@ -100,7 +108,7 @@ Jika ada pertanyaan atau butuh bantuan:
 
 ---
 
-**Last Updated:** {{ date('d/m/Y') }}
+**Last Updated:** April 2026
 **Maintained by:** Tim Development SI-MANTIK
 
 

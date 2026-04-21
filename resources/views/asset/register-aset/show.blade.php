@@ -43,6 +43,11 @@
             <!-- Informasi Register Aset -->
             <div class="bg-gray-50 rounded-lg p-6 border border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Informasi Register Aset</h3>
+                @php
+                    $kir = $registerAset->kartuInventarisRuangan->first();
+                    $ruanganAset = $registerAset->ruangan ?? $kir?->ruangan;
+                    $penanggungJawab = $kir?->penanggungJawab;
+                @endphp
                 <dl class="space-y-4">
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Nomor Register</dt>
@@ -90,12 +95,53 @@
                             {{ $registerAset->unitKerja->nama_unit_kerja ?? '-' }}
                         </dd>
                     </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Nama Ruangan</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            {{ $ruanganAset?->nama_ruangan ?? '-' }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Penanggung Jawab</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            {{ $penanggungJawab?->nama_pegawai ?? '-' }}
+                        </dd>
+                    </div>
                 </dl>
             </div>
 
             <!-- Informasi Barang -->
             <div class="bg-gray-50 rounded-lg p-6 border border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Informasi Barang</h3>
+                @php
+                    $fotoInventory = $registerAset->inventory->upload_foto ?? null;
+                    $fotoItem = $registerAset->inventory->inventoryItems->first()->foto_barang ?? null;
+                    $fotoBarangPath = $fotoInventory ?: $fotoItem;
+                    $fotoBarangUrl = $fotoBarangPath
+                        ? (\Illuminate\Support\Str::startsWith($fotoBarangPath, ['http://', 'https://'])
+                            ? $fotoBarangPath
+                            : asset('storage/' . ltrim($fotoBarangPath, '/')))
+                        : null;
+                @endphp
+
+                <div class="mb-5">
+                    <p class="text-sm font-medium text-gray-500 mb-2">Foto Barang</p>
+                    @if($fotoBarangUrl)
+                        <a href="{{ $fotoBarangUrl }}" target="_blank" rel="noopener noreferrer" class="block">
+                            <img
+                                src="{{ $fotoBarangUrl }}"
+                                alt="Foto barang {{ $registerAset->inventory->dataBarang->nama_barang ?? 'Aset' }}"
+                                class="h-44 w-full rounded-lg border border-gray-200 object-contain bg-white p-2 hover:opacity-95 transition-opacity"
+                                loading="lazy"
+                            >
+                        </a>
+                    @else
+                        <div class="h-44 w-full rounded-lg border border-dashed border-gray-300 bg-white flex items-center justify-center">
+                            <span class="text-sm text-gray-500">Foto barang belum tersedia</span>
+                        </div>
+                    @endif
+                </div>
+
                 <dl class="space-y-4">
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Nama Barang</dt>

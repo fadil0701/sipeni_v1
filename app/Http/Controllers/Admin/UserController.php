@@ -10,6 +10,7 @@ use App\Models\Role;
 use App\Models\MasterPegawai;
 use App\Models\Module;
 use App\Helpers\PermissionHelper;
+use App\Support\AssignablePermissions;
 
 class UserController extends Controller
 {
@@ -20,19 +21,30 @@ class UserController extends Controller
         return view('admin.users.index', compact('users'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $editor = $request->user();
         $roles = Role::all();
-        $modules = Module::orderBy('sort_order')->get();
-        // Semua pegawai untuk dropdown auto-fill nama & email (nama tetap muncul)
+        $allowedModuleNames = AssignablePermissions::assignableModuleNamesForUserForm($editor);
+        $modules = Module::orderBy('sort_order')
+            ->get()
+            ->filter(fn (Module $m) => in_array($m->name, $allowedModuleNames, true))
+            ->values();
+        $canDelegateAllPermissions = AssignablePermissions::editorMayAssignAll($editor);
+
         $pegawais = MasterPegawai::with('unitKerja')
             ->orderBy('nama_pegawai')
             ->get();
-        return view('admin.users.create', compact('roles', 'pegawais', 'modules'));
+
+        $lockedModules = collect();
+
+        return view('admin.users.create', compact('roles', 'pegawais', 'modules', 'lockedModules', 'canDelegateAllPermissions'));
     }
 
     public function store(Request $request)
     {
+        $this->assertEditorMayAssignModules($request->user(), $request->input('modules', []));
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -68,11 +80,24 @@ class UserController extends Controller
         return view('admin.users.show', compact('user'));
     }
 
-    public function edit($id)
+    public function edit(Request $request, $id)
     {
+        $editor = $request->user();
         $user = User::with(['roles', 'modules'])->findOrFail($id);
         $roles = Role::all();
-        $modules = Module::orderBy('sort_order')->get();
+        $allowedModuleNames = AssignablePermissions::assignableModuleNamesForUserForm($editor);
+        $modules = Module::orderBy('sort_order')
+            ->get()
+            ->filter(fn (Module $m) => in_array($m->name, $allowedModuleNames, true))
+            ->values();
+        $canDelegateAllPermissions = AssignablePermissions::editorMayAssignAll($editor);
+
+        $userModuleNames = $user->modules->pluck('name')->all();
+        $lockedModuleNames = array_values(array_diff($userModuleNames, $allowedModuleNames));
+        $lockedModules = $lockedModuleNames === []
+            ? collect()
+            : Module::whereIn('name', $lockedModuleNames)->orderBy('sort_order')->get();
+
         // Ambil pegawai yang belum punya user atau pegawai yang sudah terhubung dengan user ini
         $pegawais = MasterPegawai::where(function($query) use ($id) {
                 $query->whereDoesntHave('user')
@@ -81,11 +106,13 @@ class UserController extends Controller
             })
             ->orderBy('nama_pegawai')
             ->get();
-        return view('admin.users.edit', compact('user', 'roles', 'pegawais', 'modules'));
+        return view('admin.users.edit', compact('user', 'roles', 'pegawais', 'modules', 'lockedModules', 'canDelegateAllPermissions'));
     }
 
     public function update(Request $request, $id)
     {
+        $this->assertEditorMayAssignModules($request->user(), $request->input('modules', []));
+
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
@@ -111,11 +138,19 @@ class UserController extends Controller
         // Update role
         $user->roles()->sync([$validated['role_id']]);
 
-        // Update modules
-        if ($request->has('modules')) {
-            $user->modules()->sync($request->modules);
+        $user->load('modules');
+        $submittedModules = (array) $request->input('modules', []);
+
+        if (AssignablePermissions::editorMayAssignAll($request->user())) {
+            if ($request->has('modules')) {
+                $user->modules()->sync($submittedModules);
+            } else {
+                $user->modules()->detach();
+            }
         } else {
-            $user->modules()->detach();
+            $allowed = array_flip(AssignablePermissions::assignableModuleNamesForUserForm($request->user()));
+            $lockedNames = $user->modules->pluck('name')->filter(fn ($n) => ! isset($allowed[(string) $n]))->values()->all();
+            $user->modules()->sync(array_values(array_unique(array_merge($submittedModules, $lockedNames))));
         }
 
         PermissionHelper::forgetAccessibleMenusCacheForUser($user->id);
@@ -142,5 +177,25 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User berhasil dihapus.');
+    }
+
+    /**
+     * @param  array<mixed>  $moduleNames
+     */
+    private function assertEditorMayAssignModules(\App\Models\User $editor, array $moduleNames): void
+    {
+        if (! is_array($moduleNames)) {
+            return;
+        }
+
+        $allowed = array_flip(AssignablePermissions::assignableModuleNamesForUserForm($editor));
+        foreach ($moduleNames as $name) {
+            if ($name === null || $name === '') {
+                continue;
+            }
+            if (! isset($allowed[(string) $name])) {
+                abort(403, 'Anda tidak dapat memberikan modul menu yang dipilih.');
+            }
+        }
     }
 }

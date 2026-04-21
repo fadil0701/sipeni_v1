@@ -9,3 +9,216 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+@layer base {
+    :root {
+        --ui-field-height: 2.5rem;
+        --ui-field-radius: 0.5rem;
+    }
+
+    /* Konsistensi elemen form utama */
+    form :is(
+        input[type='text'],
+        input[type='email'],
+        input[type='number'],
+        input[type='date'],
+        input[type='password'],
+        input[type='search'],
+        select,
+        textarea
+    ) {
+        border-color: rgb(209 213 219); /* gray-300 */
+        border-radius: var(--ui-field-radius);
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+        transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+        background-color: #fff;
+    }
+
+    form :is(
+        input[type='text'],
+        input[type='email'],
+        input[type='number'],
+        input[type='date'],
+        input[type='password'],
+        input[type='search'],
+        select
+    ) {
+        height: var(--ui-field-height);
+        line-height: 1.25rem;
+    }
+
+    form textarea {
+        min-height: 6rem;
+        padding-top: 0.625rem;
+        padding-bottom: 0.625rem;
+    }
+
+    form :is(
+        input[type='text'],
+        input[type='email'],
+        input[type='number'],
+        input[type='date'],
+        input[type='password'],
+        input[type='search'],
+        select,
+        textarea
+    ):focus {
+        border-color: rgb(37 99 235); /* blue-600 */
+        box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15);
+        outline: none;
+    }
+}
+
+@layer components {
+    /* Konsistensi section judul dalam form */
+    .form-section-title {
+        @apply text-base font-semibold text-gray-900 mb-3;
+    }
+
+    /* Container section untuk blok informasi */
+    .form-section-box {
+        @apply rounded-lg border border-gray-200 bg-gray-50 p-4;
+    }
+
+    /* Alert error/success konsisten */
+    .alert-box {
+        @apply rounded-lg border px-4 py-3 text-sm;
+    }
+
+    .alert-box.alert-error {
+        @apply border-red-200 bg-red-50 text-red-700;
+    }
+
+    .alert-box.alert-success {
+        @apply border-green-200 bg-green-50 text-green-700;
+    }
+
+    /* Tombol aksi utama/sekunder konsisten */
+    .btn-primary-ui {
+        @apply inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+    }
+
+    .btn-secondary-ui {
+        @apply inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+    }
+
+    /* Choices.js: cegah field select melebar saat nilai panjang dipilih */
+    form .choices {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        display: block !important;
+        flex: 1 1 auto;
+        margin-bottom: 0 !important; /* override default Choices spacing */
+        font-size: 0.875rem !important;
+    }
+
+    form .choices[data-type*='select-one'],
+    form .choices[data-type*='select-multiple'] {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    form .choices__inner {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        min-height: var(--ui-field-height) !important;
+        height: var(--ui-field-height) !important;
+        border-radius: var(--ui-field-radius);
+        border-color: rgb(209 213 219) !important; /* gray-300 */
+        background-color: #fff !important;
+        overflow: hidden !important;
+        padding: 0.35rem 0.75rem !important;
+        display: flex !important;
+        align-items: center !important;
+        box-sizing: border-box !important;
+        box-shadow: none !important;
+    }
+
+    form .choices__list--single .choices__item {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100% !important;
+        line-height: 1.25rem !important;
+    }
+
+    form .choices[data-type*='select-one'] .choices__input {
+        padding: 0 !important;
+        margin: 0 !important;
+        font-size: 0.875rem !important;
+    }
+
+    form .choices__placeholder {
+        opacity: 1 !important;
+        color: rgb(156 163 175) !important; /* gray-400 */
+    }
+
+    form .choices[data-type*='select-one']::after {
+        right: 0.75rem !important;
+        margin-top: -3px !important;
+    }
+
+    form .choices__list--dropdown,
+    form .choices__list[aria-expanded] {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden;
+        border-radius: 0.5rem !important;
+        border-color: rgb(209 213 219) !important;
+        box-shadow: 0 10px 20px rgb(0 0 0 / 0.08) !important;
+    }
+
+    /* Grid/flex child tidak mendorong kolom melebar */
+    form .grid > *,
+    form .flex > * {
+        min-width: 0 !important;
+    }
+
+    #detailContainer .item-row .grid > div {
+        min-width: 0 !important;
+    }
+
+    /* Detail Permintaan: layout lebih rapi dan konsisten */
+    .permintaan-detail-row {
+        @apply rounded-xl border border-gray-200 bg-white p-4 shadow-sm;
+    }
+
+    .permintaan-detail-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.75rem;
+        align-items: end;
+    }
+
+    .permintaan-detail-toggle {
+        @apply text-xs text-gray-600;
+    }
+
+    .permintaan-detail-action {
+        align-self: end;
+    }
+
+    @media (min-width: 1024px) {
+        .permintaan-detail-grid {
+            grid-template-columns:
+                minmax(0, 3fr)
+                minmax(0, 0.7fr)
+                minmax(0, 1fr)
+                minmax(0, 0.9fr)
+                minmax(0, 2.2fr)
+                2.5rem;
+            align-items: end;
+        }
+    }
+
+    /* samakan checkbox/radio alignment di form */
+    form input[type='checkbox'],
+    form input[type='radio'] {
+        width: 1rem;
+        height: 1rem;
+    }
+}

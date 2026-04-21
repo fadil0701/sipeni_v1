@@ -8,6 +8,7 @@ use App\Models\KartuInventarisRuangan;
 use App\Models\RegisterAset;
 use App\Models\MasterRuangan;
 use App\Models\MasterPegawai;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class KartuInventarisRuanganController extends Controller
@@ -17,6 +18,7 @@ class KartuInventarisRuanganController extends Controller
      */
     public function index(Request $request)
     {
+        /** @var User $user */
         $user = Auth::user();
         
         // Query InventoryItem yang memiliki RegisterAset dengan ruangan (untuk KIR)
@@ -101,25 +103,22 @@ class KartuInventarisRuanganController extends Controller
      */
     public function create()
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan admin_gudang yang bisa create
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
-        // Ambil register aset yang belum punya KIR (belum tercatat di kartu inventaris ruangan)
+        // Register aset yang belum punya KIR — ruangan & pegawai diisi per id_unit_kerja register (lihat API + JS di view)
         $registerAsets = RegisterAset::with(['inventory.dataBarang', 'unitKerja'])
             ->where('status_aset', 'AKTIF')
             ->whereDoesntHave('kartuInventarisRuangan')
             ->orderBy('nomor_register')
             ->get();
-        
-        // Ambil semua ruangan
-        $ruangans = MasterRuangan::with('unitKerja')->orderBy('nama_ruangan')->get();
-        
-        // Ambil semua pegawai untuk penanggung jawab
-        $pegawais = MasterPegawai::with('unitKerja')->orderBy('nama_pegawai')->get();
-        
-        return view('asset.kartu-inventaris-ruangan.create', compact('registerAsets', 'ruangans', 'pegawais'));
+
+        return view('asset.kartu-inventaris-ruangan.create', compact('registerAsets'));
     }
 
     /**
@@ -127,8 +126,11 @@ class KartuInventarisRuanganController extends Controller
      */
     public function store(Request $request)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan admin_gudang yang bisa store
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -147,6 +149,15 @@ class KartuInventarisRuanganController extends Controller
         }
         
         $registerAset = RegisterAset::findOrFail($validated['id_register_aset']);
+
+        $unitId = (int) $registerAset->id_unit_kerja;
+        if (! $this->ruanganDiUnitKerja($validated['id_ruangan'], $unitId)) {
+            return back()->withErrors(['id_ruangan' => 'Ruangan harus sesuai unit kerja register aset (master ruangan).'])->withInput();
+        }
+        if (! $this->pegawaiDiUnitKerja($validated['id_penanggung_jawab'], $unitId)) {
+            return back()->withErrors(['id_penanggung_jawab' => 'Pegawai harus sesuai unit kerja register aset (master pegawai).'])->withInput();
+        }
+
         // Sinkronkan ruangan ke Register Aset dan InventoryItem
         $registerAset->update(['id_ruangan' => $validated['id_ruangan']]);
         if ($registerAset->inventory) {
@@ -167,12 +178,15 @@ class KartuInventarisRuanganController extends Controller
     {
         $kir = KartuInventarisRuangan::with([
             'registerAset.inventory.dataBarang',
+            'registerAset.inventory.inventoryItems',
             'registerAset.unitKerja',
+            'registerAset.ruangan',
             'ruangan.unitKerja',
             'penanggungJawab.unitKerja',
             'penanggungJawab.jabatan'
         ])->findOrFail($id);
         
+        /** @var User $user */
         $user = Auth::user();
         
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
@@ -197,10 +211,11 @@ class KartuInventarisRuanganController extends Controller
     public function edit(string $id)
     {
         $kir = KartuInventarisRuangan::with(['registerAset', 'ruangan', 'penanggungJawab'])->findOrFail($id);
+        /** @var User $user */
         $user = Auth::user();
         
         // Hanya admin dan admin_gudang yang bisa edit
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -217,12 +232,17 @@ class KartuInventarisRuanganController extends Controller
             }
         }
         
-        // Ambil semua ruangan
-        $ruangans = MasterRuangan::with('unitKerja')->orderBy('nama_ruangan')->get();
-        
-        // Ambil semua pegawai untuk penanggung jawab
-        $pegawais = MasterPegawai::with('unitKerja')->orderBy('nama_pegawai')->get();
-        
+        $kir->loadMissing('registerAset');
+        $unitId = (int) ($kir->registerAset?->id_unit_kerja ?? 0);
+
+        $ruangans = $unitId > 0
+            ? MasterRuangan::with('unitKerja')->where('id_unit_kerja', $unitId)->orderBy('nama_ruangan')->get()
+            : collect();
+
+        $pegawais = $unitId > 0
+            ? MasterPegawai::with('unitKerja')->where('id_unit_kerja', $unitId)->orderBy('nama_pegawai')->get()
+            : collect();
+
         return view('asset.kartu-inventaris-ruangan.edit', compact('kir', 'ruangans', 'pegawais'));
     }
 
@@ -232,10 +252,11 @@ class KartuInventarisRuanganController extends Controller
     public function update(Request $request, string $id)
     {
         $kir = KartuInventarisRuangan::findOrFail($id);
+        /** @var User $user */
         $user = Auth::user();
         
         // Hanya admin dan admin_gudang yang bisa update
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -258,7 +279,19 @@ class KartuInventarisRuanganController extends Controller
             'id_penanggung_jawab' => 'required|exists:master_pegawai,id',
             'tanggal_penempatan' => 'required|date',
         ]);
-        
+
+        $kir->load('registerAset');
+        $unitId = (int) ($kir->registerAset?->id_unit_kerja ?? 0);
+        if ($unitId === 0) {
+            return back()->withErrors(['id_ruangan' => 'Register aset tidak memiliki unit kerja.'])->withInput();
+        }
+        if (! $this->ruanganDiUnitKerja($validated['id_ruangan'], $unitId)) {
+            return back()->withErrors(['id_ruangan' => 'Ruangan harus sesuai unit kerja register aset (master ruangan).'])->withInput();
+        }
+        if (! $this->pegawaiDiUnitKerja($validated['id_penanggung_jawab'], $unitId)) {
+            return back()->withErrors(['id_penanggung_jawab' => 'Pegawai harus sesuai unit kerja register aset (master pegawai).'])->withInput();
+        }
+
         // Jika ruangan berubah, sinkronkan ke Register Aset dan InventoryItem
         if ($kir->id_ruangan != $validated['id_ruangan']) {
             $registerAset = $kir->registerAset;
@@ -282,8 +315,11 @@ class KartuInventarisRuanganController extends Controller
      */
     public function destroy(string $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan admin_gudang yang bisa delete
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -303,5 +339,21 @@ class KartuInventarisRuanganController extends Controller
         
         return redirect()->route('asset.kartu-inventaris-ruangan.index')
             ->with('success', 'Kartu Inventaris Ruangan berhasil dihapus.');
+    }
+
+    private function ruanganDiUnitKerja(int|string $idRuangan, int $idUnitKerja): bool
+    {
+        return MasterRuangan::query()
+            ->where('id_ruangan', $idRuangan)
+            ->where('id_unit_kerja', $idUnitKerja)
+            ->exists();
+    }
+
+    private function pegawaiDiUnitKerja(int|string $idPegawai, int $idUnitKerja): bool
+    {
+        return MasterPegawai::query()
+            ->where('id', $idPegawai)
+            ->where('id_unit_kerja', $idUnitKerja)
+            ->exists();
     }
 }

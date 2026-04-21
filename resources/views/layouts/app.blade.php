@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $title ?? config('app.name') }} - Sistem Informasi Manajemen Terintegrasi</title>
+    <title>{{ $title ?? config('app.name') }}</title>
+    <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/favicon.png') }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -18,6 +20,16 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 </head>
 <body class="font-sans antialiased bg-gray-100">
+    <div id="global-loading-overlay" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-gray-900/35">
+        <div class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-5 py-4 shadow-xl">
+            <svg class="h-5 w-5 animate-spin text-blue-600" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" class="opacity-20" stroke="currentColor" stroke-width="4"></circle>
+                <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path>
+            </svg>
+            <span class="text-sm font-medium text-gray-700">Memproses data, mohon tunggu...</span>
+        </div>
+    </div>
+    <div id="global-loading-bar" class="fixed left-0 top-0 z-[9999] h-0.5 w-0 bg-blue-600 transition-all duration-300"></div>
     <div class="min-h-screen flex">
         <!-- Sidebar -->
         <aside class="w-64 bg-blue-900 text-white flex-shrink-0">
@@ -60,17 +72,26 @@
                             </a>
                         </li>
 
-                        @if($canAccessPermintaan)
-                            @php($permintaanOpen = $isRoute(['transaction.permintaan-barang.*', 'maintenance.permintaan-pemeliharaan.*', 'planning.rku.*']))
+                
+                        @if($currentUser && ($canAccessPermintaan || PermissionHelper::canAccess($currentUser, 'user.requests.index')))
+                            @php($permintaanOpen = $isRoute(['transaction.permintaan-barang.*', 'maintenance.permintaan-pemeliharaan.*', 'planning.rku.*', 'user.requests.*']))
                             <li>
                                 <div class="flex items-center px-4 py-2 rounded-lg text-blue-200 hover:bg-blue-800 cursor-pointer" onclick="toggleSubmenu('permintaan-unit')">
                                     <span>Permintaan Unit</span>
                                     <svg id="permintaan-unit-arrow" class="w-4 h-4 ml-auto transition-transform {{ $permintaanOpen ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </div>
                                 <ul id="permintaan-unit-submenu" class="{{ $groupClass($permintaanOpen) }}">
-                                    <li><a href="{{ route('transaction.permintaan-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.permintaan-barang.*'])) }}">Permintaan Barang</a></li>
-                                    <li><a href="{{ route('maintenance.permintaan-pemeliharaan.index') }}" class="{{ $linkClass($isRoute(['maintenance.permintaan-pemeliharaan.*'])) }}">Permintaan Pemeliharaan</a></li>
-                                    <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass($isRoute(['planning.rku.*'])) }}">Permintaan RKU</a></li>
+                                    @if(PermissionHelper::canAccess($currentUser, 'transaction.permintaan-barang.index'))
+                                        <li><a href="{{ route('transaction.permintaan-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.permintaan-barang.*'])) }}">Permintaan Barang</a></li>
+                                    @elseif(PermissionHelper::canAccess($currentUser, 'user.requests.index'))
+                                        <li><a href="{{ route('user.requests.index') }}" class="{{ $linkClass($isRoute(['user.requests.*'])) }}">Permintaan Barang</a></li>
+                                    @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'maintenance.permintaan-pemeliharaan.index'))
+                                        <li><a href="{{ route('maintenance.permintaan-pemeliharaan.index') }}" class="{{ $linkClass($isRoute(['maintenance.permintaan-pemeliharaan.*'])) }}">Permintaan Pemeliharaan</a></li>
+                                    @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'planning.rku.index'))
+                                        <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass($isRoute(['planning.rku.*'])) }}">Permintaan RKU</a></li>
+                                    @endif
                                 </ul>
                             </li>
                         @endif
@@ -84,12 +105,20 @@
                                 </div>
                                 <ul id="approval-submenu" class="{{ $groupClass($approvalOpen) }}">
                                     <li><a href="{{ route('transaction.approval.index') }}" class="{{ $linkClass($isRoute(['transaction.approval.index','transaction.approval.show'])) }}">Daftar Approval</a></li>
-                                    <li><a href="{{ route('transaction.approval.diagram') }}" class="{{ $linkClass($isRoute(['transaction.approval.diagram'])) }}">Riwayat Approval</a></li>
+                                    <li><a href="{{ route('transaction.approval.diagram') }}" class="{{ $linkClass($isRoute(['transaction.approval.diagram'])) }}">Diagram Approval</a></li>
                                 </ul>
                             </li>
                         @endif
 
-                        @if($canAccessPlanning || $canAccessMasterManajemen)
+                        @if($currentUser && (
+                            ($canAccessPlanning || $canAccessMasterManajemen) && (
+                                PermissionHelper::canAccess($currentUser, 'master.program.index')
+                                || PermissionHelper::canAccess($currentUser, 'master.kegiatan.index')
+                                || PermissionHelper::canAccess($currentUser, 'master.sub-kegiatan.index')
+                                || PermissionHelper::canAccess($currentUser, 'planning.rku.index')
+                                || PermissionHelper::canAccess($currentUser, 'planning.rekap-tahunan')
+                            )
+                        ))
                             @php($planningOpen = $isRoute(['planning.*','master.program.*','master.kegiatan.*','master.sub-kegiatan.*']))
                             <li>
                                 <div class="flex items-center px-4 py-2 rounded-lg text-blue-200 hover:bg-blue-800 cursor-pointer" onclick="toggleSubmenu('planning')">
@@ -97,15 +126,21 @@
                                     <svg id="planning-arrow" class="w-4 h-4 ml-auto transition-transform {{ $planningOpen ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </div>
                                 <ul id="planning-submenu" class="{{ $groupClass($planningOpen) }}">
-                                    <li><a href="{{ route('master.program.index') }}" class="{{ $linkClass($isRoute(['master.program.*'])) }}">Program</a></li>
-                                    <li><a href="{{ route('master.kegiatan.index') }}" class="{{ $linkClass($isRoute(['master.kegiatan.*'])) }}">Kegiatan</a></li>
-                                    <li><a href="{{ route('master.sub-kegiatan.index') }}" class="{{ $linkClass($isRoute(['master.sub-kegiatan.*'])) }}">Sub Kegiatan</a></li>
-                                    <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass($isRoute(['planning.rku.*'])) }}">Aktivitas</a></li>
-                                    <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass(false) }}">Daftar RKU</a></li>
-                                    <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass(false) }}">Status RKU</a></li>
-                                    <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass(false) }}">Rincian Aktivitas</a></li>
-                                    <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass(false) }}">Komponen Aktivitas</a></li>
-                                    <li><a href="{{ route('planning.rekap-tahunan') }}" class="{{ $linkClass($isRoute(['planning.rekap-tahunan'])) }}">Rekap Tahunan</a></li>
+                                    @if(PermissionHelper::canAccess($currentUser, 'master.program.index'))
+                                        <li><a href="{{ route('master.program.index') }}" class="{{ $linkClass($isRoute(['master.program.*'])) }}">Program</a></li>
+                                    @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'master.kegiatan.index'))
+                                        <li><a href="{{ route('master.kegiatan.index') }}" class="{{ $linkClass($isRoute(['master.kegiatan.*'])) }}">Kegiatan</a></li>
+                                    @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'master.sub-kegiatan.index'))
+                                        <li><a href="{{ route('master.sub-kegiatan.index') }}" class="{{ $linkClass($isRoute(['master.sub-kegiatan.*'])) }}">Sub Kegiatan</a></li>
+                                    @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'planning.rku.index'))
+                                        <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass($isRoute(['planning.rku.*'])) }}">RKU &amp; Aktivitas</a></li>
+                                    @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'planning.rekap-tahunan'))
+                                        <li><a href="{{ route('planning.rekap-tahunan') }}" class="{{ $linkClass($isRoute(['planning.rekap-tahunan'])) }}">Rekap Tahunan</a></li>
+                                    @endif
                                 </ul>
                             </li>
                         @endif
@@ -119,9 +154,7 @@
                                 </div>
                                 <ul id="procurement-submenu" class="{{ $groupClass($procOpen) }}">
                                     <li><a href="{{ route('procurement.paket-pengadaan.index') }}" class="{{ $linkClass($isRoute(['procurement.paket-pengadaan.*'])) }}">Paket Pengadaan</a></li>
-                                    <li><a href="{{ route('procurement.proses-pengadaan.index') }}" class="{{ $linkClass($isRoute(['procurement.proses-pengadaan.*'])) }}">Proses Pengadaan</a></li>
-                                    <li><a href="{{ route('procurement.proses-pengadaan.index') }}" class="{{ $linkClass(false) }}">Realisasi Pengadaan</a></li>
-                                    <li><a href="{{ route('procurement.paket-pengadaan.index') }}" class="{{ $linkClass(false) }}">Rekap Pengadaan</a></li>
+                                    <li><a href="{{ route('procurement.proses-pengadaan.index') }}" class="{{ $linkClass($isRoute(['procurement.proses-pengadaan.*'])) }}">Proses &amp; Realisasi Pengadaan</a></li>
                                 </ul>
                             </li>
                         @endif
@@ -164,6 +197,7 @@
                                         <li><a href="{{ route('master-data.jenis-barang.index') }}" class="{{ $linkClass($isRoute(['master-data.jenis-barang.*'])) }}">Jenis Barang</a></li>
                                         <li><a href="{{ route('master-data.subjenis-barang.index') }}" class="{{ $linkClass($isRoute(['master-data.subjenis-barang.*'])) }}">Subjenis Barang</a></li>          
                                         <li><a href="{{ route('master-data.data-barang.index') }}" class="{{ $linkClass($isRoute(['master-data.data-barang.*'])) }}">Data Barang</a></li>
+                                        <li><a href="{{ route('master-data.import-struktur-barang.index') }}" class="{{ $linkClass($isRoute(['master-data.import-struktur-barang.*'])) }}">Import Struktur Barang</a></li>
 
                                     <li class="px-4 pt-3 text-[11px] uppercase tracking-wide text-blue-300">Ringkasan</li>
                                         <li><a href="{{ route('inventory.data-inventory.index') }}" class="{{ $linkClass($isRoute(['inventory.data-inventory.*'])) }}">Ringkasan Inventory</a></li>
@@ -172,8 +206,7 @@
                                         <li><a href="{{ route('inventory.scan-qr') }}" class="{{ $linkClass($isRoute(['inventory.scan-qr'])) }}">Scan QR Code</a></li>
                                         <li><a href="{{ route('inventory.data-stock.index') }}" class="{{ $linkClass($isRoute(['inventory.data-stock.*'])) }}">Data Stock</a></li>
                                         <li><a href="{{ route('reports.stock-gudang') }}" class="{{ $linkClass($isRoute(['reports.stock-gudang'])) }}">Kartu Stok</a></li>
-                                        <li><a href="{{ route('inventory.stock-adjustment.index') }}" class="{{ $linkClass($isRoute(['inventory.stock-adjustment.*'])) }}">Stock Adjustment</a></li>
-                                        <li><a href="{{ route('inventory.stock-adjustment.index') }}" class="{{ $linkClass(false) }}">Stock Opname</a></li>
+                                        <li><a href="{{ route('inventory.stock-adjustment.index') }}" class="{{ $linkClass($isRoute(['inventory.stock-adjustment.*'])) }}">Stock Adjustment / Opname</a></li>
                                 </ul>
                             </li>
                         @endif
@@ -217,7 +250,6 @@
                                 </div>
                                 <ul id="finance-submenu" class="{{ $groupClass($financeOpen) }}">
                                     <li><a href="{{ route('finance.pembayaran.index') }}" class="{{ $linkClass($isRoute(['finance.pembayaran.*'])) }}">Pembayaran</a></li>
-                                    <li><a href="{{ route('finance.pembayaran.index') }}" class="{{ $linkClass(false) }}">Realisasi Pembayaran</a></li>
                                 </ul>
                             </li>
                         @endif
@@ -230,12 +262,8 @@
                                     <svg id="laporan-arrow" class="w-4 h-4 ml-auto transition-transform {{ $reportOpen ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </div>
                                 <ul id="laporan-submenu" class="{{ $groupClass($reportOpen) }}">
-                                    <li><a href="{{ route('reports.index') }}" class="{{ $linkClass($isRoute(['reports.index'])) }}">Laporan Perencanaan</a></li>
-                                    <li><a href="{{ route('reports.index') }}" class="{{ $linkClass(false) }}">Laporan Pengadaan</a></li>
-                                    <li><a href="{{ route('reports.stock-gudang') }}" class="{{ $linkClass($isRoute(['reports.stock-gudang'])) }}">Laporan Inventory</a></li>
-                                    <li><a href="{{ route('reports.index') }}" class="{{ $linkClass(false) }}">Laporan Keuangan</a></li>
-                                    <li><a href="{{ route('reports.index') }}" class="{{ $linkClass(false) }}">Laporan Aset</a></li>
-                                    <li><a href="{{ route('reports.index') }}" class="{{ $linkClass(false) }}">Laporan Pemeliharaan</a></li>
+                                    <li><a href="{{ route('reports.index') }}" class="{{ $linkClass($isRoute(['reports.index'])) }}">Ringkasan Laporan</a></li>
+                                    <li><a href="{{ route('reports.stock-gudang') }}" class="{{ $linkClass($isRoute(['reports.stock-gudang', 'reports.stock-gudang.export'])) }}">Laporan Stok Gudang</a></li>
                                 </ul>
                             </li>
                         @endif
@@ -401,6 +429,75 @@
     </script>
     
     <script>
+        (function () {
+            const overlay = document.getElementById('global-loading-overlay');
+            const bar = document.getElementById('global-loading-bar');
+            let pendingProcess = 0;
+
+            function showLoading() {
+                if (overlay) {
+                    overlay.classList.remove('hidden');
+                    overlay.classList.add('flex');
+                }
+                if (bar) {
+                    bar.style.width = '35%';
+                    setTimeout(function () {
+                        if (pendingProcess > 0) bar.style.width = '75%';
+                    }, 180);
+                }
+            }
+
+            function hideLoading() {
+                if (bar) {
+                    bar.style.width = '100%';
+                    setTimeout(function () {
+                        bar.style.width = '0';
+                    }, 180);
+                }
+                if (overlay) {
+                    overlay.classList.add('hidden');
+                    overlay.classList.remove('flex');
+                }
+            }
+
+            function setSubmitButtonLoading(button) {
+                if (!button || button.dataset.loadingActive === '1') return;
+                button.dataset.loadingActive = '1';
+                button.dataset.originalHtml = button.innerHTML;
+                button.disabled = true;
+                button.classList.add('opacity-70', 'cursor-not-allowed');
+                button.innerHTML = '<span class="inline-flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" class="opacity-20" stroke="currentColor" stroke-width="4"></circle><path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path></svg>Memproses...</span>';
+            }
+
+            // Semua submit form (input/edit/hapus/simpan)
+            document.addEventListener('submit', function (event) {
+                const form = event.target;
+                if (!(form instanceof HTMLFormElement)) return;
+                const submitter = event.submitter || form.querySelector('button[type="submit"], input[type="submit"]');
+                setSubmitButtonLoading(submitter);
+                pendingProcess++;
+                showLoading();
+            }, true);
+
+            // Semua request fetch (loading data dinamis)
+            const nativeFetch = window.fetch;
+            window.fetch = function (...args) {
+                pendingProcess++;
+                showLoading();
+                return nativeFetch(...args).finally(function () {
+                    pendingProcess = Math.max(0, pendingProcess - 1);
+                    if (pendingProcess === 0) hideLoading();
+                });
+            };
+
+            window.addEventListener('pageshow', function () {
+                pendingProcess = 0;
+                hideLoading();
+            });
+        })();
+
+    </script>
+    <script>
         function toggleSubmenu(id) {
             const submenu = document.getElementById(id + '-submenu');
             const arrow = document.getElementById(id + '-arrow');
@@ -444,14 +541,10 @@
                 return null;
             }
 
-            // Jika sudah diinisialisasi, destroy dulu
+            // Jika sudah diinisialisasi, gunakan instance yang ada
+            // untuk mencegah selected value ter-reset pada form edit.
             if (selectElement.choicesInstance) {
-                try {
-                    selectElement.choicesInstance.destroy();
-                } catch (e) {
-                    // Ignore error jika sudah destroyed
-                }
-                selectElement.choicesInstance = null;
+                return selectElement.choicesInstance;
             }
 
             // Hitung jumlah opsi yang terlihat (exclude empty option)
@@ -718,7 +811,6 @@
                 'id_aset',                  // Aset (Kode Barang create/edit)
                 
                 // Master Manajemen
-                'id_unit_kerja',            // Unit Kerja
                 'id_ruangan',               // Ruangan
                 'id_pegawai',               // Pegawai
                 'id_penanggung_jawab',      // Penanggung Jawab
@@ -737,6 +829,9 @@
             searchableFieldIds.forEach(function(fieldId) {
                 const selectElement = document.getElementById(fieldId);
                 if (selectElement) {
+                    if (selectElement.choicesInstance) {
+                        return;
+                    }
                     // Tentukan threshold berdasarkan field
                     let minOpts = 2; // Default minimal 3 opsi
                     
@@ -749,7 +844,6 @@
                         'id_jenis_barang',     // Jenis Barang
                         'id_kode_barang',      // Kode Barang
                         'id_aset',             // Aset
-                        'id_unit_kerja',       // Unit Kerja
                         'id_ruangan',          // Ruangan
                         // id_gudang dihapus - tidak perlu searchable
                     ];
@@ -880,6 +974,129 @@
                 console.warn('Choices.js not available in final check. Choices:', typeof Choices, 'initializeSearchableSelects:', typeof initializeSearchableSelects);
             }
         }, 1000);
+    </script>
+    <script>
+        (function () {
+            function parseCellValue(value) {
+                const text = (value || '').trim();
+                if (text === '') return '';
+                const normalizedNumber = text.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+                if (normalizedNumber !== '' && !Number.isNaN(Number(normalizedNumber))) {
+                    return Number(normalizedNumber);
+                }
+                const date = Date.parse(text);
+                if (!Number.isNaN(date)) {
+                    return date;
+                }
+                return text.toLowerCase();
+            }
+
+            function enhanceTable(table) {
+                if (table.dataset.enhanced === '1' || table.classList.contains('table-no-enhance')) return;
+                const tbody = table.tBodies && table.tBodies[0];
+                if (!tbody) return;
+                const rows = Array.from(tbody.rows);
+                if (rows.length === 0) return;
+
+                const headers = table.tHead ? Array.from(table.tHead.rows[0].cells) : [];
+                const hasNumberHeader = headers.length > 0 && /^(no|nomor|urutan)\b/i.test((headers[0].textContent || '').trim());
+
+                function applyRowNumbers() {
+                    if (hasNumberHeader) return;
+                    rows.forEach(function (row, index) {
+                        let numberCell = row.querySelector('td[data-auto-row-number="1"]');
+                        if (!numberCell) {
+                            numberCell = document.createElement('td');
+                            numberCell.setAttribute('data-auto-row-number', '1');
+                            numberCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-900';
+                            row.insertBefore(numberCell, row.firstChild);
+                        }
+                        numberCell.textContent = String(index + 1);
+                    });
+                }
+
+                if (!hasNumberHeader && table.tHead && table.tHead.rows[0]) {
+                    const th = document.createElement('th');
+                    th.textContent = 'No';
+                    th.className = 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider no-sort';
+                    table.tHead.rows[0].insertBefore(th, table.tHead.rows[0].firstChild);
+                }
+
+                // UI consistency: samakan feel tabel di semua index
+                table.classList.add('w-full', 'text-sm');
+                if (table.tHead) {
+                    table.tHead.classList.add('bg-gray-50');
+                }
+                rows.forEach(function (row) {
+                    row.classList.add('hover:bg-gray-50', 'transition-colors');
+                });
+                let sortCol = -1;
+                let sortDir = 'asc';
+
+                headers.forEach(function (th, idx) {
+                    const headerText = (th.textContent || '').trim().toLowerCase();
+                    if (headerText === 'aksi' || headerText === 'action' || headerText === 'opsi') {
+                        th.classList.add('no-sort');
+                    }
+                    if (th.classList.contains('no-sort')) return;
+                    th.style.cursor = 'pointer';
+                    if (!th.dataset.baseLabel) th.dataset.baseLabel = th.textContent.trim();
+                    th.addEventListener('click', function () {
+                        if (sortCol === idx) {
+                            sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            sortCol = idx;
+                            sortDir = 'asc';
+                        }
+
+                        headers.forEach(function (h) {
+                            if (h.dataset.baseLabel) h.textContent = h.dataset.baseLabel;
+                        });
+                        th.textContent = th.dataset.baseLabel + (sortDir === 'asc' ? ' ↑' : ' ↓');
+
+                        rows.sort(function (a, b) {
+                            const av = parseCellValue(a.cells[idx] ? a.cells[idx].innerText : '');
+                            const bv = parseCellValue(b.cells[idx] ? b.cells[idx].innerText : '');
+                            if (av === bv) return 0;
+                            if (sortDir === 'asc') return av > bv ? 1 : -1;
+                            return av < bv ? 1 : -1;
+                        });
+                        rows.forEach(function (r) { tbody.appendChild(r); });
+                        applyRowNumbers();
+                    });
+                });
+
+                // Default sort ascending di kolom sortable pertama
+                const firstSortableIndex = headers.findIndex(function (th) {
+                    return !th.classList.contains('no-sort');
+                });
+                if (firstSortableIndex >= 0) {
+                    sortCol = firstSortableIndex;
+                    sortDir = 'asc';
+                    const activeHeader = headers[firstSortableIndex];
+                    headers.forEach(function (h) {
+                        if (h.dataset.baseLabel) h.textContent = h.dataset.baseLabel;
+                    });
+                    if (activeHeader.dataset.baseLabel) {
+                        activeHeader.textContent = activeHeader.dataset.baseLabel + ' ↑';
+                    }
+                    rows.sort(function (a, b) {
+                        const av = parseCellValue(a.cells[firstSortableIndex] ? a.cells[firstSortableIndex].innerText : '');
+                        const bv = parseCellValue(b.cells[firstSortableIndex] ? b.cells[firstSortableIndex].innerText : '');
+                        if (av === bv) return 0;
+                        return av > bv ? 1 : -1;
+                    });
+                    rows.forEach(function (r) { tbody.appendChild(r); });
+                }
+
+                applyRowNumbers();
+                table.dataset.enhanced = '1';
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                document.querySelectorAll('table').forEach(enhanceTable);
+            });
+        })();
     </script>
 </body>
 </html>

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Route;
 use App\Models\Permission;
+use App\Support\PermissionModule;
 
 class SyncPermissionsFromRoutes extends Command
 {
@@ -36,13 +37,8 @@ class SyncPermissionsFromRoutes extends Command
                 continue;
             }
             
-            // Skip API routes yang tidak perlu permission
-            if (str_starts_with($routeName, 'api.') && 
-                !in_array($routeName, [
-                    'api.gudang.inventory',
-                    'api.permintaan.detail',
-                    'api.distribusi.detail',
-                ])) {
+            // Skip route API bantu (dropdown/detail ajax) agar tidak menambah checklist duplikatif di role
+            if (str_starts_with($routeName, 'api.')) {
                 continue;
             }
 
@@ -185,27 +181,9 @@ class SyncPermissionsFromRoutes extends Command
     private function extractModule(string $routeName): string
     {
         $parts = explode('.', $routeName);
-        
-        // Ambil bagian pertama sebagai module
-        $module = $parts[0];
-        
-        // Mapping khusus
-        $moduleMap = [
-            'user' => 'dashboard',
-            'master-manajemen' => 'master-manajemen',
-            'master' => 'master-manajemen',
-            'master-data' => 'master-data',
-            'inventory' => 'inventory',
-            'transaction' => 'transaction',
-            'asset' => 'asset',
-            'planning' => 'planning',
-            'procurement' => 'procurement',
-            'finance' => 'finance',
-            'admin' => 'admin',
-            'reports' => 'reports',
-        ];
+        $first = $parts[0] ?? '';
 
-        return $moduleMap[$module] ?? $module;
+        return PermissionModule::moduleKeyFromRoutePrefix($first);
     }
 
     private function extractGroup(string $routeName): string

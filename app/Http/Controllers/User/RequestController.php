@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\PermintaanBarang;
 use App\Models\MasterDataBarang;
 use App\Models\MasterPegawai;
+use App\Models\User;
 use App\Services\PermintaanService;
+
 
 class RequestController extends Controller
 {
@@ -18,10 +20,18 @@ class RequestController extends Controller
 
     public function index(Request $request)
     {
+        /** @var User $user */
+        $user = Auth::user();
         $pegawai = MasterPegawai::where('user_id', Auth::id())->first();
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
         $requests = PermintaanBarang::with(['pemohon', 'detailPermintaan'])
-            ->when($pegawai, fn ($q) => $q->where('id_pemohon', $pegawai->id), fn ($q) => $q->whereRaw('1 = 0'))
+            ->when(! $user->hasRole('admin'), function ($q) use ($pegawai) {
+                if ($pegawai) {
+                    $q->where('id_pemohon', $pegawai->id);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            })
             ->latest()
             ->paginate($perPage)->appends($request->query());
 
@@ -44,14 +54,23 @@ class RequestController extends Controller
 
         $this->permintaanService->createAndSubmitFromUser((int) Auth::id(), $validated);
 
-        return redirect()->route('user.requests')
+        return redirect()->route('user.requests.index')
             ->with('success', 'Permintaan berhasil diajukan.');
     }
 
     public function show($id)
     {
+        /** @var User $user */
+        $user = Auth::user();
         $request = PermintaanBarang::with(['pemohon', 'detailPermintaan.dataBarang'])
             ->findOrFail($id);
+
+        if (! $user->hasRole('admin')) {
+            $pegawai = MasterPegawai::where('user_id', Auth::id())->first();
+            if (! $pegawai || (int) $request->id_pemohon !== (int) $pegawai->id) {
+                abort(403, 'Anda tidak dapat mengakses permintaan ini.');
+            }
+        }
 
         return view('user.requests.show', compact('request'));
     }
