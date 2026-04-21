@@ -5,7 +5,7 @@
 <div class="mb-6 flex justify-between items-center">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Manajemen Role</h1>
-        <p class="mt-1 text-sm text-gray-600">Daftar semua role dalam sistem</p>
+        <p class="mt-1 text-sm text-gray-600">Kode role dipakai di sistem; nama tampilan untuk pengguna admin.</p>
     </div>
     <a 
         href="{{ route('admin.roles.create') }}" 
@@ -55,8 +55,8 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Role</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Display Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode role</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama tampilan</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah User</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
@@ -66,10 +66,10 @@
                 @forelse($roles as $role)
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">{{ $role->name }}</div>
+                            <code class="text-sm bg-gray-100 px-2 py-0.5 rounded text-gray-900">{{ $role->name }}</code>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ $role->display_name }}</div>
+                            <div class="text-sm font-medium text-gray-900">{{ $role->display_name }}</div>
                         </td>
                         <td class="px-6 py-4">
                             <div class="text-sm text-gray-900">{{ $role->description ?? '-' }}</div>

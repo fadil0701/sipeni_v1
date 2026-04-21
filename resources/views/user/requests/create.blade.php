@@ -3,7 +3,7 @@
 @section('content')
 <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <div class="mb-6">
-        <a href="{{ route('user.requests') }}" class="text-blue-600 hover:text-blue-900">← Kembali ke Daftar Permintaan</a>
+        <a href="{{ route('user.requests.index') }}" class="text-blue-600 hover:text-blue-900">← Kembali ke Daftar Permintaan</a>
     </div>
 
     <div class="bg-white shadow rounded-lg">
@@ -51,7 +51,7 @@
                 </div>
 
                 <div class="mt-6 flex justify-end space-x-3">
-                    <a href="{{ route('user.requests') }}" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    <a href="{{ route('user.requests.index') }}" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                         Batal
                     </a>
                     <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">

@@ -9,6 +9,7 @@ use App\Models\DataStock;
 use App\Models\MasterGudang;
 use App\Models\MasterDataBarang;
 use App\Models\MasterPegawai;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -19,6 +20,7 @@ class StockAdjustmentController extends Controller
      */
     public function index(Request $request)
     {
+        /** @var User $user */
         $user = Auth::user();
         
         // Query stock adjustment dengan relationships
@@ -95,13 +97,15 @@ class StockAdjustmentController extends Controller
      */
     public function create()
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan admin_gudang yang bisa create
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
         // Ambil data stock yang tersedia (hanya gudang Persediaan & Farmasi)
-        $user = Auth::user();
         $query = DataStock::with(['dataBarang', 'gudang', 'satuan'])
             ->whereHas('gudang', function($q) {
                 $q->whereIn('kategori_gudang', ['PERSEDIAAN', 'FARMASI']);
@@ -129,8 +133,11 @@ class StockAdjustmentController extends Controller
      */
     public function store(Request $request)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan admin_gudang yang bisa store
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -170,7 +177,7 @@ class StockAdjustmentController extends Controller
         ]);
         
         // Jika status DIAJUKAN dan user adalah admin, langsung approve
-        if ($validated['status'] == 'DIAJUKAN' && Auth::user()->hasRole('admin')) {
+        if ($validated['status'] == 'DIAJUKAN' && $user->hasRole('admin')) {
             $this->approve($adjustment->id_adjustment);
             return redirect()->route('inventory.stock-adjustment.show', $adjustment->id_adjustment)
                 ->with('success', 'Stock adjustment berhasil dibuat dan disetujui.');
@@ -193,6 +200,7 @@ class StockAdjustmentController extends Controller
             'approver'
         ])->findOrFail($id);
         
+        /** @var User $user */
         $user = Auth::user();
         
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
@@ -216,10 +224,11 @@ class StockAdjustmentController extends Controller
     public function edit(string $id)
     {
         $adjustment = StockAdjustment::with(['stock', 'dataBarang', 'gudang'])->findOrFail($id);
+        /** @var User $user */
         $user = Auth::user();
         
         // Hanya admin dan admin_gudang yang bisa edit
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -238,10 +247,11 @@ class StockAdjustmentController extends Controller
     public function update(Request $request, string $id)
     {
         $adjustment = StockAdjustment::findOrFail($id);
+        /** @var User $user */
         $user = Auth::user();
         
         // Hanya admin dan admin_gudang yang bisa update
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -281,7 +291,7 @@ class StockAdjustmentController extends Controller
         ]);
         
         // Jika status DIAJUKAN dan user adalah admin, langsung approve
-        if ($validated['status'] == 'DIAJUKAN' && Auth::user()->hasRole('admin')) {
+        if ($validated['status'] == 'DIAJUKAN' && $user->hasRole('admin')) {
             $this->approve($adjustment->id_adjustment);
             return redirect()->route('inventory.stock-adjustment.show', $adjustment->id_adjustment)
                 ->with('success', 'Stock adjustment berhasil diperbarui dan disetujui.');
@@ -296,8 +306,11 @@ class StockAdjustmentController extends Controller
      */
     public function destroy(string $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin yang bisa delete
-        if (!Auth::user()->hasRole('admin')) {
+        if (!$user->hasRole('admin')) {
             abort(403, 'Unauthorized');
         }
         
@@ -319,8 +332,11 @@ class StockAdjustmentController extends Controller
      */
     public function approve(string $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan kepala_pusat yang bisa approve
-        if (!Auth::user()->hasAnyRole(['admin', 'kepala_pusat'])) {
+        if (!$user->hasAnyRole(['admin', 'kepala_pusat'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -371,8 +387,11 @@ class StockAdjustmentController extends Controller
      */
     public function reject(Request $request, string $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan kepala_pusat yang bisa reject
-        if (!Auth::user()->hasAnyRole(['admin', 'kepala_pusat'])) {
+        if (!$user->hasAnyRole(['admin', 'kepala_pusat'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -403,8 +422,11 @@ class StockAdjustmentController extends Controller
      */
     public function ajukan(string $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan admin_gudang yang bisa ajukan
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         

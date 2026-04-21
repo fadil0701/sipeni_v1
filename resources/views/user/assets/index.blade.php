@@ -1,18 +1,18 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-    <div class="mb-6 flex justify-between items-center">
+<div class="w-full py-2">
+    <div class="mb-5">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">Daftar Aset</h1>
-            <p class="mt-1 text-sm text-gray-600">Daftar semua aset yang terdaftar di sistem</p>
+            <h1 class="text-2xl font-semibold text-gray-900">Aset Saya</h1>
+            <p class="mt-1 text-sm text-gray-600">Daftar aset unit yang dapat Anda lihat berdasarkan hak akses.</p>
         </div>
     </div>
 
-    <div class="bg-white shadow rounded-lg overflow-hidden">
+    <div class="bg-white border border-gray-200 shadow-sm rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+                <thead class="bg-gray-50/80">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Aset</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Aset</th>
@@ -23,7 +23,7 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($assets as $asset)
-                        <tr>
+                        <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {{ $asset->inventory->dataBarang->nama_barang ?? '-' }}
                             </td>
@@ -48,13 +48,13 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <a href="{{ route('user.assets.show', $asset->id) }}" class="text-blue-600 hover:text-blue-900">Detail</a>
+                                <a href="{{ route('user.assets.show', $asset->id_item) }}" class="text-blue-600 hover:text-blue-900 underline-offset-2 hover:underline">Detail</a>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                                Belum ada data aset
+                            <td colspan="5" class="px-6 py-10 text-center text-sm text-gray-500">
+                                Belum ada data aset untuk ditampilkan.
                             </td>
                         </tr>
                     @endforelse

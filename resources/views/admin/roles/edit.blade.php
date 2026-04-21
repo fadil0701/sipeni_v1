@@ -22,7 +22,7 @@
         <div class="space-y-6">
             <div>
                 <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
-                    Nama Role <span class="text-red-500">*</span>
+                    Kode role (internal) <span class="text-red-500">*</span>
                 </label>
                 <input 
                     type="text" 
@@ -40,7 +40,7 @@
 
             <div>
                 <label for="display_name" class="block text-sm font-medium text-gray-700 mb-2">
-                    Display Name <span class="text-red-500">*</span>
+                    Nama tampilan <span class="text-red-500">*</span>
                 </label>
                 <input 
                     type="text" 
@@ -67,53 +67,45 @@
                 >{{ old('description', $role->description) }}</textarea>
             </div>
 
-            <!-- Info modul user (sederhana) -->
-            @if($userModules->isNotEmpty())
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                    <div class="flex items-start">
-                        <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-blue-900 mb-2">
-                                Menampilkan permission untuk menu yang dipilih user:
-                            </p>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach($userModules as $module)
-                                    <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                                        {{ ucwords(str_replace(['-', '_'], ' ', $module)) }}
-                                    </span>
-                                @endforeach
-                            </div>
-                            <p class="text-xs text-blue-700 mt-2">
-                                💡 Untuk menambahkan menu baru, silakan edit user di <strong>Manajemen User</strong> terlebih dahulu.
-                            </p>
-                        </div>
-                    </div>
+            @include('admin.roles.partials.permission-help')
+
+            @unless($canDelegateAllPermissions)
+                <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4 text-sm text-indigo-900">
+                    <p class="font-medium">Tampilan disesuaikan dengan level akses Anda</p>
+                    <p class="mt-1 text-indigo-800">Hanya permission yang Anda sendiri miliki yang dapat dicentang. Admin penuh melihat dan mengatur semua permission.</p>
                 </div>
-            @else
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                    <div class="flex items-start">
-                        <svg class="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-yellow-900 mb-1">
-                                Belum ada user yang menggunakan role ini
-                            </p>
-                            <p class="text-xs text-yellow-700">
-                                Atau user belum memiliki menu yang di-assign. Silakan assign menu terlebih dahulu di <strong>Manajemen User</strong>.
-                            </p>
-                        </div>
+            @endunless
+
+            @if(!empty($lockedPermissionGroups))
+                <div class="mb-6 border border-amber-200 rounded-lg bg-amber-50/80 p-4">
+                    <h3 class="text-sm font-semibold text-amber-900 mb-1">Permission pada role ini (tidak dapat Anda ubah)</h3>
+                    <p class="text-xs text-amber-800 mb-4">Hak berikut tetap aktif pada role sampai diubah oleh akun dengan akses setara atau admin penuh.</p>
+                    <div class="space-y-4 max-h-64 overflow-y-auto">
+                        @foreach($lockedPermissionGroups as $group)
+                            <div>
+                                <p class="text-xs font-semibold text-amber-950 uppercase tracking-wide mb-2">{{ $group['label'] }}</p>
+                                <ul class="space-y-2 pl-1">
+                                    @foreach($group['items'] as $permission)
+                                        <li class="text-sm text-amber-950 flex items-start gap-2">
+                                            <svg class="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                            <span>
+                                                <span class="font-medium">{{ $permission->display_name }}</span>
+                                                <span class="block text-xs font-mono text-amber-800/90 mt-0.5">{{ $permission->name }}</span>
+                                            </span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
             @endif
 
-            <!-- Permissions -->
+            <!-- Permissions yang dapat Anda atur (checkbox) -->
             <div>
                 <div class="flex items-center justify-between mb-4">
                     <label class="block text-sm font-medium text-gray-700">
-                        Hak Akses (Permissions) <span class="text-red-500">*</span>
+                        Hak akses yang dapat Anda atur
                     </label>
                     <label class="flex items-center text-sm text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
                         <input 
@@ -135,8 +127,8 @@
                     >
                 </div>
 
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-[600px] overflow-y-auto">
-                    @foreach($permissionGroups as $group)
+                <div class="assignable-permissions-scope bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-[600px] overflow-y-auto">
+                    @forelse($permissionGroups as $group)
                         @php $moduleId = 'module-' . str_replace(['.', '-', '_'], '-', $group['module']); @endphp
                         <div class="mb-4 border border-gray-200 rounded-lg bg-white overflow-hidden module-container" data-module="{{ $group['module'] }}">
                             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-200 cursor-pointer module-header" data-target="{{ $moduleId }}">
@@ -191,18 +183,34 @@
                                 </div>
                             </div>
                         </div>
-                    @endforeach
+                    @empty
+                        <p class="text-sm text-gray-600 py-4 text-center">Tidak ada permission pada level akses Anda yang dapat diberikan ke role ini. Hubungi admin penuh bila perlu menambah hak.</p>
+                    @endforelse
                 </div>
                 <p class="mt-2 text-xs text-gray-500">
-                    <span id="selected-count" class="font-medium text-blue-600">{{ $totalChecked }}</span> permission dipilih
+                    <span id="selected-count" class="font-medium text-blue-600">{{ $totalChecked }}</span> permission dipilih (yang dapat Anda kelola)
                 </p>
             </div>
 
             @push('scripts')
             <script>
             document.addEventListener('DOMContentLoaded', function() {
-                // Collapsible modules
-                document.querySelectorAll('.module-header').forEach(function(header) {
+                const scope = document.querySelector('.assignable-permissions-scope');
+                if (!scope) return;
+
+                const globalSelectAll = document.getElementById('select-all-permissions');
+
+                function updateGlobalSelectAll() {
+                    const allCheckboxes = scope.querySelectorAll('.permission-checkbox');
+                    const checkedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
+                    if (globalSelectAll) {
+                        globalSelectAll.checked = checkedCount === allCheckboxes.length;
+                        globalSelectAll.indeterminate = checkedCount > 0 && checkedCount < allCheckboxes.length;
+                    }
+                }
+
+                // Collapsible modules (hanya area yang dapat di-edit)
+                scope.querySelectorAll('.module-header').forEach(function(header) {
                     header.addEventListener('click', function() {
                         const targetId = this.dataset.target;
                         const content = document.getElementById(targetId);
@@ -219,7 +227,7 @@
                 });
 
                 // Expand all modules by default
-                document.querySelectorAll('.module-content').forEach(function(content) {
+                scope.querySelectorAll('.module-content').forEach(function(content) {
                     content.classList.remove('hidden');
                     const header = content.previousElementSibling;
                     if (header) {
@@ -229,9 +237,9 @@
 
                 // Update module count
                 function updateModuleCount(module) {
-                    const checkboxes = document.querySelectorAll(`.permission-checkbox[data-module="${module}"]`);
+                    const checkboxes = scope.querySelectorAll(`.permission-checkbox[data-module="${module}"]`);
                     const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-                    const countElement = document.querySelector(`.module-count[data-module="${module}"]`);
+                    const countElement = scope.querySelector(`.module-count[data-module="${module}"]`);
                     if (countElement) {
                         countElement.textContent = `${checkedCount}/${checkboxes.length}`;
                     }
@@ -239,7 +247,7 @@
 
                 // Update selected count
                 function updateSelectedCount() {
-                    const allCheckboxes = document.querySelectorAll('.permission-checkbox');
+                    const allCheckboxes = scope.querySelectorAll('.permission-checkbox');
                     const checkedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
                     const countElement = document.getElementById('selected-count');
                     if (countElement) {
@@ -248,11 +256,11 @@
                 }
 
                 // Handle "Select All" per module
-                document.querySelectorAll('.module-select-all').forEach(function(selectAll) {
+                scope.querySelectorAll('.module-select-all').forEach(function(selectAll) {
                     selectAll.addEventListener('change', function(e) {
                         e.stopPropagation();
                         const module = this.dataset.module;
-                        const checkboxes = document.querySelectorAll(`.permission-checkbox[data-module="${module}"]`);
+                        const checkboxes = scope.querySelectorAll(`.permission-checkbox[data-module="${module}"]`);
                         checkboxes.forEach(function(checkbox) {
                             checkbox.checked = selectAll.checked;
                         });
@@ -263,24 +271,23 @@
                 });
 
                 // Handle global "Select All"
-                const globalSelectAll = document.getElementById('select-all-permissions');
                 if (globalSelectAll) {
-                    // Set initial state
-                    const allCheckboxes = document.querySelectorAll('.permission-checkbox');
+                    const allCheckboxes = scope.querySelectorAll('.permission-checkbox');
                     const checkedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
                     globalSelectAll.checked = checkedCount === allCheckboxes.length;
                     globalSelectAll.indeterminate = checkedCount > 0 && checkedCount < allCheckboxes.length;
 
                     globalSelectAll.addEventListener('change', function() {
-                        allCheckboxes.forEach(function(checkbox) {
+                        const boxes = scope.querySelectorAll('.permission-checkbox');
+                        boxes.forEach(function(checkbox) {
                             checkbox.checked = this.checked;
                         }.bind(this));
                         
-                        document.querySelectorAll('.module-select-all').forEach(function(selectAll) {
+                        scope.querySelectorAll('.module-select-all').forEach(function(selectAll) {
                             selectAll.checked = this.checked;
                         }.bind(this));
                         
-                        document.querySelectorAll('.module-container').forEach(function(container) {
+                        scope.querySelectorAll('.module-container').forEach(function(container) {
                             const module = container.dataset.module;
                             updateModuleCount(module);
                         });
@@ -289,12 +296,12 @@
                 }
 
                 // Update "Select All" checkbox when individual checkboxes change
-                document.querySelectorAll('.permission-checkbox').forEach(function(checkbox) {
+                scope.querySelectorAll('.permission-checkbox').forEach(function(checkbox) {
                     checkbox.addEventListener('change', function() {
                         const module = this.dataset.module;
-                        const moduleCheckboxes = document.querySelectorAll(`.permission-checkbox[data-module="${module}"]`);
+                        const moduleCheckboxes = scope.querySelectorAll(`.permission-checkbox[data-module="${module}"]`);
                         const checkedCount = Array.from(moduleCheckboxes).filter(cb => cb.checked).length;
-                        const selectAll = document.querySelector(`.module-select-all[data-module="${module}"]`);
+                        const selectAll = scope.querySelector(`.module-select-all[data-module="${module}"]`);
                         if (selectAll) {
                             selectAll.checked = checkedCount === moduleCheckboxes.length;
                             selectAll.indeterminate = checkedCount > 0 && checkedCount < moduleCheckboxes.length;
@@ -305,21 +312,12 @@
                     });
                 });
 
-                function updateGlobalSelectAll() {
-                    const allCheckboxes = document.querySelectorAll('.permission-checkbox');
-                    const checkedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
-                    if (globalSelectAll) {
-                        globalSelectAll.checked = checkedCount === allCheckboxes.length;
-                        globalSelectAll.indeterminate = checkedCount > 0 && checkedCount < allCheckboxes.length;
-                    }
-                }
-
                 // Search functionality
                 const searchInput = document.getElementById('permission-search');
                 if (searchInput) {
                     searchInput.addEventListener('input', function() {
                         const searchTerm = this.value.toLowerCase();
-                        const permissionItems = document.querySelectorAll('.permission-item');
+                        const permissionItems = scope.querySelectorAll('.permission-item');
                         const modules = new Set();
                         
                         permissionItems.forEach(function(item) {
@@ -334,7 +332,7 @@
                         });
 
                         // Show/hide modules based on search
-                        document.querySelectorAll('.module-container').forEach(function(container) {
+                        scope.querySelectorAll('.module-container').forEach(function(container) {
                             const module = container.dataset.module;
                             if (searchTerm === '' || modules.has(module)) {
                                 container.style.display = '';
@@ -355,7 +353,7 @@
                 }
 
                 // Initialize counts
-                document.querySelectorAll('.module-container').forEach(function(container) {
+                scope.querySelectorAll('.module-container').forEach(function(container) {
                     const module = container.dataset.module;
                     updateModuleCount(module);
                 });

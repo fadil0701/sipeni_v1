@@ -135,11 +135,18 @@
                 </div>
             </div>
 
-            <!-- Menu yang Dapat Diakses -->
+            @unless($canDelegateAllPermissions)
+                <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4 text-sm text-indigo-900">
+                    <p class="font-medium">Modul yang dapat Anda centang mengikuti level akses Anda</p>
+                    <p class="mt-1 text-indigo-800">Hanya modul menu yang selaras dengan permission Anda yang tersedia untuk user baru.</p>
+                </div>
+            @endunless
+
+            <!-- Modul menu sidebar -->
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
                 <div class="flex items-center justify-between mb-4">
                     <label class="block text-sm font-medium text-gray-700">
-                        Menu yang Dapat Diakses
+                        Modul menu yang dapat Anda atur
                     </label>
                     <label class="flex items-center text-sm text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
                         <input 
@@ -152,7 +159,7 @@
                 </div>
                 
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    @foreach($modules as $module)
+                    @forelse($modules as $module)
                         <label class="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-white cursor-pointer transition-colors">
                             <input 
                                 type="checkbox" 
@@ -168,10 +175,12 @@
                                 @endif
                             </div>
                         </label>
-                    @endforeach
+                    @empty
+                        <p class="text-sm text-gray-600 col-span-full py-2">Tidak ada modul menu pada level akses Anda yang dapat diassign.</p>
+                    @endforelse
                 </div>
                 <p class="mt-3 text-xs text-gray-500">
-                    Pilih menu yang dapat diakses oleh user ini. Permission detail dapat diatur di <strong>Manajemen Role</strong>.
+                    Membatasi grup menu yang tampil di sidebar. Hak akses halaman mengikuti <strong>role</strong> yang dipilih.
                 </p>
             </div>
         </div>

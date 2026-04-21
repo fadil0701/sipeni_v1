@@ -199,18 +199,18 @@
                     </button>
                 </div>
 
-                <div id="detailContainer" class="space-y-4">
+                <div id="detailContainer" class="space-y-3">
                     @foreach(old('detail', $permintaan->detailPermintaan) as $index => $detail)
-                    <div class="item-row bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-12 items-end">
-                            <div class="sm:col-span-4 flex flex-col">
+                    <div class="item-row permintaan-detail-row">
+                        <div class="permintaan-detail-grid">
+                            <div class="permintaan-detail-barang flex flex-col">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Data Barang / Permintaan lainnya <span class="text-red-500">*</span>
                                 </label>
                                 @php
                                     $useLainnyaEdit = !empty(trim((string) (old("detail.{$index}.deskripsi_barang") ?? (is_object($detail) ? $detail->deskripsi_barang : ($detail['deskripsi_barang'] ?? '')))));
                                 @endphp
-                                <div class="flex gap-4 mb-2">
+                                <div class="permintaan-detail-toggle flex flex-wrap gap-x-4 gap-y-1 mb-2">
                                     <label class="inline-flex items-center text-sm">
                                         <input type="radio" name="detail[{{ $index }}][tipe_barang]" value="master" class="tipe-barang-radio mr-1" {{ !$useLainnyaEdit ? 'checked' : '' }}>
                                         Dari master
@@ -251,7 +251,7 @@
                                 @enderror
                             </div>
 
-                            <div class="sm:col-span-1">
+                            <div class="permintaan-detail-qty">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Qty <span class="text-red-500">*</span>
                                 </label>
@@ -271,14 +271,14 @@
                                 @enderror
                             </div>
 
-                            <div class="sm:col-span-1">
+                            <div class="permintaan-detail-satuan">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Satuan <span class="text-red-500">*</span>
                                 </label>
                                 <select 
                                     name="detail[{{ $index }}][id_satuan]" 
                                     required
-                                    class="select-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error("detail.{$index}.id_satuan") border-red-500 @enderror"
+                                    class="field-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error("detail.{$index}.id_satuan") border-red-500 @enderror"
                                 >
                                     <option value="">Pilih Satuan</option>
                                     @foreach($satuans as $satuan)
@@ -293,7 +293,7 @@
                                 @enderror
                             </div>
 
-                            <div class="sm:col-span-1">
+                            <div class="permintaan-detail-stock">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Stock Tersedia
                                 </label>
@@ -302,7 +302,7 @@
                                 </div>
                             </div>
 
-                            <div class="sm:col-span-4">
+                            <div class="permintaan-detail-keterangan">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Keterangan</label>
                                 <input 
                                     type="text" 
@@ -313,10 +313,10 @@
                                 >
                             </div>
 
-                            <div class="sm:col-span-1 flex items-center justify-center pb-0.5">
+                            <div class="permintaan-detail-action flex items-center justify-center pb-0.5">
                                 <button 
                                     type="button" 
-                                    class="btnHapusItem p-2 border border-red-300 text-red-700 bg-white hover:bg-red-50 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center justify-center"
+                                    class="btnHapusItem h-10 w-10 border border-red-300 text-red-700 bg-white hover:bg-red-50 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center justify-center"
                                     title="Hapus Item"
                                 >
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -354,13 +354,13 @@
 
 <!-- Template untuk item detail baru (hidden) -->
 <template id="itemTemplate">
-    <div class="item-row bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-12 items-end">
-            <div class="sm:col-span-4 flex flex-col">
+    <div class="item-row permintaan-detail-row">
+        <div class="permintaan-detail-grid">
+            <div class="permintaan-detail-barang flex flex-col">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     Data Barang / Permintaan lainnya <span class="text-red-500">*</span>
                 </label>
-                <div class="flex gap-4 mb-2">
+                <div class="permintaan-detail-toggle flex flex-wrap gap-x-4 gap-y-1 mb-2">
                     <label class="inline-flex items-center text-sm">
                         <input type="radio" name="detail[INDEX][tipe_barang]" value="master" class="tipe-barang-radio mr-1" checked>
                         Dari master
@@ -395,7 +395,7 @@
                 </div>
             </div>
 
-            <div class="sm:col-span-1">
+            <div class="permintaan-detail-qty">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     Qty <span class="text-red-500">*</span>
                 </label>
@@ -411,14 +411,14 @@
                 >
             </div>
 
-            <div class="sm:col-span-1">
+            <div class="permintaan-detail-satuan">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     Satuan <span class="text-red-500">*</span>
                 </label>
                 <select 
                     name="detail[INDEX][id_satuan]" 
                     required
-                    class="select-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    class="field-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
                     <option value="">Pilih Satuan</option>
                     @foreach($satuans as $satuan)
@@ -427,7 +427,7 @@
                 </select>
             </div>
 
-            <div class="sm:col-span-1">
+            <div class="permintaan-detail-stock">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     Stock Tersedia
                 </label>
@@ -436,7 +436,7 @@
                 </div>
             </div>
 
-            <div class="sm:col-span-4">
+            <div class="permintaan-detail-keterangan">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Keterangan</label>
                 <input 
                     type="text" 
@@ -446,10 +446,10 @@
                 >
             </div>
 
-            <div class="sm:col-span-1 flex items-center justify-center pb-0.5">
+            <div class="permintaan-detail-action flex items-center justify-center pb-0.5">
                 <button 
                     type="button" 
-                    class="btnHapusItem p-2 border border-red-300 text-red-700 bg-white hover:bg-red-50 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center justify-center"
+                    class="btnHapusItem h-10 w-10 border border-red-300 text-red-700 bg-white hover:bg-red-50 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center justify-center"
                     title="Hapus Item"
                 >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -605,7 +605,7 @@ function tambahItem() {
     setupTipeBarangToggle(finalItem);
     // Auto-set satuan dan tampilkan stock ketika data barang dipilih
     const selectBarang = finalItem.querySelector('.select-data-barang');
-    const selectSatuan = finalItem.querySelector('.select-satuan');
+    const selectSatuan = finalItem.querySelector('.field-satuan');
     const qtyInput = finalItem.querySelector('input[name*="[qty_diminta]"]');
     const stockDisplay = finalItem.querySelector('.stock-display');
     
@@ -694,7 +694,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const satuanId = selectedOption.getAttribute('data-satuan');
             const barangId = this.value;
             const row = this.closest('.item-row');
-            const selectSatuan = row.querySelector('.select-satuan');
+            const selectSatuan = row.querySelector('.field-satuan');
             const qtyInput = row.querySelector('input[name*="[qty_diminta]"]');
             const stockDisplay = row.querySelector('.stock-display');
             

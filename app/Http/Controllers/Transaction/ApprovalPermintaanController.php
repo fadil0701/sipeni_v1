@@ -36,6 +36,10 @@ class ApprovalPermintaanController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+
+        // Pastikan setiap permintaan berstatus diajukan memiliki log approval awal (step 2).
+        // Ini menangani data lama yang status-nya sudah diajukan tetapi belum punya approval_log.
+        $this->syncInitialApprovalLogsForSubmittedRequests();
         
         // Pastikan roles ter-load
         if (!$user->relationLoaded('roles')) {
@@ -309,6 +313,60 @@ class ApprovalPermintaanController extends Controller
         );
         
         return view('transaction.approval.index', compact('paginator', 'permintaans'));
+    }
+
+    private function syncInitialApprovalLogsForSubmittedRequests(): void
+    {
+        $flowStep2 = ApprovalFlowDefinition::query()
+            ->where('modul_approval', 'PERMINTAAN_BARANG')
+            ->where('step_order', 2)
+            ->first();
+
+        if (! $flowStep2) {
+            return;
+        }
+
+        $submittedIds = PermintaanBarang::query()
+            ->whereIn('status', [
+                PermintaanBarangStatus::Diajukan->value,
+                'DIAJUKAN',
+            ])
+            ->pluck('id_permintaan');
+
+        if ($submittedIds->isEmpty()) {
+            return;
+        }
+
+        $existingIds = ApprovalLog::query()
+            ->where('modul_approval', 'PERMINTAAN_BARANG')
+            ->where('id_approval_flow', $flowStep2->id)
+            ->whereIn('id_referensi', $submittedIds)
+            ->pluck('id_referensi')
+            ->all();
+
+        $missingIds = $submittedIds
+            ->reject(fn ($id) => in_array($id, $existingIds, true))
+            ->values();
+
+        if ($missingIds->isEmpty()) {
+            return;
+        }
+
+        $now = now();
+        $rows = $missingIds->map(fn ($idPermintaan) => [
+            'modul_approval' => 'PERMINTAAN_BARANG',
+            'id_referensi' => $idPermintaan,
+            'id_approval_flow' => $flowStep2->id,
+            'user_id' => null,
+            'role_id' => $flowStep2->role_id,
+            'status' => 'MENUNGGU',
+            'catatan' => null,
+            'approved_at' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all();
+
+        ApprovalLog::query()->insert($rows);
     }
 
     /**

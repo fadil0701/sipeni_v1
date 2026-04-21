@@ -8,11 +8,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use App\Models\RegisterAset;
 use App\Models\MasterPegawai;
+use App\Models\User;
 use App\Models\MasterUnitKerja;
 use App\Models\MasterGudang;
 use App\Models\MasterRuangan;
 use App\Models\DataInventory;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class RegisterAsetController extends Controller
 {
@@ -21,6 +23,7 @@ class RegisterAsetController extends Controller
      */
     public function index(Request $request)
     {
+        /** @var User $user */
         $user = Auth::user();
         
         // Filter untuk user pegawai - hanya gudang unit mereka sendiri
@@ -123,6 +126,7 @@ class RegisterAsetController extends Controller
      */
     public function showUnitKerja(Request $request, $unitKerjaId)
     {
+        /** @var User $user */
         $user = Auth::user();
         
         // Inisialisasi variabel
@@ -468,8 +472,11 @@ class RegisterAsetController extends Controller
      */
     public function create()
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan admin_gudang yang bisa create
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -519,8 +526,11 @@ class RegisterAsetController extends Controller
      */
     public function store(Request $request)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan admin_gudang yang bisa store
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -535,6 +545,19 @@ class RegisterAsetController extends Controller
             'status_aset' => 'required|in:AKTIF,NONAKTIF',
             'tanggal_perolehan' => 'required|date',
         ]);
+
+        // Pastikan ruangan yang dipilih memang milik unit kerja yang dipilih
+        if (!empty($validated['id_ruangan'])) {
+            $ruangan = MasterRuangan::query()
+                ->select(['id_ruangan', 'id_unit_kerja'])
+                ->find($validated['id_ruangan']);
+
+            if (!$ruangan || (int) $ruangan->id_unit_kerja !== (int) $validated['id_unit_kerja']) {
+                return back()
+                    ->withErrors(['id_ruangan' => 'Ruangan harus sesuai dengan Unit Kerja yang dipilih.'])
+                    ->withInput();
+            }
+        }
         
         // Cek apakah inventory item sudah ter-register
         $inventoryItem = \App\Models\InventoryItem::findOrFail($validated['id_item']);
@@ -628,11 +651,14 @@ class RegisterAsetController extends Controller
             'inventory.satuan',
             'inventory.sumberAnggaran',
             'unitKerja',
+            'ruangan',
             'kartuInventarisRuangan',
+            'kartuInventarisRuangan.penanggungJawab',
             'mutasiAset',
             'permintaanPemeliharaan',
             'jadwalMaintenance'
         ])->findOrFail($id);
+        /** @var User $user */
         $user = Auth::user();
 
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
@@ -661,6 +687,7 @@ class RegisterAsetController extends Controller
             'ruangan',
             'kartuInventarisRuangan.penanggungJawab'
         ])->findOrFail($id);
+        /** @var User $user */
         $user = Auth::user();
 
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
@@ -697,6 +724,7 @@ class RegisterAsetController extends Controller
     public function update(Request $request, string $id)
     {
         $registerAset = RegisterAset::findOrFail($id);
+        /** @var User $user */
         $user = Auth::user();
 
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
@@ -778,19 +806,15 @@ class RegisterAsetController extends Controller
                     $inventoryItem->update(['id_ruangan' => $validated['id_ruangan']]);
                 }
 
-                // Buat atau Update KIR
-                $kir = \App\Models\KartuInventarisRuangan::firstOrCreate([
-                    'id_register_aset' => $registerAset->id_register_aset,
-                    'id_ruangan' => $validated['id_ruangan'],
-                ], [
-                    'id_penanggung_jawab' => $validated['id_penanggung_jawab'] ?? null,
-                    'tanggal_penempatan' => $validated['tanggal_perolehan'] ?? now(),
-                ]);
-
-                // Update penanggung jawab jika diubah
-                if (!$kir->wasRecentlyCreated && isset($validated['id_penanggung_jawab'])) {
-                    $kir->update(['id_penanggung_jawab' => $validated['id_penanggung_jawab']]);
-                }
+                // Buat atau update 1 KIR per register aset (jangan duplikat per ruangan)
+                \App\Models\KartuInventarisRuangan::updateOrCreate(
+                    ['id_register_aset' => $registerAset->id_register_aset],
+                    [
+                        'id_ruangan' => $validated['id_ruangan'],
+                        'id_penanggung_jawab' => $validated['id_penanggung_jawab'] ?? null,
+                        'tanggal_penempatan' => $validated['tanggal_perolehan'] ?? now(),
+                    ]
+                );
             } else {
                 // Jika ruangan dihapus: update InventoryItem spesifik yang ter-register
                 if ($oldIdRuangan) {
@@ -821,7 +845,7 @@ class RegisterAsetController extends Controller
                 ->with('success', 'Register aset berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error updating register aset: ' . $e->getMessage());
+            Log::error('Error updating register aset: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage());
         }
     }
@@ -831,8 +855,11 @@ class RegisterAsetController extends Controller
      */
     public function destroy(string $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan admin_gudang yang bisa delete
-        if (!Auth::user()->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
             abort(403, 'Unauthorized');
         }
         

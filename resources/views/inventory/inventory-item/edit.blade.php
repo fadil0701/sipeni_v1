@@ -115,9 +115,9 @@
                     </div>
 
                     <div>
-                        <label for="id_ruangan" class="block text-sm font-medium text-gray-700 mb-2">Ruangan</label>
+                        <label for="inv_item_edit_id_ruangan" class="block text-sm font-medium text-gray-700 mb-2">Ruangan</label>
                         <select 
-                            id="id_ruangan" 
+                            id="inv_item_edit_id_ruangan" 
                             name="id_ruangan" 
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_ruangan') border-red-500 @enderror"
                         >
@@ -302,7 +302,7 @@
 
     document.getElementById('id_gudang').addEventListener('change', function() {
         const gudangId = this.value;
-        const ruanganSelect = document.getElementById('id_ruangan');
+        const ruanganSelect = document.getElementById('inv_item_edit_id_ruangan');
         
         // Reset ruangan options
         ruanganSelect.innerHTML = '<option value="">Memuat ruangan...</option>';

@@ -3,7 +3,7 @@
 @section('content')
 <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <div class="mb-6">
-        <a href="{{ route('user.requests') }}" class="text-blue-600 hover:text-blue-900">← Kembali ke Daftar Permintaan</a>
+        <a href="{{ route('user.requests.index') }}" class="text-blue-600 hover:text-blue-900">← Kembali ke Daftar Permintaan</a>
     </div>
 
     <div class="bg-white shadow rounded-lg overflow-hidden">

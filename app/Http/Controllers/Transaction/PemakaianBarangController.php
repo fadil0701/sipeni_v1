@@ -8,12 +8,14 @@ use App\Models\PemakaianBarang;
 use App\Models\DetailPemakaianBarang;
 use App\Models\MasterUnitKerja;
 use App\Models\MasterPegawai;
+use App\Models\User;
 use App\Models\MasterGudang;
 use App\Models\MasterSatuan;
 use App\Models\DataInventory;
 use App\Models\DataStock;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class PemakaianBarangController extends Controller
@@ -23,6 +25,7 @@ class PemakaianBarangController extends Controller
      */
     public function index(Request $request)
     {
+        /** @var User $user */
         $user = Auth::user();
         
         // Query pemakaian barang dengan relationships
@@ -92,6 +95,7 @@ class PemakaianBarangController extends Controller
      */
     public function create()
     {
+        /** @var User $user */
         $user = Auth::user();
         
         // Ambil inventory yang tersedia di gudang unit (untuk pemakaian), hanya yang masih ada stok
@@ -150,6 +154,9 @@ class PemakaianBarangController extends Controller
      */
     public function store(Request $request)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         $validated = $request->validate([
             'id_unit_kerja' => 'required|exists:master_unit_kerja,id_unit_kerja',
             'id_gudang' => 'required|exists:master_gudang,id_gudang',
@@ -165,6 +172,18 @@ class PemakaianBarangController extends Controller
             'detail.*.alasan_pemakaian_item' => 'nullable|string|max:500',
             'detail.*.keterangan' => 'nullable|string|max:1000',
         ]);
+
+        if (! $this->isGudangInUnit((int) $validated['id_gudang'], (int) $validated['id_unit_kerja'])) {
+            return back()->withErrors(['id_gudang' => 'Gudang harus berada pada unit kerja yang dipilih.'])->withInput();
+        }
+        if (! $this->isPegawaiInUnit((int) $validated['id_pegawai_pemakai'], (int) $validated['id_unit_kerja'])) {
+            return back()->withErrors(['id_pegawai_pemakai' => 'Pegawai pemakai harus berada pada unit kerja yang dipilih.'])->withInput();
+        }
+        foreach ($validated['detail'] as $idx => $detail) {
+            if (! $this->isInventoryInGudang((int) $detail['id_inventory'], (int) $validated['id_gudang'])) {
+                return back()->withErrors(["detail.$idx.id_inventory" => 'Item inventory harus berasal dari gudang yang dipilih.'])->withInput();
+            }
+        }
         
         DB::beginTransaction();
         try {
@@ -207,7 +226,7 @@ class PemakaianBarangController extends Controller
             }
             
             // Jika status DIAJUKAN dan user adalah admin, coba approve; jika gagal (validasi stok), tampilkan error
-            if ($validated['status_pemakaian'] == 'DIAJUKAN' && Auth::user()->hasRole('admin')) {
+            if ($validated['status_pemakaian'] == 'DIAJUKAN' && $user->hasRole('admin')) {
                 $response = $this->approve($pemakaian->id_pemakaian);
                 if (session()->has('error')) {
                     DB::rollBack();
@@ -224,7 +243,7 @@ class PemakaianBarangController extends Controller
                 ->with('success', 'Pemakaian barang berhasil dibuat.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error creating pemakaian barang: ' . $e->getMessage());
+            Log::error('Error creating pemakaian barang: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage());
         }
     }
@@ -243,6 +262,7 @@ class PemakaianBarangController extends Controller
             'detailPemakaian.satuan'
         ])->findOrFail($id);
         
+        /** @var User $user */
         $user = Auth::user();
         
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
@@ -266,6 +286,7 @@ class PemakaianBarangController extends Controller
     public function edit(string $id)
     {
         $pemakaian = PemakaianBarang::with(['detailPemakaian', 'unitKerja', 'gudang'])->findOrFail($id);
+        /** @var User $user */
         $user = Auth::user();
         
         // Hanya bisa edit jika status DRAFT
@@ -315,6 +336,8 @@ class PemakaianBarangController extends Controller
     public function update(Request $request, string $id)
     {
         $pemakaian = PemakaianBarang::findOrFail($id);
+        /** @var User $user */
+        $user = Auth::user();
         
         // Hanya bisa update jika status DRAFT
         if ($pemakaian->status_pemakaian != 'DRAFT') {
@@ -336,6 +359,18 @@ class PemakaianBarangController extends Controller
             'detail.*.alasan_pemakaian_item' => 'nullable|string|max:500',
             'detail.*.keterangan' => 'nullable|string|max:1000',
         ]);
+
+        if (! $this->isGudangInUnit((int) $validated['id_gudang'], (int) $validated['id_unit_kerja'])) {
+            return back()->withErrors(['id_gudang' => 'Gudang harus berada pada unit kerja yang dipilih.'])->withInput();
+        }
+        if (! $this->isPegawaiInUnit((int) $validated['id_pegawai_pemakai'], (int) $validated['id_unit_kerja'])) {
+            return back()->withErrors(['id_pegawai_pemakai' => 'Pegawai pemakai harus berada pada unit kerja yang dipilih.'])->withInput();
+        }
+        foreach ($validated['detail'] as $idx => $detail) {
+            if (! $this->isInventoryInGudang((int) $detail['id_inventory'], (int) $validated['id_gudang'])) {
+                return back()->withErrors(["detail.$idx.id_inventory" => 'Item inventory harus berasal dari gudang yang dipilih.'])->withInput();
+            }
+        }
         
         DB::beginTransaction();
         try {
@@ -366,7 +401,7 @@ class PemakaianBarangController extends Controller
             }
             
             // Jika status DIAJUKAN dan user adalah admin, coba approve; jika gagal (validasi stok), tampilkan error
-            if ($validated['status_pemakaian'] == 'DIAJUKAN' && Auth::user()->hasRole('admin')) {
+            if ($validated['status_pemakaian'] == 'DIAJUKAN' && $user->hasRole('admin')) {
                 $response = $this->approve($pemakaian->id_pemakaian);
                 if (session()->has('error')) {
                     DB::rollBack();
@@ -383,7 +418,7 @@ class PemakaianBarangController extends Controller
                 ->with('success', 'Pemakaian barang berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error updating pemakaian barang: ' . $e->getMessage());
+            Log::error('Error updating pemakaian barang: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage());
         }
     }
@@ -411,7 +446,7 @@ class PemakaianBarangController extends Controller
                 ->with('success', 'Pemakaian barang berhasil dihapus.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error deleting pemakaian barang: ' . $e->getMessage());
+            Log::error('Error deleting pemakaian barang: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage());
         }
     }
@@ -421,8 +456,11 @@ class PemakaianBarangController extends Controller
      */
     public function approve(string $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan kepala_unit yang bisa approve (sesuai route middleware)
-        if (!Auth::user()->hasAnyRole(['admin', 'kepala_unit'])) {
+        if (!$user->hasAnyRole(['admin', 'kepala_unit'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -511,7 +549,7 @@ class PemakaianBarangController extends Controller
                 ->with('success', 'Pemakaian barang berhasil disetujui dan stock telah diupdate.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error approving pemakaian barang: ' . $e->getMessage());
+            Log::error('Error approving pemakaian barang: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan saat menyetujui pemakaian: ' . $e->getMessage());
         }
     }
@@ -521,8 +559,11 @@ class PemakaianBarangController extends Controller
      */
     public function reject(Request $request, string $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Hanya admin dan kepala_unit yang bisa reject (sesuai route middleware)
-        if (!Auth::user()->hasAnyRole(['admin', 'kepala_unit'])) {
+        if (!$user->hasAnyRole(['admin', 'kepala_unit'])) {
             abort(403, 'Unauthorized');
         }
         
@@ -566,5 +607,32 @@ class PemakaianBarangController extends Controller
         
         return redirect()->route('transaction.pemakaian-barang.show', $pemakaian->id_pemakaian)
             ->with('success', 'Pemakaian barang berhasil diajukan untuk persetujuan.');
+    }
+
+    private function isGudangInUnit(int $idGudang, int $idUnitKerja): bool
+    {
+        return MasterGudang::query()
+            ->where('id_gudang', $idGudang)
+            ->where('id_unit_kerja', $idUnitKerja)
+            ->where('jenis_gudang', 'UNIT')
+            ->exists();
+    }
+
+    private function isPegawaiInUnit(int $idPegawai, int $idUnitKerja): bool
+    {
+        return MasterPegawai::query()
+            ->where('id', $idPegawai)
+            ->where('id_unit_kerja', $idUnitKerja)
+            ->exists();
+    }
+
+    private function isInventoryInGudang(int $idInventory, int $idGudang): bool
+    {
+        return DataInventory::query()
+            ->where('id_inventory', $idInventory)
+            ->where('id_gudang', $idGudang)
+            ->whereIn('jenis_inventory', ['PERSEDIAAN', 'FARMASI'])
+            ->where('status_inventory', 'AKTIF')
+            ->exists();
     }
 }

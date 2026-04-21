@@ -298,20 +298,56 @@
 <script>
 let detailIndex = 0;
 let inventories = @json($inventories);
+const urlPegawaiByUnit = @json(url('/api/master/pegawai-by-unit'));
+const urlGudangByUnit = @json(url('/api/master/gudang-by-unit'));
+const oldGudang = @json(old('id_gudang'));
+const oldPegawai = @json(old('id_pegawai_pemakai'));
 
 function loadGudangByUnit(unitId) {
-    // Filter gudang berdasarkan unit kerja
     const gudangSelect = document.getElementById('id_gudang');
-    const options = gudangSelect.querySelectorAll('option');
-    
-    options.forEach(option => {
-        if (option.value === '') {
-            option.style.display = 'block';
-        } else {
-            // Logic untuk filter gudang berdasarkan unit kerja bisa ditambahkan di sini
-            option.style.display = 'block';
-        }
-    });
+    gudangSelect.innerHTML = '<option value="">Memuat Gudang...</option>';
+    if (!unitId) {
+        gudangSelect.innerHTML = '<option value="">Pilih Gudang</option>';
+        return;
+    }
+    fetch(`${urlGudangByUnit}/${unitId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            gudangSelect.innerHTML = '<option value="">Pilih Gudang</option>';
+            (data.data || []).forEach(g => {
+                if (g.jenis_gudang !== 'UNIT') return;
+                const opt = document.createElement('option');
+                opt.value = g.id_gudang;
+                opt.textContent = g.label;
+                gudangSelect.appendChild(opt);
+            });
+            if (oldGudang) {
+                gudangSelect.value = String(oldGudang);
+            }
+        })
+        .catch(() => {
+            gudangSelect.innerHTML = '<option value="">Gagal memuat gudang</option>';
+        });
+
+    const pegawaiSelect = document.getElementById('id_pegawai_pemakai');
+    pegawaiSelect.innerHTML = '<option value="">Memuat Pegawai...</option>';
+    fetch(`${urlPegawaiByUnit}/${unitId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            pegawaiSelect.innerHTML = '<option value="">Pilih Pegawai Pemakai</option>';
+            (data.data || []).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.label;
+                pegawaiSelect.appendChild(opt);
+            });
+            if (oldPegawai) {
+                pegawaiSelect.value = String(oldPegawai);
+            }
+        })
+        .catch(() => {
+            pegawaiSelect.innerHTML = '<option value="">Gagal memuat pegawai</option>';
+        });
 }
 
 function loadInventoryByGudang(gudangId) {
@@ -373,6 +409,10 @@ function updateInventoryInfo(select) {
 // Tambah satu baris saat halaman dimuat
 document.addEventListener('DOMContentLoaded', function() {
     addDetailRow();
+    const unitId = document.getElementById('id_unit_kerja').value;
+    if (unitId) {
+        loadGudangByUnit(unitId);
+    }
     
     // Validasi form sebelum submit
     const formPemakaian = document.getElementById('formPemakaian');

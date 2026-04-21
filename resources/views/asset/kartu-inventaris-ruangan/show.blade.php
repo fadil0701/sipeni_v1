@@ -39,6 +39,38 @@
     </div>
 
     <div class="p-6">
+        @php
+            $ruanganKir = $kir->ruangan ?? $kir->registerAset->ruangan;
+            $penanggungJawabKir = $kir->penanggungJawab;
+
+            $fotoInventory = $kir->registerAset->inventory->upload_foto ?? null;
+            $fotoItem = $kir->registerAset->inventory->inventoryItems->first()->foto_barang ?? null;
+            $fotoBarangPath = $fotoInventory ?: $fotoItem;
+            $fotoBarangUrl = $fotoBarangPath
+                ? (\Illuminate\Support\Str::startsWith($fotoBarangPath, ['http://', 'https://'])
+                    ? $fotoBarangPath
+                    : asset('storage/' . ltrim($fotoBarangPath, '/')))
+                : null;
+        @endphp
+
+        <div class="mb-6 bg-gray-50 rounded-lg p-5 border border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900 mb-3">Foto Barang</h3>
+            @if($fotoBarangUrl)
+                <a href="{{ $fotoBarangUrl }}" target="_blank" rel="noopener noreferrer" class="block">
+                    <img
+                        src="{{ $fotoBarangUrl }}"
+                        alt="Foto barang {{ $kir->registerAset->inventory->dataBarang->nama_barang ?? 'Aset' }}"
+                        class="h-56 w-full rounded-lg border border-gray-200 object-contain bg-white p-2 hover:opacity-95 transition-opacity"
+                        loading="lazy"
+                    >
+                </a>
+            @else
+                <div class="h-44 w-full rounded-lg border border-dashed border-gray-300 bg-white flex items-center justify-center">
+                    <span class="text-sm text-gray-500">Foto barang belum tersedia</span>
+                </div>
+            @endif
+        </div>
+
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <!-- Informasi KIR -->
             <div class="bg-gray-50 rounded-lg p-6 border border-gray-200">
@@ -47,15 +79,15 @@
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Ruangan</dt>
                         <dd class="mt-1 text-sm text-gray-900 font-semibold">
-                            {{ $kir->ruangan->nama_ruangan ?? '-' }}
-                            <span class="text-gray-500 text-xs block">{{ $kir->ruangan->unitKerja->nama_unit_kerja ?? '-' }}</span>
+                            {{ $ruanganKir?->nama_ruangan ?? '-' }}
+                            <span class="text-gray-500 text-xs block">{{ $ruanganKir?->unitKerja?->nama_unit_kerja ?? '-' }}</span>
                         </dd>
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Penanggung Jawab</dt>
                         <dd class="mt-1 text-sm text-gray-900">
-                            {{ $kir->penanggungJawab->nama_pegawai ?? '-' }}
-                            <span class="text-gray-500 text-xs block">{{ $kir->penanggungJawab->jabatan->nama_jabatan ?? '-' }}</span>
+                            {{ $penanggungJawabKir?->nama_pegawai ?? '-' }}
+                            <span class="text-gray-500 text-xs block">{{ $penanggungJawabKir?->jabatan?->nama_jabatan ?? '-' }}</span>
                         </dd>
                     </div>
                     <div>

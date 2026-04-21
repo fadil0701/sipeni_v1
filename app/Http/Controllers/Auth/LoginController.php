@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -11,6 +12,10 @@ class LoginController extends Controller
 {
     public function showLoginForm()
     {
+        if (Auth::check()) {
+            return redirect()->route('user.dashboard');
+        }
+
         return view('auth.login');
     }
 
@@ -25,8 +30,9 @@ class LoginController extends Controller
             $request->session()->regenerate();
 
             // Pastikan roles dan permissions ter-load setelah login
+            /** @var User|null $user */
             $user = Auth::user();
-            if ($user) {
+            if ($user instanceof User) {
                 $user->load('roles.permissions');
             }
 
