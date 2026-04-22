@@ -20,9 +20,13 @@
 
     <div class="bg-white shadow rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
+            <table
+                class="min-w-full divide-y divide-gray-200"
+                @if($requests instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $requests->firstItem() }}" @endif
+            >
                 <thead class="bg-gray-50">
                     <tr>
+                        <x-table.num-th />
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Permintaan</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -32,6 +36,7 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($requests as $request)
                         <tr>
+                            <x-table.num-td :paginator="$requests" />
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {{ $request->no_permintaan }}
                             </td>
@@ -49,7 +54,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
+                            <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
                                 Belum ada permintaan
                             </td>
                         </tr>

@@ -82,10 +82,13 @@
 <!-- Table Card -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table
+            class="min-w-full divide-y divide-gray-200"
+            @if(isset($mutasiStoks) && $mutasiStoks instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $mutasiStoks->firstItem() }}" @endif
+        >
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                    <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Distribusi</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Tujuan</th>
@@ -93,29 +96,28 @@
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                @forelse([] as $index => $item)
+                @php($mutasiRows = $mutasiStoks ?? collect())
+                @forelse($mutasiRows as $mutasi)
                     <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ $index + 1 }}
+                        <x-table.num-td :paginator="$mutasiStoks instanceof \Illuminate\Contracts\Pagination\Paginator ? $mutasiStoks : null" />
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ data_get($mutasi, 'id_distribusi', data_get($mutasi, 'distribusi_id', '-')) }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">-</div>
+                            <div class="text-sm text-gray-900">{{ data_get($mutasi, 'tanggal', '-') }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">-</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">-</div>
+                            <div class="text-sm text-gray-900">{{ data_get($mutasi, 'unit_tujuan', '-') }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                                -
+                                {{ data_get($mutasi, 'status', '-') }}
                             </span>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-6 py-12 text-center">
+                        <td colspan="6" class="px-6 py-12 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>

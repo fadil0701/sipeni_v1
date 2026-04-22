@@ -37,9 +37,13 @@
 <!-- Table Card -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table
+            class="min-w-full divide-y divide-gray-200"
+            @if($unitKerjas instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $unitKerjas->firstItem() }}" @endif
+        >
             <thead class="bg-gray-50">
                 <tr>
+                    <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Unit Kerja</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Unit Kerja</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
@@ -48,6 +52,7 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($unitKerjas as $unitKerja)
                     <tr class="hover:bg-gray-50 transition-colors">
+                        <x-table.num-td :paginator="$unitKerjas" />
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $unitKerja->kode_unit_kerja }}</div>
                         </td>
@@ -88,7 +93,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="3" class="px-6 py-12 text-center">
+                        <td colspan="4" class="px-6 py-12 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                             </svg>

@@ -11,7 +11,7 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4 mb-6">
+<div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-5 mb-6">
     <div class="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
         <div class="flex items-center justify-between">
             <div>
@@ -37,6 +37,21 @@
             <div class="rounded-lg bg-emerald-100 p-3 text-emerald-600">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9 5 9-5-9-5-9 5zm0 5l9 5 9-5M3 17l9 5 9-5"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-xs uppercase tracking-wide text-gray-500">Nilai Aset</p>
+                <p class="mt-2 text-2xl font-semibold text-gray-900">Rp {{ number_format($totalAssetValue, 0, ',', '.') }}</p>
+                <p class="mt-1 text-xs text-gray-500">Akumulasi nilai inventory aset</p>
+            </div>
+            <div class="rounded-lg bg-cyan-100 p-3 text-cyan-600">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 1v8m0 0v1m0-1a4.978 4.978 0 01-2.121-.475M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
             </div>
         </div>
@@ -73,48 +88,80 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 gap-6 xl:grid-cols-3 mb-6">
-    <div class="xl:col-span-2 rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2 mb-6">
+    <div class="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
         <div class="mb-4 flex items-center justify-between">
             <div>
-                <h3 class="text-base font-semibold text-gray-900">Status Permintaan Barang</h3>
-                <p class="text-sm text-gray-500">Distribusi status pengajuan saat ini</p>
+                <h3 class="text-base font-semibold text-gray-900">Komposisi Inventory per Kategori</h3>
+                <p class="text-sm text-gray-500">Aset, persediaan, dan farmasi</p>
             </div>
         </div>
         <div class="h-72">
-            <canvas id="requestStatusChart"></canvas>
+            <canvas id="inventoryCategoryChart"></canvas>
         </div>
     </div>
 
-    <div class="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-        <h3 class="text-base font-semibold text-gray-900">Quick Summary</h3>
-        <p class="mt-1 text-sm text-gray-500">Ikhtisar status permintaan</p>
-        <div class="mt-5 space-y-4">
-            <div>
-                <div class="mb-1 flex justify-between text-sm"><span class="text-gray-600">Diajukan</span><span class="font-medium">{{ $requestStatusData['diajukan'] }}</span></div>
-                <div class="h-2 rounded bg-blue-100"><div class="h-2 rounded bg-blue-500" style="width: {{ max(8, min(100, $requestStatusData['diajukan'] * 10)) }}%"></div></div>
-            </div>
-            <div>
-                <div class="mb-1 flex justify-between text-sm"><span class="text-gray-600">Disetujui</span><span class="font-medium">{{ $requestStatusData['disetujui'] }}</span></div>
-                <div class="h-2 rounded bg-green-100"><div class="h-2 rounded bg-green-500" style="width: {{ max(8, min(100, $requestStatusData['disetujui'] * 10)) }}%"></div></div>
-            </div>
-            <div>
-                <div class="mb-1 flex justify-between text-sm"><span class="text-gray-600">Dikirim</span><span class="font-medium">{{ $requestStatusData['dikirim'] }}</span></div>
-                <div class="h-2 rounded bg-orange-100"><div class="h-2 rounded bg-orange-500" style="width: {{ max(8, min(100, $requestStatusData['dikirim'] * 10)) }}%"></div></div>
-            </div>
-            <div>
-                <div class="mb-1 flex justify-between text-sm"><span class="text-gray-600">Ditolak</span><span class="font-medium">{{ $requestStatusData['ditolak'] }}</span></div>
-                <div class="h-2 rounded bg-red-100"><div class="h-2 rounded bg-red-500" style="width: {{ max(8, min(100, $requestStatusData['ditolak'] * 10)) }}%"></div></div>
-            </div>
+    <div class="rounded-xl border border-gray-100 bg-white shadow-sm">
+        <div class="border-b border-gray-100 px-6 py-4">
+            <h3 class="text-base font-semibold text-gray-900">Tracking Distribusi</h3>
+            <p class="text-sm text-gray-500">Pantau status distribusi barang terbaru</p>
+        </div>
+        <div class="divide-y divide-gray-100">
+            @forelse($latestDistribusiTracking as $item)
+                @php
+                    $badgeColor = match($item['status']) {
+                        'SELESAI' => 'bg-emerald-100 text-emerald-800',
+                        'DIKIRIM' => 'bg-indigo-100 text-indigo-800',
+                        'DIPROSES' => 'bg-amber-100 text-amber-800',
+                        default => 'bg-gray-100 text-gray-800',
+                    };
+                @endphp
+                <div class="px-6 py-4">
+                    <div class="mb-2 flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">{{ $item['no_sbbk'] }}</p>
+                            <p class="text-xs text-gray-500">{{ $item['tujuan'] }} · {{ \Carbon\Carbon::parse($item['tanggal'])->format('d/m/Y') }}</p>
+                        </div>
+                        <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $badgeColor }}">
+                            {{ $item['status'] }}
+                        </span>
+                    </div>
+                    <div class="mb-1 flex items-center justify-between text-xs">
+                        <span class="font-medium text-gray-600">Progress Distribusi</span>
+                        <span class="font-semibold text-gray-700">{{ $item['progress_percent'] }}%</span>
+                    </div>
+                    <div class="h-2 rounded-full bg-gray-100">
+                        <div class="h-2 rounded-full bg-indigo-600 transition-all" style="width: {{ $item['progress_percent'] }}%"></div>
+                    </div>
+                </div>
+            @empty
+                <div class="px-6 py-8 text-center text-sm text-gray-500">
+                    Belum ada data tracking distribusi.
+                </div>
+            @endforelse
         </div>
     </div>
 </div>
 
-<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
-    <div class="rounded-xl border border-gray-100 bg-white shadow-sm">
+<div class="mb-6 rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+    <div class="mb-4 flex items-center justify-between">
+        <div>
+            <h3 class="text-base font-semibold text-gray-900">Status Permintaan Barang</h3>
+            <p class="text-sm text-gray-500">Distribusi status pengajuan saat ini</p>
+        </div>
+    </div>
+    <div class="h-72">
+        <canvas id="requestStatusChart"></canvas>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="xl:col-span-2 rounded-xl border border-gray-100 bg-white shadow-sm">
         <div class="border-b border-gray-100 px-6 py-4">
-            <h3 class="text-base font-semibold text-gray-900">Tracking Permintaan - Approval</h3>
-            <p class="text-sm text-gray-500">Pantau posisi proses approval permintaan terbaru</p>
+            <div>
+                <h3 class="text-base font-semibold text-gray-900">Tracking Permintaan - Approval</h3>
+                <p class="text-sm text-gray-500">Pantau posisi proses approval permintaan terbaru</p>
+            </div>
         </div>
         <div class="divide-y divide-gray-100">
             @forelse($trackingItems as $item)
@@ -272,6 +319,41 @@
                     x: {
                         grid: {
                             display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const inventoryCtx = document.getElementById('inventoryCategoryChart');
+    if (inventoryCtx) {
+        new Chart(inventoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Aset', 'Persediaan', 'Farmasi'],
+                datasets: [{
+                    data: [
+                        {{ $inventoryCategoryData['aset'] }},
+                        {{ $inventoryCategoryData['persediaan'] }},
+                        {{ $inventoryCategoryData['farmasi'] }}
+                    ],
+                    backgroundColor: ['#696CFF', '#71DD37', '#03C3EC'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            boxHeight: 12,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
                         }
                     }
                 }

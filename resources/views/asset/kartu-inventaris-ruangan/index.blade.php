@@ -63,10 +63,13 @@
 <!-- Table -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table
+            class="min-w-full divide-y divide-gray-200"
+            @if($inventoryItems instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $inventoryItems->firstItem() }}" @endif
+        >
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                    <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nomor Register</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Barang</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Barang</th>
@@ -77,7 +80,7 @@
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                @forelse($inventoryItems as $index => $item)
+                @forelse($inventoryItems as $item)
                 @php
                     // Ambil RegisterAset yang memiliki ruangan dari inventory ini
                     $registerAset = $item->inventory->registerAset->firstWhere('id_ruangan', '!=', null);
@@ -97,9 +100,7 @@
                     }
                 @endphp
                 <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {{ $inventoryItems->firstItem() + $index }}
-                    </td>
+                    <x-table.num-td :paginator="$inventoryItems" />
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {{ $registerAset->nomor_register ?? $item->kode_register ?? '-' }}
                     </td>

@@ -66,9 +66,13 @@
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table
+            class="min-w-full divide-y divide-gray-200"
+            @if($pakets instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $pakets->firstItem() }}" @endif
+        >
             <thead class="bg-gray-50">
                 <tr>
+                    <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Paket</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Paket</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sub Kegiatan</th>
@@ -81,6 +85,7 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($pakets as $paket)
                 <tr class="hover:bg-gray-50">
+                    <x-table.num-td :paginator="$pakets" />
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $paket->no_paket }}</td>
                     <td class="px-6 py-4 text-sm text-gray-900">{{ $paket->nama_paket }}</td>
                     <td class="px-6 py-4 text-sm text-gray-900">{{ $paket->subKegiatan?->nama_sub_kegiatan ?? '-' }}</td>
@@ -107,7 +112,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="px-6 py-12 text-center text-sm text-gray-500">Belum ada paket pengadaan.</td>
+                    <td colspan="8" class="px-6 py-12 text-center text-sm text-gray-500">Belum ada paket pengadaan.</td>
                 </tr>
                 @endforelse
             </tbody>

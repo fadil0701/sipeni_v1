@@ -1,128 +1,118 @@
 @extends('layouts.app')
 
 @section('content')
-<!-- Page Header -->
 <div class="mb-6 flex justify-between items-center">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">Compile SBBK</h1>
-        <p class="mt-1 text-sm text-gray-600">Daftar permintaan yang siap untuk di-compile menjadi SBBK</p>
+        <h1 class="text-2xl font-bold text-gray-900">Data SBBK</h1>
+        <p class="mt-1 text-sm text-gray-600">Monitoring dokumen SBBK yang sudah terbentuk</p>
     </div>
 </div>
 
-<!-- Success/Error Messages -->
-@if(session('success'))
-    <div class="mb-4 bg-green-50 border-l-4 border-green-400 p-4 rounded">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                </svg>
-            </div>
-            <div class="ml-3">
-                <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
-            </div>
+<div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
+    <form method="GET" action="{{ route('transaction.compile-distribusi.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div>
+            <label for="gudang" class="block text-sm font-medium text-gray-700 mb-1">Gudang</label>
+            <select id="gudang" name="gudang" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="">Semua Gudang</option>
+                @foreach($gudangs as $gudang)
+                    <option value="{{ $gudang->id_gudang }}" {{ request('gudang') == $gudang->id_gudang ? 'selected' : '' }}>
+                        {{ $gudang->nama_gudang }}
+                    </option>
+                @endforeach
+            </select>
         </div>
-    </div>
-@endif
 
-@if(session('error'))
-    <div class="mb-4 bg-red-50 border-l-4 border-red-400 p-4 rounded">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                </svg>
-            </div>
-            <div class="ml-3">
-                <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
-            </div>
+        <div>
+            <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select id="status" name="status" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="">Semua Status</option>
+                <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
+                <option value="diproses" {{ request('status') == 'diproses' ? 'selected' : '' }}>Diproses</option>
+                <option value="dikirim" {{ request('status') == 'dikirim' ? 'selected' : '' }}>Dikirim</option>
+                <option value="selesai" {{ request('status') == 'selesai' ? 'selected' : '' }}>Selesai</option>
+            </select>
         </div>
-    </div>
-@endif
 
-<!-- Table Card -->
+        <div>
+            <label for="tanggal_mulai" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
+            <input type="date" id="tanggal_mulai" name="tanggal_mulai" value="{{ request('tanggal_mulai') }}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+
+        <div>
+            <label for="tanggal_akhir" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label>
+            <input type="date" id="tanggal_akhir" name="tanggal_akhir" value="{{ request('tanggal_akhir') }}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+
+        <div>
+            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cari</label>
+            <input type="text" id="search" name="search" value="{{ request('search') }}" placeholder="Cari no SBBK atau permintaan..." class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+
+        <div class="flex items-end">
+            <button type="submit" class="w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                Filter
+            </button>
+        </div>
+    </form>
+</div>
+
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table
+            class="min-w-full divide-y divide-gray-200"
+            @if($distribusis instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $distribusis->firstItem() }}" @endif
+        >
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Permintaan</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Kerja</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pemohon</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Permintaan</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori Ready</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Item</th>
+                    <x-table.num-th />
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No SBBK</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Permintaan</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang Asal</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang Tujuan</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                @forelse($permintaans as $permintaan)
-                    @php
-                        $draftDetails = $permintaan->draftDetailDistribusi->where('status', 'READY');
-                        $kategoriReady = $draftDetails->pluck('kategori_gudang')->unique()->toArray();
-                    @endphp
+                @forelse($distribusis as $distribusi)
                     <tr class="hover:bg-gray-50 transition-colors">
+                        <x-table.num-td :paginator="$distribusis" />
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $distribusi->no_sbbk }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $distribusi->permintaan->no_permintaan ?? '-' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $distribusi->tanggal_distribusi->format('d/m/Y') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $distribusi->gudangAsal->nama_gudang ?? '-' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $distribusi->gudangTujuan->nama_gudang ?? '-' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">
-                                {{ $permintaan->no_permintaan }}
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">
-                                {{ $permintaan->unitKerja->nama_unit_kerja ?? '-' }}
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">
-                                {{ $permintaan->pemohon->nama_pegawai ?? '-' }}
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ $permintaan->tanggal_permintaan->format('d/m/Y') }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex flex-wrap gap-1">
-                                @foreach($kategoriReady as $kategori)
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                                        {{ $kategori }}
-                                    </span>
-                                @endforeach
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ $draftDetails->count() }} item
+                            @php
+                                $statusColor = match($distribusi->status_distribusi) {
+                                    'dikirim' => 'bg-blue-100 text-blue-800',
+                                    'selesai' => 'bg-green-100 text-green-800',
+                                    'diproses' => 'bg-indigo-100 text-indigo-800',
+                                    'draft' => 'bg-yellow-100 text-yellow-800',
+                                    default => 'bg-gray-100 text-gray-800',
+                                };
+                            @endphp
+                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">{{ $distribusi->status_distribusi }}</span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <a 
-                                href="{{ route('transaction.compile-distribusi.create', $permintaan->id_permintaan) }}" 
-                                class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
-                                title="Compile SBBK"
-                            >
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Compile SBBK
+                            <a href="{{ route('transaction.distribusi.show', $distribusi->id_distribusi) }}" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors">
+                                Detail
                             </a>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data</h3>
-                            <p class="mt-1 text-sm text-gray-500">Tidak ada permintaan yang siap untuk di-compile menjadi SBBK.</p>
-                        </td>
+                        <td colspan="8" class="px-6 py-12 text-center text-sm text-gray-500">Belum ada dokumen SBBK.</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
-    
-    @if($permintaans->hasPages())
+
+    @if($distribusis->hasPages())
         <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 sm:px-6">
-            {{ $permintaans->links() }}
+            {{ $distribusis->links() }}
         </div>
     @endif
 </div>

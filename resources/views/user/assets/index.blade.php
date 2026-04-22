@@ -11,9 +11,13 @@
 
     <div class="bg-white border border-gray-200 shadow-sm rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
+            <table
+                class="min-w-full divide-y divide-gray-200"
+                @if($assets instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $assets->firstItem() }}" @endif
+            >
                 <thead class="bg-gray-50/80">
                     <tr>
+                        <x-table.num-th />
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Aset</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Aset</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi</th>
@@ -24,6 +28,7 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($assets as $asset)
                         <tr class="hover:bg-gray-50 transition-colors">
+                            <x-table.num-td :paginator="$assets" />
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {{ $asset->inventory->dataBarang->nama_barang ?? '-' }}
                             </td>
@@ -53,7 +58,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-10 text-center text-sm text-gray-500">
+                            <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500">
                                 Belum ada data aset untuk ditampilkan.
                             </td>
                         </tr>
