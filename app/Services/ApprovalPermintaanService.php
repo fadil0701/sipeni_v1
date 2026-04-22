@@ -76,10 +76,24 @@ class ApprovalPermintaanService
                     }
                     $detail = DetailPermintaanBarang::find($detailId);
                     if ($detail && $detail->id_permintaan == $permintaan->id_permintaan) {
-                        $detail->update(['qty_diminta' => $qtyBaru]);
+                        $originalQty = $detail->qty_diminta_awal ?? $detail->qty_diminta;
+                        $detail->update([
+                            'qty_diminta_awal' => $originalQty,
+                            'qty_diminta' => $qtyBaru,
+                            'qty_disetujui' => $qtyBaru,
+                        ]);
                     }
                 }
             }
+
+            // Pastikan item yang tidak dikoreksi tetap memiliki nilai qty_disetujui.
+            DetailPermintaanBarang::query()
+                ->where('id_permintaan', $permintaan->id_permintaan)
+                ->whereNull('qty_disetujui')
+                ->update([
+                    'qty_diminta_awal' => DB::raw('COALESCE(qty_diminta_awal, qty_diminta)'),
+                    'qty_disetujui' => DB::raw('qty_diminta'),
+                ]);
 
             $this->approvalService->approve($approval, $user, $validated['catatan'] ?? null);
 
@@ -153,8 +167,10 @@ class ApprovalPermintaanService
         }
 
         DB::transaction(function () use ($approval, $permintaan, $user): void {
-            $jenisPermintaan = is_array($permintaan->jenis_permintaan) ? $permintaan->jenis_permintaan : (json_decode($permintaan->jenis_permintaan, true) ?? []);
-            $kategoriGudang = array_values(array_unique(array_intersect($jenisPermintaan, ['PERSEDIAAN', 'FARMASI'])));
+            $jenisPermintaan = is_array($permintaan->jenis_permintaan)
+                ? $permintaan->jenis_permintaan
+                : (json_decode($permintaan->jenis_permintaan, true) ?? []);
+            $kategoriGudang = array_values(array_unique(array_intersect($jenisPermintaan, ['ASET', 'PERSEDIAAN', 'FARMASI'])));
 
             foreach ($kategoriGudang as $kategori) {
                 $roleName = match ($kategori) {

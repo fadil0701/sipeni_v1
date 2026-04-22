@@ -16,12 +16,16 @@ class DetailPermintaanBarang extends Model
         'id_data_barang',
         'deskripsi_barang',
         'qty_diminta',
+        'qty_diminta_awal',
+        'qty_disetujui',
         'id_satuan',
         'keterangan',
     ];
 
     protected $casts = [
         'qty_diminta' => 'decimal:2',
+        'qty_diminta_awal' => 'decimal:2',
+        'qty_disetujui' => 'decimal:2',
     ];
 
     // Relationships

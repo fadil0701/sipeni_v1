@@ -25,6 +25,16 @@
             <div>
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Distribusi</h3>
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Permintaan Barang (acuan proses)</label>
+                        <input
+                            type="text"
+                            readonly
+                            value="{{ $selectedPermintaan?->no_permintaan ? $selectedPermintaan->no_permintaan.' - '.($selectedPermintaan->unitKerja->nama_unit_kerja ?? '-') : '-' }}"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700 sm:text-sm"
+                        >
+                    </div>
+
                     <div>
                         <label for="tanggal_distribusi" class="block text-sm font-medium text-gray-700 mb-2">
                             Tanggal Distribusi <span class="text-red-500">*</span>
@@ -121,6 +131,34 @@
                     </div>
                 </div>
             </div>
+
+            @if($selectedPermintaan && $selectedPermintaan->detailPermintaan->count() > 0)
+            <div>
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Detail Permintaan (hasil proses)</h3>
+                <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200 table-no-enhance">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Barang</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Diminta</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Disetujui</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Satuan</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach($selectedPermintaan->detailPermintaan as $detailPermintaan)
+                                <tr>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $detailPermintaan->dataBarang->nama_barang ?? '-' }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ number_format((float) ($detailPermintaan->qty_diminta_awal ?? $detailPermintaan->qty_diminta), 2, ',', '.') }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ number_format((float) ($detailPermintaan->qty_disetujui ?? $detailPermintaan->qty_diminta), 2, ',', '.') }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $detailPermintaan->satuan->nama_satuan ?? '-' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @endif
 
             <!-- Detail Distribusi -->
             <div>

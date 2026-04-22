@@ -476,7 +476,7 @@ class ApprovalPermintaanController extends Controller
             'catatan' => 'nullable|string',
             'koreksi_qty' => 'nullable|array',
             'koreksi_qty.*' => 'nullable|numeric|min:0.01',
-        ], 'Permintaan telah diverifikasi, disetujui, dan didisposisikan ke Admin Gudang/Pengurus Barang.');
+        ], 'Permintaan telah diverifikasi dan diteruskan ke proses distribusi.');
     }
 
     /**

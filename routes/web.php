@@ -18,6 +18,7 @@ use App\Http\Controllers\Master\KategoriBarangController;
 use App\Http\Controllers\Master\JenisBarangController;
 use App\Http\Controllers\Master\SubjenisBarangController;
 use App\Http\Controllers\Master\DataBarangController;
+use App\Http\Controllers\Master\StrukturBarangImportController;
 use App\Http\Controllers\Master\SatuanController;
 use App\Http\Controllers\Master\SumberAnggaranController;
 use App\Http\Controllers\Inventory\DataStockController;
@@ -78,6 +79,10 @@ Route::middleware(['auth'])->group(function () {
     
     // Master Data - Admin & Admin Gudang
     Route::prefix('master-data')->name('master-data.')->middleware(['role:admin,admin_gudang'])->group(function () {
+        Route::get('import-struktur-barang', [StrukturBarangImportController::class, 'index'])->name('import-struktur-barang.index');
+        Route::post('import-struktur-barang', [StrukturBarangImportController::class, 'import'])->name('import-struktur-barang.import');
+        Route::get('import-struktur-barang/template/download', [StrukturBarangImportController::class, 'downloadTemplate'])->name('import-struktur-barang.template');
+
         Route::resource('aset', AsetController::class)->middleware(['role:admin']);
         Route::resource('kode-barang', KodeBarangController::class)->middleware(['role:admin']);
         Route::resource('kategori-barang', KategoriBarangController::class)->middleware(['role:admin']);

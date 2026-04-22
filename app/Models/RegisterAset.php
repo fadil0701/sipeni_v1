@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 
 class RegisterAset extends Model
 {
@@ -28,6 +29,55 @@ class RegisterAset extends Model
         'status_aset' => 'string',
         'tanggal_perolehan' => 'date',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (RegisterAset $registerAset) {
+            // Guard anti dual source:
+            // 1) usahakan id_item selalu terisi (fallback dari id_inventory/data lama),
+            // 2) nomor_register selalu mengikuti inventory_item.kode_register.
+            $registerAset->syncWithInventoryItemSingleSource();
+        });
+    }
+
+    public function syncWithInventoryItemSingleSource(): void
+    {
+        $hasIdItemColumn = Schema::hasColumn($this->getTable(), 'id_item');
+        if (! $hasIdItemColumn) {
+            return;
+        }
+
+        $inventoryItem = null;
+
+        if ($this->id_item) {
+            $inventoryItem = InventoryItem::query()->find($this->id_item);
+        }
+
+        // Fallback untuk data lama yang id_item masih null.
+        if (! $inventoryItem && $this->id_inventory) {
+            if (! empty($this->nomor_register)) {
+                $inventoryItem = InventoryItem::query()
+                    ->where('id_inventory', $this->id_inventory)
+                    ->where('kode_register', $this->nomor_register)
+                    ->first();
+            }
+
+            if (! $inventoryItem) {
+                $inventoryItem = InventoryItem::query()
+                    ->where('id_inventory', $this->id_inventory)
+                    ->orderBy('id_item')
+                    ->first();
+            }
+        }
+
+        if (! $inventoryItem) {
+            return;
+        }
+
+        $this->id_item = $inventoryItem->id_item;
+        $this->id_inventory = $inventoryItem->id_inventory;
+        $this->nomor_register = $inventoryItem->kode_register;
+    }
 
     // Relationships
     public function inventory(): BelongsTo

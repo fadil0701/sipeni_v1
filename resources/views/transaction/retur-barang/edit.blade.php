@@ -308,6 +308,20 @@
 </template>
 
 @push('scripts')
+@php
+    $existingDetailsForJs = $retur->detailRetur->map(function ($detail) {
+        return [
+            'id_detail_retur' => $detail->id_detail_retur,
+            'id_inventory' => $detail->id_inventory,
+            'nama_barang' => ($detail->inventory->dataBarang->nama_barang ?? '-'),
+            'qty_retur' => $detail->qty_retur,
+            'id_satuan' => $detail->id_satuan,
+            'alasan_retur_item' => ($detail->alasan_retur_item ?? ''),
+            'keterangan' => ($detail->keterangan ?? ''),
+            'qty_diterima' => null,
+        ];
+    });
+@endphp
 <script>
 let penerimaanDetails = [];
 const urlPegawaiByUnit = @json(url('/api/master/pegawai-by-unit'));
@@ -316,18 +330,7 @@ const oldGudangAsal = @json(old('id_gudang_asal', $retur->id_gudang_asal));
 const oldPegawai = @json(old('id_pegawai_pengirim', $retur->id_pegawai_pengirim));
 
 // Existing detail retur data
-const existingDetails = @json($retur->detailRetur->map(function($detail) {
-    return [
-        'id_detail_retur' => $detail->id_detail_retur,
-        'id_inventory' => $detail->id_inventory,
-        'nama_barang' => ($detail->inventory->dataBarang->nama_barang ?? '-'),
-        'qty_retur' => $detail->qty_retur,
-        'id_satuan' => $detail->id_satuan,
-        'alasan_retur_item' => ($detail->alasan_retur_item ?? ''),
-        'keterangan' => ($detail->keterangan ?? ''),
-        'qty_diterima' => null, // Will be loaded from penerimaan
-    ];
-}));
+const existingDetails = @json($existingDetailsForJs);
 
 function loadByUnitKerja(unitId) {
     const asalSel = document.getElementById('id_gudang_asal');

@@ -25,7 +25,7 @@ class DistribusiService
                 'tanggal_distribusi' => $validated['tanggal_distribusi'],
                 'id_gudang_asal' => $validated['id_gudang_asal'],
                 'id_gudang_tujuan' => $validated['id_gudang_tujuan'],
-                'id_pegawai_pengirim' => $validated['id_pegawai_pengirim'],
+                'id_pegawai_pengirim' => $validated['id_pegawai_pengirim'] ?? null,
                 'status_distribusi' => DistribusiStatus::Draft,
                 'keterangan' => $validated['keterangan'] ?? null,
             ]);
@@ -48,7 +48,7 @@ class DistribusiService
                 'tanggal_distribusi' => $validated['tanggal_distribusi'],
                 'id_gudang_asal' => $validated['id_gudang_asal'],
                 'id_gudang_tujuan' => $validated['id_gudang_tujuan'],
-                'id_pegawai_pengirim' => $validated['id_pegawai_pengirim'],
+                'id_pegawai_pengirim' => $validated['id_pegawai_pengirim'] ?? null,
                 'keterangan' => $validated['keterangan'] ?? null,
             ]);
 

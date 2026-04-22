@@ -9,8 +9,9 @@ class CompileDistribusiController extends Controller
 {
     public function index(Request $request)
     {
-        return redirect()->route('transaction.distribusi.index')
-            ->with('info', 'Compile Distribusi sudah disederhanakan ke modul Distribusi.');
+        return redirect()
+            ->route('transaction.distribusi.index', $request->query())
+            ->with('info', 'Menu SBBK telah disatukan ke menu Distribusi Barang.');
     }
 
     public function create($permintaanId)

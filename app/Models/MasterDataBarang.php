@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class MasterDataBarang extends Model
 {
@@ -46,5 +47,10 @@ class MasterDataBarang extends Model
     public function detailPermintaan(): HasMany
     {
         return $this->hasMany(DetailPermintaanBarang::class, 'id_data_barang', 'id_data_barang');
+    }
+
+    public function permendagriMapping(): HasOne
+    {
+        return $this->hasOne(MasterDataBarangPermendagri::class, 'id_data_barang', 'id_data_barang');
     }
 }

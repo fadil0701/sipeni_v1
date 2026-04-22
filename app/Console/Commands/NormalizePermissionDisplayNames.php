@@ -2,124 +2,119 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Route;
 use App\Models\Permission;
 use App\Support\PermissionModule;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
-class SyncPermissionsFromRoutes extends Command
+class NormalizePermissionDisplayNames extends Command
 {
-    protected $signature = 'permission:sync-routes';
-    protected $description = 'Sync permissions from all routes in web.php';
+    protected $signature = 'permission:normalize-display-names {--dry-run : Tampilkan preview tanpa update data} {--yes : Lewati konfirmasi}';
 
-    public function handle()
+    protected $description = 'Normalkan display_name permission agar create/store dan edit/update lebih jelas.';
+
+    public function handle(): int
     {
-        $this->info('Mengecek semua route dan menambahkan permission yang missing...');
-        $this->newLine();
+        $dryRun = (bool) $this->option('dry-run');
+        $skipConfirm = (bool) $this->option('yes');
 
-        $routes = Route::getRoutes();
-        $permissions = [];
-        $missingPermissions = [];
+        $permissions = Permission::query()
+            ->where('name', 'not like', '%.*')
+            ->orderBy('name')
+            ->get();
 
-        foreach ($routes as $route) {
-            $routeName = $route->getName();
-            
-            // Skip jika tidak ada name atau route system
-            if (!$routeName || 
-                str_starts_with($routeName, 'ignition.') ||
-                str_starts_with($routeName, 'sanctum.') ||
-                str_starts_with($routeName, 'filament.') ||
-                str_starts_with($routeName, 'livewire.') ||
-                str_starts_with($routeName, 'storage.') ||
-                $routeName === 'login' ||
-                $routeName === 'logout' ||
-                $routeName === 'logout.get') {
-                continue;
+        if ($permissions->isEmpty()) {
+            $this->info('Tidak ada permission yang perlu diproses.');
+            return self::SUCCESS;
+        }
+
+        $changes = [];
+
+        foreach ($permissions as $permission) {
+            $newDisplayName = $this->generateDisplayName($permission->name);
+            $newDescription = $this->generateDescription($permission->name);
+            $newModule = $this->extractModule($permission->name);
+            $newGroup = $this->extractGroup($permission->name);
+            $newSortOrder = $this->calculateSortOrder($permission->name);
+
+            $dirty = false;
+            $from = [];
+            $to = [];
+
+            foreach ([
+                'display_name' => $newDisplayName,
+                'description' => $newDescription,
+                'module' => $newModule,
+                'group' => $newGroup,
+                'sort_order' => $newSortOrder,
+            ] as $field => $value) {
+                if ($permission->{$field} !== $value) {
+                    $dirty = true;
+                    $from[$field] = $permission->{$field};
+                    $to[$field] = $value;
+                }
             }
-            
-            // Skip route API bantu (dropdown/detail ajax) agar tidak menambah checklist duplikatif di role
-            if (str_starts_with($routeName, 'api.')) {
-                continue;
-            }
 
-            // Cek apakah permission sudah ada
-            $permission = Permission::where('name', $routeName)->first();
-            
-            if (!$permission) {
-                $missingPermissions[] = $routeName;
-                
-                // Generate display name dan description dari route name
-                $displayName = $this->generateDisplayName($routeName);
-                $description = $this->generateDescription($routeName);
-                $module = $this->extractModule($routeName);
-                $group = $this->extractGroup($routeName);
-                $sortOrder = $this->calculateSortOrder($routeName);
-
-                $permissions[] = [
-                    'name' => $routeName,
-                    'display_name' => $displayName,
-                    'module' => $module,
-                    'group' => $group,
-                    'description' => $description,
-                    'sort_order' => $sortOrder,
+            if ($dirty) {
+                $changes[] = [
+                    'id' => $permission->id,
+                    'name' => $permission->name,
+                    'from' => $from,
+                    'to' => $to,
                 ];
             }
         }
 
-        if (empty($permissions)) {
-            $this->info('✓ Semua permission sudah terdaftar!');
-            return Command::SUCCESS;
+        if (empty($changes)) {
+            $this->info('Semua permission sudah sesuai standar display name terbaru.');
+            return self::SUCCESS;
         }
 
-        $this->warn('Ditemukan ' . count($permissions) . ' permission yang missing:');
+        $this->warn('Ditemukan ' . count($changes) . ' permission yang akan diperbarui.');
         $this->newLine();
 
-        // Tampilkan daftar permission yang akan ditambahkan
-        $this->table(
-            ['Name', 'Display Name', 'Module', 'Group'],
-            array_map(function($p) {
-                return [
-                    $p['name'],
-                    $p['display_name'],
-                    $p['module'],
-                    $p['group'],
-                ];
-            }, $permissions)
-        );
+        $previewRows = array_map(function (array $change) {
+            return [
+                $change['name'],
+                $change['from']['display_name'] ?? '-',
+                $change['to']['display_name'] ?? '-',
+            ];
+        }, array_slice($changes, 0, 20));
 
-        if ($this->confirm('Apakah Anda ingin menambahkan permission-permission ini ke database?', true)) {
+        $this->table(['Permission', 'Display Name Lama', 'Display Name Baru'], $previewRows);
+        if (count($changes) > 20) {
+            $this->line('... dan ' . (count($changes) - 20) . ' perubahan lain.');
+        }
+
+        if ($dryRun) {
             $this->newLine();
-            $this->info('Menambahkan permission...');
-
-            $bar = $this->output->createProgressBar(count($permissions));
-            $bar->start();
-
-            foreach ($permissions as $permission) {
-                Permission::updateOrCreate(
-                    ['name' => $permission['name']],
-                    $permission
-                );
-                $bar->advance();
-            }
-
-            $bar->finish();
-            $this->newLine(2);
-            $this->info('✓ Berhasil menambahkan ' . count($permissions) . ' permission!');
-        } else {
-            $this->info('Dibatalkan.');
+            $this->info('Dry run selesai. Tidak ada data yang diubah.');
+            return self::SUCCESS;
         }
 
-        return Command::SUCCESS;
+        if (!$skipConfirm && !$this->confirm('Lanjutkan update display_name permission?', true)) {
+            $this->info('Dibatalkan.');
+            return self::SUCCESS;
+        }
+
+        DB::transaction(function () use ($changes) {
+            foreach ($changes as $change) {
+                Permission::where('id', $change['id'])->update($change['to']);
+            }
+        });
+
+        $this->newLine();
+        $this->info('Berhasil memperbarui ' . count($changes) . ' permission.');
+
+        return self::SUCCESS;
     }
 
     private function generateDisplayName(string $routeName): string
     {
-        // Convert route name ke display name
-        // transaction.permintaan-barang.index -> View Permintaan Barang
         $parts = explode('.', $routeName);
         $action = end($parts);
         $resource = $parts[count($parts) - 2] ?? $parts[0];
-        
+
         $actionMap = [
             'index' => 'View',
             'create' => 'Open Create Form',
@@ -140,8 +135,8 @@ class SyncPermissionsFromRoutes extends Command
         ];
 
         $actionText = $actionMap[$action] ?? ucfirst($action);
-        $resourceText = str_replace('-', ' ', $resource);
-        $resourceText = ucwords($resourceText);
+        $resourceText = (string) str_replace('-', ' ', $resource);
+        $resourceText = (string) ucwords($resourceText);
 
         return $actionText . ' ' . $resourceText;
     }
@@ -151,14 +146,14 @@ class SyncPermissionsFromRoutes extends Command
         $parts = explode('.', $routeName);
         $action = end($parts);
         $resource = $parts[count($parts) - 2] ?? $parts[0];
-        
+
         $actionMap = [
             'index' => 'Melihat daftar',
-            'create' => 'Membuat',
-            'store' => 'Menyimpan',
+            'create' => 'Membuka form tambah',
+            'store' => 'Menyimpan data baru',
             'show' => 'Melihat detail',
-            'edit' => 'Mengedit',
-            'update' => 'Memperbarui',
+            'edit' => 'Membuka form edit',
+            'update' => 'Menyimpan perubahan',
             'destroy' => 'Menghapus',
             'ajukan' => 'Mengajukan',
             'mengetahui' => 'Memberi status mengetahui pada',
@@ -189,12 +184,11 @@ class SyncPermissionsFromRoutes extends Command
     private function extractGroup(string $routeName): string
     {
         $parts = explode('.', $routeName);
-        
-        // Ambil 2 bagian pertama sebagai group
+
         if (count($parts) >= 2) {
             return $parts[0] . '.' . $parts[1];
         }
-        
+
         return $parts[0];
     }
 
@@ -202,7 +196,7 @@ class SyncPermissionsFromRoutes extends Command
     {
         $parts = explode('.', $routeName);
         $module = $parts[0];
-        
+
         $baseOrder = [
             'user' => 1,
             'master-manajemen' => 10,
@@ -210,6 +204,7 @@ class SyncPermissionsFromRoutes extends Command
             'master-data' => 20,
             'inventory' => 100,
             'transaction' => 200,
+            'maintenance' => 250,
             'asset' => 300,
             'planning' => 400,
             'procurement' => 500,
@@ -219,11 +214,9 @@ class SyncPermissionsFromRoutes extends Command
         ];
 
         $base = $baseOrder[$module] ?? 900;
-        
-        // Tambahkan berdasarkan resource dan action
         $resource = $parts[1] ?? '';
         $action = end($parts);
-        
+
         $resourceOrder = [
             'permintaan-barang' => 0,
             'approval' => 10,
