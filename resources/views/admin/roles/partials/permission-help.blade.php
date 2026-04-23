@@ -5,6 +5,7 @@
         <li><strong>Hak akses di bawah</strong> menentukan route dan aksi yang diizinkan untuk siapa pun yang memakai role ini (pemeriksaan oleh sistem).</li>
         <li><strong>Modul menu di Manajemen User</strong> membatasi menu sidebar yang ditampilkan per akun. Jika sebuah modul tidak dipilih untuk user, menu terkait disembunyikan walaupun role punya permission.</li>
         <li><strong>Level akses Anda</strong> membatasi permission yang dapat dicentang: hanya hak yang sama dengan yang Anda miliki (menurut role dan data permission) yang dapat diberikan ke role lain.</li>
+        <li><strong>Pairing aksi otomatis</strong>: `create` dipasangkan dengan `store`, dan `edit` dipasangkan dengan `update` agar assign role lebih aman.</li>
     </ul>
     <p class="mt-3 text-xs text-slate-600">
         Setelah mengubah permission role, jalankan sinkronisasi bila perlu: <code class="bg-white px-1 rounded border">php artisan permission:sync-routes</code> agar daftar route terbaru tersedia di database.

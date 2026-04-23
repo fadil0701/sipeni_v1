@@ -31,9 +31,13 @@
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table
+            class="min-w-full divide-y divide-gray-200"
+            @if($sumberAnggarans instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $sumberAnggarans->firstItem() }}" @endif
+        >
             <thead class="bg-gray-50">
                 <tr>
+                    <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Anggaran</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
@@ -41,6 +45,7 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($sumberAnggarans as $sumberAnggaran)
                     <tr class="hover:bg-gray-50 transition-colors">
+                        <x-table.num-td :paginator="$sumberAnggarans" />
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $sumberAnggaran->nama_anggaran }}</div>
                         </td>
@@ -58,7 +63,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="2" class="px-6 py-12 text-center">
+                        <td colspan="3" class="px-6 py-12 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>

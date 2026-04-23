@@ -31,9 +31,13 @@
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table
+            class="min-w-full divide-y divide-gray-200"
+            @if($kegiatans instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $kegiatans->firstItem() }}" @endif
+        >
             <thead class="bg-gray-50">
                 <tr>
+                    <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Kegiatan</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Kegiatan</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program</th>
@@ -43,6 +47,7 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($kegiatans as $kegiatan)
                     <tr class="hover:bg-gray-50 transition-colors">
+                        <x-table.num-td :paginator="$kegiatans" />
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-mono text-gray-900">{{ $kegiatan->kode_kegiatan ?? '—' }}</div>
                         </td>
@@ -74,7 +79,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="px-6 py-12 text-center">
+                        <td colspan="5" class="px-6 py-12 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>

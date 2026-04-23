@@ -12,11 +12,23 @@
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200">
     <div class="px-6 py-5 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">Tambah Distribusi Barang (SBBK)</h2>
+        @php
+            $isProsesMode = ($flowMode ?? 'distribusi') === 'proses';
+        @endphp
+        <h2 class="text-xl font-semibold text-gray-900">
+            {{ $isProsesMode ? 'Proses Daftar Permintaan ke SBBK' : 'Tambah Distribusi Barang (SBBK)' }}
+        </h2>
+        @if($isProsesMode)
+            <p class="text-sm text-gray-600 mt-1">Tahap ini untuk menyusun SBBK dari permintaan yang sudah di-approve. Pegawai pengirim ditentukan pada tahap Distribusi.</p>
+        @endif
     </div>
     
     <form action="{{ route('transaction.distribusi.store') }}" method="POST" class="p-6" id="formDistribusi">
         @csrf
+        <input type="hidden" name="flow_mode" value="{{ $flowMode ?? 'distribusi' }}">
+        @if(!empty($approvalLogId))
+            <input type="hidden" name="approval_log_id" value="{{ $approvalLogId }}">
+        @endif
         
         <div class="space-y-6">
             <!-- Informasi Distribusi -->
@@ -36,7 +48,7 @@
                         >
                             <option value="">Pilih Permintaan Barang</option>
                             @foreach($permintaans as $permintaan)
-                                <option value="{{ $permintaan->id_permintaan }}" {{ old('id_permintaan') == $permintaan->id_permintaan ? 'selected' : '' }}>
+                                <option value="{{ $permintaan->id_permintaan }}" {{ old('id_permintaan', $selectedPermintaan?->id_permintaan) == $permintaan->id_permintaan ? 'selected' : '' }}>
                                     {{ $permintaan->no_permintaan }} - {{ $permintaan->unitKerja->nama_unit_kerja ?? '-' }} ({{ $permintaan->tanggal_permintaan->format('d/m/Y') }})
                                 </option>
                             @endforeach
@@ -73,6 +85,7 @@
                             required
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_gudang_asal') border-red-500 @enderror"
                             onchange="loadInventoryFromGudang(this.value)"
+                            data-old-value="{{ old('id_gudang_asal') }}"
                         >
                             <option value="">Pilih Gudang Asal</option>
                             @foreach($gudangs as $gudang)
@@ -109,27 +122,29 @@
                         @enderror
                     </div>
 
-                    <div>
-                        <label for="id_pegawai_pengirim" class="block text-sm font-medium text-gray-700 mb-2">
-                            Pegawai Pengirim <span class="text-red-500">*</span>
-                        </label>
-                        <select 
-                            id="id_pegawai_pengirim" 
-                            name="id_pegawai_pengirim" 
-                            required
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_pegawai_pengirim') border-red-500 @enderror"
-                        >
-                            <option value="">Pilih Pegawai Pengirim</option>
-                            @foreach($pegawais as $pegawai)
-                                <option value="{{ $pegawai->id }}" {{ old('id_pegawai_pengirim') == $pegawai->id ? 'selected' : '' }}>
-                                    {{ $pegawai->nama_pegawai }} ({{ $pegawai->nip_pegawai }})
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('id_pegawai_pengirim')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
+                    @if(!$isProsesMode)
+                        <div>
+                            <label for="id_pegawai_pengirim" class="block text-sm font-medium text-gray-700 mb-2">
+                                Pegawai Pengirim <span class="text-red-500">*</span>
+                            </label>
+                            <select 
+                                id="id_pegawai_pengirim" 
+                                name="id_pegawai_pengirim" 
+                                required
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_pegawai_pengirim') border-red-500 @enderror"
+                            >
+                                <option value="">Pilih Pegawai Pengirim</option>
+                                @foreach($pegawais as $pegawai)
+                                    <option value="{{ $pegawai->id }}" {{ old('id_pegawai_pengirim') == $pegawai->id ? 'selected' : '' }}>
+                                        {{ $pegawai->nama_pegawai }} ({{ $pegawai->nip_pegawai }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('id_pegawai_pengirim')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    @endif
 
                     <div class="sm:col-span-2">
                         <label for="keterangan" class="block text-sm font-medium text-gray-700 mb-2">Keterangan</label>
@@ -189,7 +204,7 @@
                 type="submit" 
                 class="px-5 py-2.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-                Simpan
+                {{ $isProsesMode ? 'Simpan SBBK (Masuk Tahap Distribusi)' : 'Simpan' }}
             </button>
         </div>
     </form>
@@ -286,6 +301,7 @@
 <script>
 let itemIndex = 0;
 let inventoryData = {};
+const selectedApprovalLogId = @json(request('approval_log'));
 
 // Simpan data gudang untuk fallback
 const allGudangs = [
@@ -310,38 +326,58 @@ function loadPermintaanDetail(permintaanId) {
     }
 
     // Load gudang tujuan berdasarkan permintaan
-    fetch(`{{ route('transaction.distribusi.api.gudang-tujuan', ':id') }}`.replace(':id', permintaanId))
+    const endpoint = `{{ route('transaction.distribusi.api.gudang-tujuan', ':id') }}`.replace(':id', permintaanId);
+    const url = selectedApprovalLogId ? `${endpoint}?approval_log=${selectedApprovalLogId}` : endpoint;
+
+    fetch(url)
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.gudang.length > 0) {
-                const gudangTujuanSelect = document.getElementById('id_gudang_tujuan');
-                gudangTujuanSelect.innerHTML = '<option value="">Pilih Gudang Tujuan</option>';
-                
+            const gudangTujuanSelect = document.getElementById('id_gudang_tujuan');
+            gudangTujuanSelect.innerHTML = '<option value="">Pilih Gudang Tujuan</option>';
+
+            if (data.success && Array.isArray(data.gudang) && data.gudang.length > 0) {
                 data.gudang.forEach(gudang => {
                     const option = document.createElement('option');
                     option.value = gudang.id_gudang;
                     option.textContent = `${gudang.nama_gudang} (${gudang.jenis_gudang})`;
                     gudangTujuanSelect.appendChild(option);
                 });
-                
-                // Auto-select jika hanya ada 1 gudang atau jika ada old value
+
                 const oldValue = gudangTujuanSelect.getAttribute('data-old-value');
-                if (oldValue && data.gudang.some(g => g.id_gudang == oldValue)) {
+                if (oldValue && data.gudang.some(g => String(g.id_gudang) === String(oldValue))) {
                     gudangTujuanSelect.value = oldValue;
                 } else if (data.gudang.length === 1) {
                     gudangTujuanSelect.value = data.gudang[0].id_gudang;
                 }
             } else {
-                // Jika tidak ada gudang unit, tampilkan semua gudang
-                const gudangTujuanSelect = document.getElementById('id_gudang_tujuan');
-                gudangTujuanSelect.innerHTML = '<option value="">Pilih Gudang Tujuan</option>';
-                
-                allGudangs.forEach(gudang => {
+                gudangTujuanSelect.innerHTML = '<option value="">Gudang UNIT tujuan tidak ditemukan</option>';
+            }
+
+            // Auto-set gudang asal (pusat) sesuai kategori disposisi/permintaan.
+            const gudangAsalSelect = document.getElementById('id_gudang_asal');
+            gudangAsalSelect.innerHTML = '<option value="">Pilih Gudang Asal</option>';
+            const asalList = Array.isArray(data.gudang_asal) ? data.gudang_asal : [];
+
+            if (asalList.length > 0) {
+                asalList.forEach(gudang => {
                     const option = document.createElement('option');
                     option.value = gudang.id_gudang;
-                    option.textContent = `${gudang.nama_gudang} (${gudang.jenis_gudang})`;
-                    gudangTujuanSelect.appendChild(option);
+                    option.textContent = `${gudang.nama_gudang} (${gudang.kategori_gudang || gudang.jenis_gudang})`;
+                    gudangAsalSelect.appendChild(option);
                 });
+
+                const oldAsal = gudangAsalSelect.getAttribute('data-old-value');
+                if (oldAsal && asalList.some(g => String(g.id_gudang) === String(oldAsal))) {
+                    gudangAsalSelect.value = oldAsal;
+                } else if (asalList.length === 1) {
+                    gudangAsalSelect.value = asalList[0].id_gudang;
+                }
+
+                if (gudangAsalSelect.value) {
+                    loadInventoryFromGudang(gudangAsalSelect.value);
+                }
+            } else {
+                gudangAsalSelect.innerHTML = '<option value="">Gudang PUSAT asal tidak ditemukan</option>';
             }
         })
         .catch(error => {
@@ -357,6 +393,7 @@ function loadPermintaanDetail(permintaanId) {
                 html += '<thead class="bg-gray-50"><tr>';
                 html += '<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Barang</th>';
                 html += '<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty Diminta</th>';
+                html += '<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty Disetujui</th>';
                 html += '<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Satuan</th>';
                 html += '</tr></thead><tbody>';
                 
@@ -364,6 +401,7 @@ function loadPermintaanDetail(permintaanId) {
                     html += '<tr>';
                     html += `<td>${detail.nama_barang}</td>`;
                     html += `<td>${detail.qty_diminta}</td>`;
+                    html += `<td>${detail.qty_disetujui}</td>`;
                     html += `<td>${detail.satuan}</td>`;
                     html += '</tr>';
                 });
@@ -417,6 +455,11 @@ function loadInventoryFromGudang(gudangId) {
 
                 if (currentValue) {
                     select.value = currentValue;
+                    updateHargaSatuan(select);
+                } else if (data.inventory.length === 1) {
+                    // Auto-select jika hanya ada satu inventory yang tersedia.
+                    select.value = String(data.inventory[0].id_inventory);
+                    updateHargaSatuan(select);
                 }
             });
         })
@@ -442,6 +485,28 @@ function updateHargaSatuan(select) {
         }
         
         calculateSubtotal(hargaInput);
+    }
+}
+
+function syncDerivedFieldsFromInventory(row) {
+    if (!row) return;
+    const inventorySelect = row.querySelector('.select-inventory');
+    const hargaInput = row.querySelector('.harga-satuan-input');
+    const satuanSelect = row.querySelector('.select-satuan');
+    if (!inventorySelect || !hargaInput || !satuanSelect) return;
+    if (!inventorySelect.value) return;
+
+    const selectedOption = inventorySelect.options[inventorySelect.selectedIndex];
+    if (!selectedOption) return;
+
+    const harga = selectedOption.getAttribute('data-harga');
+    const satuanId = selectedOption.getAttribute('data-satuan');
+
+    if (harga && (!hargaInput.value || parseFloat(hargaInput.value) <= 0)) {
+        hargaInput.value = harga;
+    }
+    if (satuanId && !satuanSelect.value) {
+        satuanSelect.value = satuanId;
     }
 }
 
@@ -473,6 +538,12 @@ function loadInventoryToSelect(selectElement, gudangId) {
                 option.setAttribute('data-satuan', inv.id_satuan);
                 selectElement.appendChild(option);
             });
+
+            // Auto-select jika hanya ada satu inventory lalu sync harga+satuan.
+            if (data.inventory.length === 1) {
+                selectElement.value = String(data.inventory[0].id_inventory);
+                updateHargaSatuan(selectElement);
+            }
         })
         .catch(error => {
             console.error('Error loading inventory:', error);
@@ -523,7 +594,8 @@ function addItemRow() {
         // Jika inventoryData sudah ada, langsung isi
         if (Object.keys(inventoryData).length > 0) {
             inventorySelect.innerHTML = '<option value="">Pilih Inventory</option>';
-            Object.values(inventoryData).forEach(inv => {
+            const inventoryValues = Object.values(inventoryData);
+            inventoryValues.forEach(inv => {
                 const option = document.createElement('option');
                 option.value = inv.id_inventory;
                 const kodeText = inv.kode_barang ? ` (${inv.kode_barang})` : '';
@@ -532,6 +604,11 @@ function addItemRow() {
                 option.setAttribute('data-satuan', inv.id_satuan);
                 inventorySelect.appendChild(option);
             });
+
+            if (inventoryValues.length === 1) {
+                inventorySelect.value = String(inventoryValues[0].id_inventory);
+                updateHargaSatuan(inventorySelect);
+            }
         } else {
             // Jika belum ada, load dari API
             loadInventoryToSelect(inventorySelect, gudangAsal);
@@ -594,6 +671,9 @@ document.addEventListener('DOMContentLoaded', function() {
             let isValid = true;
             let emptyFields = [];
             detailRows.forEach((row, index) => {
+                // Sinkronkan ulang field turunan dari inventory sebelum validasi.
+                syncDerivedFieldsFromInventory(row);
+
                 const idInventory = row.querySelector('[name*="[id_inventory]"]');
                 const qtyDistribusi = row.querySelector('[name*="[qty_distribusi]"]');
                 const idSatuan = row.querySelector('[name*="[id_satuan]"]');
@@ -609,7 +689,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 if (!idSatuan || !idSatuan.value) {
                     isValid = false;
-                    emptyFields.push(`Item ${index + 1}: Satuan`);
+                    emptyFields.push(`Item ${index + 1}: Satuan (pilih ulang inventory atau pilih satuan manual)`);
                 }
                 if (!hargaSatuan || !hargaSatuan.value || parseFloat(hargaSatuan.value) <= 0) {
                     isValid = false;

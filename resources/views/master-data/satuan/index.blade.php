@@ -31,9 +31,13 @@
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table
+            class="min-w-full divide-y divide-gray-200"
+            @if($satuans instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $satuans->firstItem() }}" @endif
+        >
             <thead class="bg-gray-50">
                 <tr>
+                    <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Satuan</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
@@ -41,6 +45,7 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($satuans as $satuan)
                     <tr class="hover:bg-gray-50 transition-colors">
+                        <x-table.num-td :paginator="$satuans" />
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $satuan->nama_satuan }}</div>
                         </td>
@@ -58,7 +63,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="2" class="px-6 py-12 text-center">
+                        <td colspan="3" class="px-6 py-12 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                             </svg>

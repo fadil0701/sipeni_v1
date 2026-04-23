@@ -137,6 +137,8 @@ class PermintaanService
                 'id_data_barang' => $detail['id_data_barang'] ?? null,
                 'deskripsi_barang' => $detail['deskripsi_barang'] ?? null,
                 'qty_diminta' => $detail['qty_diminta'],
+                'qty_diminta_awal' => $detail['qty_diminta'],
+                'qty_disetujui' => $detail['qty_diminta'],
                 'id_satuan' => $detail['id_satuan'],
                 'keterangan' => $detail['keterangan'] ?? null,
             ]);

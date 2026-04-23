@@ -126,6 +126,9 @@
                         class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     >
                 </div>
+                <div class="mb-4 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    Pairing otomatis aktif: saat memilih <span class="font-semibold">Open Create Form</span> sistem juga memilih <span class="font-semibold">Store New</span>, dan <span class="font-semibold">Open Edit Form</span> akan dipasangkan dengan <span class="font-semibold">Update Existing</span>.
+                </div>
 
                 <div class="assignable-permissions-scope bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-[600px] overflow-y-auto">
                     @forelse($permissionGroups as $group)
@@ -165,13 +168,26 @@
                                                 {{ in_array($permission->id, $group['checked_ids']) ? 'checked' : '' }}
                                                 class="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded permission-checkbox"
                                                 data-module="{{ $group['module'] }}"
+                                                data-permission-key="{{ $permission->name }}"
                                             >
                                             <div class="ml-3 flex-1">
                                                 <div class="flex items-center justify-between">
                                                     <span class="text-sm font-medium text-gray-900">{{ $permission->display_name }}</span>
-                                                    @if(str_contains($permission->name, '.*'))
-                                                        <span class="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">All</span>
-                                                    @endif
+                                                    <div class="flex items-center gap-2">
+                                                        @php $action = collect(explode('.', $permission->name))->last(); @endphp
+                                                        @if($action === 'create')
+                                                            <span class="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">Open Form</span>
+                                                        @elseif($action === 'store')
+                                                            <span class="px-2 py-0.5 text-xs font-medium bg-teal-100 text-teal-800 rounded">Submit</span>
+                                                        @elseif($action === 'edit')
+                                                            <span class="px-2 py-0.5 text-xs font-medium bg-violet-100 text-violet-800 rounded">Open Edit</span>
+                                                        @elseif($action === 'update')
+                                                            <span class="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 rounded">Save Update</span>
+                                                        @endif
+                                                        @if(str_contains($permission->name, '.*'))
+                                                            <span class="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">All</span>
+                                                        @endif
+                                                    </div>
                                                 </div>
                                                 @if($permission->description)
                                                     <p class="text-xs text-gray-600 mt-1">{{ $permission->description }}</p>
@@ -298,6 +314,7 @@
                 // Update "Select All" checkbox when individual checkboxes change
                 scope.querySelectorAll('.permission-checkbox').forEach(function(checkbox) {
                     checkbox.addEventListener('change', function() {
+                        syncPairedPermissions(this);
                         const module = this.dataset.module;
                         const moduleCheckboxes = scope.querySelectorAll(`.permission-checkbox[data-module="${module}"]`);
                         const checkedCount = Array.from(moduleCheckboxes).filter(cb => cb.checked).length;
@@ -311,6 +328,29 @@
                         updateGlobalSelectAll();
                     });
                 });
+
+                function swapActionInPermissionKey(permissionKey, fromAction, toAction) {
+                    const suffix = `.${fromAction}`;
+                    if (!permissionKey.endsWith(suffix)) return null;
+                    return permissionKey.slice(0, -suffix.length) + `.${toAction}`;
+                }
+
+                function pairedPermissionKey(permissionKey) {
+                    if (!permissionKey) return null;
+                    return swapActionInPermissionKey(permissionKey, 'create', 'store')
+                        || swapActionInPermissionKey(permissionKey, 'store', 'create')
+                        || swapActionInPermissionKey(permissionKey, 'edit', 'update')
+                        || swapActionInPermissionKey(permissionKey, 'update', 'edit');
+                }
+
+                function syncPairedPermissions(sourceCheckbox) {
+                    const sourceKey = sourceCheckbox.dataset.permissionKey;
+                    const pairKey = pairedPermissionKey(sourceKey);
+                    if (!pairKey) return;
+                    const pairCheckbox = scope.querySelector(`.permission-checkbox[data-permission-key="${pairKey}"]`);
+                    if (!pairCheckbox) return;
+                    pairCheckbox.checked = sourceCheckbox.checked;
+                }
 
                 // Search functionality
                 const searchInput = document.getElementById('permission-search');

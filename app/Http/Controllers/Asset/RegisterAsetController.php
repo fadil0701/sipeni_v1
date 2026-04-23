@@ -540,7 +540,6 @@ class RegisterAsetController extends Controller
             'id_inventory' => 'required|exists:data_inventory,id_inventory',
             'id_unit_kerja' => 'required|exists:master_unit_kerja,id_unit_kerja',
             'id_ruangan' => 'nullable|exists:master_ruangan,id_ruangan',
-            'nomor_register' => 'nullable|string|max:100', // Bisa kosong, akan di-generate otomatis
             'kondisi_aset' => 'required|in:BAIK,RUSAK_RINGAN,RUSAK_BERAT',
             'status_aset' => 'required|in:AKTIF,NONAKTIF',
             'tanggal_perolehan' => 'required|date',
@@ -594,23 +593,8 @@ class RegisterAsetController extends Controller
             unset($validated['id_item']);
         }
         
-        // Generate nomor register otomatis jika tidak diisi atau masih mengandung "XXXX"
-        if (empty($validated['nomor_register']) || strpos($validated['nomor_register'], 'XXXX') !== false) {
-            $validated['nomor_register'] = $this->generateNomorRegister(
-                $validated['id_unit_kerja'],
-                $validated['id_ruangan'] ?? null,
-                $validated['tanggal_perolehan']
-            );
-        } else {
-            // Jika nomor register sudah ada, buat yang unik dengan menambahkan suffix
-            $nomorRegister = $validated['nomor_register'];
-            $counter = 1;
-            while (RegisterAset::where('nomor_register', $nomorRegister)->exists()) {
-                $nomorRegister = $validated['nomor_register'] . '-' . $counter;
-                $counter++;
-            }
-            $validated['nomor_register'] = $nomorRegister;
-        }
+        // Single source: nomor_register selalu mengikuti InventoryItem.kode_register.
+        $validated['nomor_register'] = $inventoryItem->kode_register;
         
         // Buat register aset
         $registerAset = RegisterAset::create($validated);
@@ -746,42 +730,19 @@ class RegisterAsetController extends Controller
             'status_aset' => 'required|in:AKTIF,NONAKTIF',
             'tanggal_perolehan' => 'required|date',
             'id_penanggung_jawab' => 'nullable|exists:master_pegawai,id',
-            'regenerate_nomor_register' => 'nullable|boolean', // Flag untuk regenerate nomor register
         ]);
 
         DB::beginTransaction();
         try {
             // Simpan id_ruangan lama untuk update InventoryItem jika ruangan dihapus
             $oldIdRuangan = $registerAset->id_ruangan;
-            // Jika ruangan berubah atau flag regenerate, regenerate nomor register
-            $shouldRegenerate = $request->has('regenerate_nomor_register') && $request->regenerate_nomor_register;
-            $ruanganChanged = (int) $registerAset->id_ruangan !== (int) ($validated['id_ruangan'] ?? 0);
-            
-            if ($shouldRegenerate || $ruanganChanged) {
-                // Generate nomor register baru dengan format baru
-                $newNomorRegister = $this->generateNomorRegister(
-                    $registerAset->id_unit_kerja,
-                    $validated['id_ruangan'] ?? null,
-                    $validated['tanggal_perolehan']
-                );
-                
-                // Update nomor register
-                $registerAset->update([
-                    'id_ruangan' => $validated['id_ruangan'],
-                    'kondisi_aset' => $validated['kondisi_aset'],
-                    'status_aset' => $validated['status_aset'],
-                    'tanggal_perolehan' => $validated['tanggal_perolehan'],
-                    'nomor_register' => $newNomorRegister,
-                ]);
-            } else {
-                // Update register aset tanpa mengubah nomor register
-                $registerAset->update([
-                    'id_ruangan' => $validated['id_ruangan'],
-                    'kondisi_aset' => $validated['kondisi_aset'],
-                    'status_aset' => $validated['status_aset'],
-                    'tanggal_perolehan' => $validated['tanggal_perolehan'],
-                ]);
-            }
+            // Single source: nomor_register tidak diubah manual dari form/controller.
+            $registerAset->update([
+                'id_ruangan' => $validated['id_ruangan'],
+                'kondisi_aset' => $validated['kondisi_aset'],
+                'status_aset' => $validated['status_aset'],
+                'tanggal_perolehan' => $validated['tanggal_perolehan'],
+            ]);
 
             // Jika ada ruangan, update InventoryItem dan buat/update KIR
             if ($validated['id_ruangan']) {

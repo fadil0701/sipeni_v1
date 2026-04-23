@@ -116,10 +116,13 @@
 <!-- Table -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table
+            class="min-w-full divide-y divide-gray-200"
+            @if($adjustments instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $adjustments->firstItem() }}" @endif
+        >
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                    <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barang</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang</th>
@@ -131,11 +134,9 @@
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                @forelse($adjustments as $index => $adjustment)
+                @forelse($adjustments as $adjustment)
                 <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {{ $adjustments->firstItem() + $index }}
-                    </td>
+                    <x-table.num-td :paginator="$adjustments" />
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {{ $adjustment->tanggal_adjustment ? $adjustment->tanggal_adjustment->format('d/m/Y') : '-' }}
                     </td>

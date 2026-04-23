@@ -103,9 +103,13 @@
 <!-- Table Card -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table
+            class="min-w-full divide-y divide-gray-200"
+            @if($jadwals instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $jadwals->firstItem() }}" @endif
+        >
             <thead class="bg-gray-50">
                 <tr>
+                    <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nomor Register</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Periode</th>
@@ -118,6 +122,7 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($jadwals as $jadwal)
                     <tr class="hover:bg-gray-50 transition-colors">
+                        <x-table.num-td :paginator="$jadwals" />
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $jadwal->registerAset->nomor_register ?? '-' }}</div>
                             <div class="text-xs text-gray-500">{{ $jadwal->registerAset->inventory->dataBarang->nama_barang ?? '-' }}</div>
@@ -160,7 +165,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center">
+                        <td colspan="8" class="px-6 py-12 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>

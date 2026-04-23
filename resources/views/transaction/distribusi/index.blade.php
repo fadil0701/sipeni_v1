@@ -1,6 +1,13 @@
 @extends('layouts.app')
 
 @section('content')
+@if(session('error'))
+    <div class="mb-4 bg-red-50 border-l-4 border-red-400 p-4 rounded text-sm text-red-800">{{ session('error') }}</div>
+@endif
+@if(session('success'))
+    <div class="mb-4 bg-green-50 border-l-4 border-green-400 p-4 rounded text-sm text-green-800">{{ session('success') }}</div>
+@endif
+
 <!-- Page Header -->
 <div class="mb-6 flex justify-between items-center">
     <div>
@@ -98,21 +105,26 @@
 <!-- Table Card -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table
+            class="min-w-full divide-y divide-gray-200"
+            @if($distribusis instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $distribusis->firstItem() }}" @endif
+        >
             <thead class="bg-gray-50">
                 <tr>
+                    <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No SBBK</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Permintaan</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang Asal</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang Tujuan</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                    <th class="no-sort px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($distribusis as $distribusi)
                     <tr class="hover:bg-gray-50 transition-colors">
+                        <x-table.num-td :paginator="$distribusis" />
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $distribusi->no_sbbk }}</div>
                         </td>
@@ -130,7 +142,11 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
-                                $statusColor = match($distribusi->status_distribusi) {
+                                $statusValue = $distribusi->status_distribusi instanceof \App\Enums\DistribusiStatus
+                                    ? $distribusi->status_distribusi->value
+                                    : $distribusi->status_distribusi;
+
+                                $statusColor = match($statusValue) {
                                     'dikirim' => 'bg-blue-100 text-blue-800',
                                     'selesai' => 'bg-green-100 text-green-800',
                                     'diproses' => 'bg-indigo-100 text-indigo-800',
@@ -139,26 +155,58 @@
                                 };
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">
-                                {{ $distribusi->status_distribusi }}
+                                {{ $statusValue }}
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <a 
-                                href="{{ route('transaction.distribusi.show', $distribusi->id_distribusi) }}" 
-                                class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
-                                title="Detail"
-                            >
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                Detail
-                            </a>
+                            <div class="inline-flex items-center justify-end gap-1">
+                                <a 
+                                    href="{{ route('transaction.distribusi.show', $distribusi->id_distribusi) }}" 
+                                    class="inline-flex items-center justify-center p-2 rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 transition-colors"
+                                    title="Detail"
+                                    aria-label="Detail"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </a>
+
+                                @if(in_array($statusValue, ['draft', 'diproses'], true))
+                                    <a 
+                                        href="{{ route('transaction.distribusi.edit', $distribusi->id_distribusi) }}" 
+                                        class="inline-flex items-center justify-center p-2 rounded-md text-amber-700 bg-amber-100 hover:bg-amber-200 transition-colors"
+                                        title="Edit"
+                                        aria-label="Edit"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </a>
+                                @endif
+
+                                @if($statusValue === 'diproses')
+                                    <form method="POST" action="{{ route('transaction.distribusi.kirim', $distribusi->id_distribusi) }}" class="inline" onsubmit="if (!{{ $distribusi->id_pegawai_pengirim ? 'true' : 'false' }}) { alert('Pilih pegawai pengirim terlebih dahulu pada menu Edit, lalu simpan.'); return false; } return confirm('Kirim distribusi ini sekarang?');">
+                                        @csrf
+                                        <input type="hidden" name="kirim_from" value="index">
+                                        <button 
+                                            type="submit"
+                                            class="inline-flex items-center justify-center p-2 rounded-md text-green-700 bg-green-100 hover:bg-green-200 transition-colors"
+                                            title="Kirim"
+                                            aria-label="Kirim"
+                                        >
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center">
+                        <td colspan="8" class="px-6 py-12 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                             </svg>
@@ -177,5 +225,13 @@
         </div>
     @endif
 </div>
+
+@if(session('kirim_popup'))
+@push('scripts')
+<script>
+    alert(@json(session('kirim_popup')));
+</script>
+@endpush
+@endif
 @endsection
 

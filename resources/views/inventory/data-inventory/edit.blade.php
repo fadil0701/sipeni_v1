@@ -28,7 +28,7 @@
                         <label for="id_data_barang" class="block text-sm font-medium text-gray-700 mb-2">
                             Data Barang <span class="text-red-500">*</span>
                         </label>
-                        <select id="id_data_barang" name="id_data_barang" required class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_data_barang') border-red-500 @enderror">
+                        <select id="id_data_barang" name="id_data_barang" required data-searchable="true" class="select-data-barang block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_data_barang') border-red-500 @enderror">
                             <option value="">Pilih Data Barang</option>
                             @foreach($dataBarangs as $dataBarang)
                                 <option value="{{ $dataBarang->id_data_barang }}" {{ old('id_data_barang', $dataInventory->id_data_barang) == $dataBarang->id_data_barang ? 'selected' : '' }}>
@@ -37,6 +37,7 @@
                             @endforeach
                         </select>
                         @error('id_data_barang')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                        <p class="mt-1 text-xs text-gray-500">Cari dengan kode barang atau nama barang.</p>
                     </div>
 
                     <div>

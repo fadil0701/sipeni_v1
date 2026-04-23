@@ -167,12 +167,21 @@
                                     <svg id="distribusi-arrow" class="w-4 h-4 ml-auto transition-transform {{ $distOpen ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </div>
                                 <ul id="distribusi-submenu" class="{{ $groupClass($distOpen) }}">
-                                    <li><a href="{{ route('transaction.draft-distribusi.index') }}" class="{{ $linkClass($isRoute(['transaction.draft-distribusi.*'])) }}">Daftar Permintaan</a></li>
-                                    <li><a href="{{ route('transaction.distribusi.index') }}" class="{{ $linkClass($isRoute(['transaction.distribusi.*'])) }}">Distribusi Barang</a></li>
-                                    <li><a href="{{ route('transaction.penerimaan-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.penerimaan-barang.*'])) }}">Penerimaan Barang</a></li>
-                                    <li><a href="{{ route('transaction.retur-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.retur-barang.*'])) }}">Retur Barang</a></li>
-                                    <li><a href="{{ route('transaction.pemakaian-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.pemakaian-barang.*'])) }}">Pemakaian Barang</a></li>
-                                    <li><a href="{{ route('transaction.compile-distribusi.index') }}" class="{{ $linkClass($isRoute(['transaction.compile-distribusi.*'])) }}">SBBK</a></li>
+                                    @if(PermissionHelper::canAccess($currentUser, 'transaction.draft-distribusi.index'))
+                                        <li><a href="{{ route('transaction.draft-distribusi.index') }}" class="{{ $linkClass($isRoute(['transaction.draft-distribusi.*'])) }}">Daftar Permintaan</a></li>
+                                    @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'transaction.distribusi.index'))
+                                        <li><a href="{{ route('transaction.distribusi.index') }}" class="{{ $linkClass($isRoute(['transaction.distribusi.*'])) }}">Distribusi Barang (SBBK)</a></li>
+                                    @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'transaction.penerimaan-barang.index'))
+                                        <li><a href="{{ route('transaction.penerimaan-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.penerimaan-barang.*'])) }}">Penerimaan Barang</a></li>
+                                    @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'transaction.retur-barang.index'))
+                                        <li><a href="{{ route('transaction.retur-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.retur-barang.*'])) }}">Retur Barang</a></li>
+                                    @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'transaction.pemakaian-barang.index'))
+                                        <li><a href="{{ route('transaction.pemakaian-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.pemakaian-barang.*'])) }}">Pemakaian Barang</a></li>
+                                    @endif
                                 </ul>
                             </li>
                         @endif
@@ -999,10 +1008,30 @@
                 if (rows.length === 0) return;
 
                 const headers = table.tHead ? Array.from(table.tHead.rows[0].cells) : [];
-                const hasNumberHeader = headers.length > 0 && /^(no|nomor|urutan)\b/i.test((headers[0].textContent || '').trim());
+                // Hanya "No" (teks penuh) — hindari "Nomor SBBK" ikut terdeteksi sebagai kolom urut.
+                const hasNumberHeader = headers.length > 0 && /^no$/i.test((headers[0].textContent || '').trim());
+
+                function syncManualRowNumbers() {
+                    if (!hasNumberHeader) return;
+                    const baseAttr = table.getAttribute('data-pagination-base');
+                    const base = baseAttr !== null && baseAttr !== '' && !Number.isNaN(parseInt(baseAttr, 10))
+                        ? parseInt(baseAttr, 10)
+                        : null;
+                    Array.from(tbody.rows).forEach(function (row, index) {
+                        if (!row.cells[0]) return;
+                        if (base !== null) {
+                            row.cells[0].textContent = String(base + index);
+                        } else {
+                            row.cells[0].textContent = String(index + 1);
+                        }
+                    });
+                }
 
                 function applyRowNumbers() {
-                    if (hasNumberHeader) return;
+                    if (hasNumberHeader) {
+                        syncManualRowNumbers();
+                        return;
+                    }
                     rows.forEach(function (row, index) {
                         let numberCell = row.querySelector('td[data-auto-row-number="1"]');
                         if (!numberCell) {

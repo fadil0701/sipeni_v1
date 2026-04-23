@@ -1,6 +1,13 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $statusValue = $distribusi->status_distribusi instanceof \App\Enums\DistribusiStatus
+        ? $distribusi->status_distribusi->value
+        : $distribusi->status_distribusi;
+    $hasPegawaiPengirim = (bool) $distribusi->id_pegawai_pengirim;
+@endphp
+
 <div class="mb-4">
     <a href="{{ route('transaction.distribusi.index') }}" class="text-blue-600 hover:text-blue-900 inline-flex items-center">
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -10,12 +17,59 @@
     </a>
 </div>
 
+@if(session('success'))
+    <div class="mb-4 bg-green-50 border-l-4 border-green-400 p-4 rounded text-sm text-green-800">{{ session('success') }}</div>
+@endif
+@if(session('error'))
+    <div class="mb-4 bg-red-50 border-l-4 border-red-400 p-4 rounded text-sm text-red-800">{{ session('error') }}</div>
+@endif
+@if(session('info'))
+    <div class="mb-4 bg-blue-50 border-l-4 border-blue-400 p-4 rounded text-sm text-blue-800">{{ session('info') }}</div>
+@endif
+
 <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-    <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-center">
+    <div class="px-6 py-5 border-b border-gray-200 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
         <div>
             <h2 class="text-xl font-semibold text-gray-900">Detail Distribusi Barang (SBBK)</h2>
             <p class="text-sm text-gray-600 mt-1">No. SBBK: <span class="font-semibold">{{ $distribusi->no_sbbk }}</span></p>
-            <p class="text-xs text-gray-500 mt-1">Halaman ini hanya untuk monitoring. SBBK dibuat melalui proses Compile Distribusi.</p>
+            <p class="text-xs text-gray-500 mt-1">Lanjutkan alur dengan tombol di kanan: ubah data (draft), proses, lalu kirim setelah pegawai pengirim diisi.</p>
+        </div>
+        <div class="flex flex-wrap gap-2 shrink-0">
+            @if($statusValue === 'draft')
+                <a
+                    href="{{ route('transaction.distribusi.edit', $distribusi->id_distribusi) }}"
+                    class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-100 rounded-md hover:bg-amber-200"
+                >
+                    Edit
+                </a>
+                <form method="POST" action="{{ route('transaction.distribusi.proses', $distribusi->id_distribusi) }}" class="inline">
+                    @csrf
+                    <button
+                        type="submit"
+                        class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200"
+                        onclick="return confirm('Proses distribusi ini sekarang?')"
+                    >
+                        Proses
+                    </button>
+                </form>
+            @endif
+            @if($statusValue === 'diproses')
+                <a
+                    href="{{ route('transaction.distribusi.edit', $distribusi->id_distribusi) }}"
+                    class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-100 rounded-md hover:bg-amber-200"
+                >
+                    Edit
+                </a>
+                <form method="POST" action="{{ route('transaction.distribusi.kirim', $distribusi->id_distribusi) }}" class="inline" onsubmit="if (!{{ $hasPegawaiPengirim ? 'true' : 'false' }}) { alert('Pilih pegawai pengirim terlebih dahulu pada menu Edit.'); return false; } return confirm('Kirim distribusi ini sekarang?');">
+                    @csrf
+                    <button
+                        type="submit"
+                        class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100 rounded-md hover:bg-green-200"
+                    >
+                        Kirim
+                    </button>
+                </form>
+            @endif
         </div>
     </div>
     
@@ -33,7 +87,7 @@
                         <dt class="text-sm font-medium text-gray-500 mb-1">Status</dt>
                         <dd class="text-sm font-semibold text-gray-900">
                             @php
-                                $statusColor = match($distribusi->status_distribusi) {
+                                $statusColor = match($statusValue) {
                                     'dikirim' => 'bg-blue-100 text-blue-800',
                                     'selesai' => 'bg-green-100 text-green-800',
                                     'diproses' => 'bg-indigo-100 text-indigo-800',
@@ -42,7 +96,7 @@
                                 };
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">
-                                {{ $distribusi->status_distribusi }}
+                                {{ $statusValue }}
                             </span>
                         </dd>
                     </div>
@@ -209,17 +263,19 @@
                                 <td class="px-4 py-3 text-sm text-gray-900">{{ $detail->keterangan ?? '-' }}</td>
                             </tr>
                             @endforeach
-                            <tr class="bg-gray-50 font-semibold">
-                                @php
-                                    $colspan = 6; // No, Nama Barang, Gudang Asal, Qty, Satuan, Harga Satuan
-                                    if ($hasFarmasiPersediaan) $colspan += 2; // No. Batch, Exp Date
-                                    if ($hasAset) $colspan += 1; // No. Seri
-                                @endphp
-                                <td colspan="{{ $colspan }}" class="px-4 py-3 text-sm text-gray-900 text-right">Total</td>
-                                <td class="px-4 py-3 text-sm text-gray-900">Rp {{ number_format($total, 2, ',', '.') }}</td>
-                                <td></td>
-                            </tr>
                         </tbody>
+                        {{-- Total di tfoot: enhanceTable (layouts/app) hanya mem-sort tbody.rows, bukan tfoot. --}}
+                        <tfoot>
+                            <tr class="bg-gray-50 font-semibold border-t border-gray-200">
+                                @php
+                                    $colspanLabel = 6 + ($hasFarmasiPersediaan ? 2 : 0) + ($hasAset ? 1 : 0);
+                                @endphp
+                                <td colspan="{{ $colspanLabel }}" class="px-4 py-3 text-sm text-gray-900 text-right">Total</td>
+                                <td class="px-4 py-3 text-sm text-gray-900"></td>
+                                <td class="px-4 py-3 text-sm text-gray-900">Rp {{ number_format($total, 2, ',', '.') }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-900"></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>

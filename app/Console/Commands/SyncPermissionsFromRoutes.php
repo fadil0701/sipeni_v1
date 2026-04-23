@@ -122,11 +122,11 @@ class SyncPermissionsFromRoutes extends Command
         
         $actionMap = [
             'index' => 'View',
-            'create' => 'Create',
-            'store' => 'Create',
+            'create' => 'Open Create Form',
+            'store' => 'Store New',
             'show' => 'View Detail',
-            'edit' => 'Edit',
-            'update' => 'Update',
+            'edit' => 'Open Edit Form',
+            'update' => 'Update Existing',
             'destroy' => 'Delete',
             'ajukan' => 'Ajukan',
             'mengetahui' => 'Mengetahui',

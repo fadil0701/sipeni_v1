@@ -139,16 +139,15 @@
                     <input 
                         type="text" 
                         id="nomor_register" 
-                        name="nomor_register" 
                         value="{{ old('nomor_register') }}"
                         readonly
-                        placeholder="Akan di-generate otomatis setelah memilih Unit Kerja dan Ruangan"
+                        placeholder="Akan mengikuti Kode Register dari Inventory Item"
                         class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('nomor_register') border-red-500 @enderror"
                     >
                     @error('nomor_register')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
-                    <p class="mt-1 text-xs text-gray-500">Format: [KODE_REGISTER]/[ID_UNIT_KERJA]/[ID_RUANGAN]/[URUT] atau [KODE_REGISTER]/[ID_UNIT_KERJA]/[URUT] jika tidak ada ruangan</p>
+                    <p class="mt-1 text-xs text-gray-500">Nilai ini otomatis diambil dari kode register Inventory Item (single source).</p>
                 </div>
 
                 <div>
@@ -287,18 +286,11 @@ function generateNomorRegister() {
         return;
     }
     
-    // Format baru: ID_UNIT_KERJA/ID_RUANGAN/URUT atau ID_UNIT_KERJA/URUT
-    let prefix = '';
-    if (ruanganId) {
-        prefix = `${String(unitKerjaId).padStart(3, '0')}/${String(ruanganId).padStart(3, '0')}`;
-    } else {
-        prefix = `${String(unitKerjaId).padStart(3, '0')}`;
-    }
-    
-    // Jangan set value, biarkan kosong agar backend yang generate dengan angka yang benar
-    // Hanya tampilkan placeholder sebagai preview
-    nomorRegisterInput.value = '';
-    nomorRegisterInput.placeholder = `Akan di-generate otomatis: ${prefix}/[URUT] (contoh: ${prefix}/0001)`;
+    const kodeRegister = selectedOption ? selectedOption.dataset.kodeRegister : '';
+    nomorRegisterInput.value = kodeRegister || '';
+    nomorRegisterInput.placeholder = kodeRegister
+        ? 'Mengikuti kode register Inventory Item'
+        : 'Akan mengikuti Kode Register dari Inventory Item';
 }
 
 function filterRuangan(unitKerjaId) {

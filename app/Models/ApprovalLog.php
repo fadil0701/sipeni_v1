@@ -46,12 +46,8 @@ class ApprovalLog extends Model
      */
     public function permintaan(): BelongsTo
     {
-        if ($this->modul_approval === 'PERMINTAAN_BARANG') {
-            return $this->belongsTo(PermintaanBarang::class, 'id_referensi', 'id_permintaan');
-        }
-        // Return null relationship untuk modul lain
-        return $this->belongsTo(PermintaanBarang::class, 'id_referensi', 'id_permintaan')
-            ->whereRaw('1 = 0'); // Always return null
+        // Relasi tetap didefinisikan statis agar eager loading bekerja konsisten.
+        return $this->belongsTo(PermintaanBarang::class, 'id_referensi', 'id_permintaan');
     }
 
     /**

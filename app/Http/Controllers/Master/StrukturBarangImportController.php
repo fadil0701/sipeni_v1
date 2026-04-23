@@ -10,6 +10,7 @@ use App\Models\MasterKategoriBarang;
 use App\Models\MasterKodeBarang;
 use App\Models\MasterSatuan;
 use App\Models\MasterSubjenisBarang;
+use App\Models\MasterDataBarangPermendagri;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -18,6 +19,11 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class StrukturBarangImportController extends Controller
 {
+    private function hasZipArchiveSupport(): bool
+    {
+        return class_exists(\ZipArchive::class);
+    }
+
     public function index()
     {
         return view('master-data.import-struktur-barang.index');
@@ -25,6 +31,12 @@ class StrukturBarangImportController extends Controller
 
     public function downloadTemplate()
     {
+        if (! $this->hasZipArchiveSupport()) {
+            return back()->withErrors([
+                'file' => 'Ekstensi PHP zip (ZipArchive) belum aktif pada web server. Aktifkan extension=zip di php.ini (SAPI web), lalu restart server.',
+            ]);
+        }
+
         $spreadsheet = new Spreadsheet();
 
         $this->fillSheet(
@@ -82,6 +94,26 @@ class StrukturBarangImportController extends Controller
             ]
         );
 
+        $this->fillSheet(
+            $spreadsheet->createSheet(),
+            'permendagri_108',
+            [
+                'kode_data_barang',
+                'kode_akun',
+                'kode_kelompok',
+                'kode_jenis_108',
+                'kode_objek',
+                'kode_rincian_objek',
+                'kode_sub_rincian_objek',
+                'kode_sub_sub_rincian_objek',
+                'status_validasi',
+                'catatan',
+            ],
+            [
+                ['DB-0001', '1', '3', '02', '01', '01', '000', '001', 'DRAFT', 'Contoh mapping awal'],
+            ]
+        );
+
         $satuanRows = MasterSatuan::query()
             ->orderBy('nama_satuan')
             ->pluck('nama_satuan')
@@ -109,7 +141,8 @@ class StrukturBarangImportController extends Controller
                 ['2. Header kolom tidak boleh diubah.'],
                 ['3. Relasi antar sheet menggunakan kolom kode, bukan ID.'],
                 ['4. Import berjalan berurutan: aset -> kode -> kategori -> jenis -> subjenis -> data barang.'],
-                ['5. Jika data dengan kode sama sudah ada, sistem akan memperbarui data tersebut.'],
+                ['5. Sheet permendagri_108 bersifat opsional untuk mapping kode Permendagri 108.'],
+                ['6. Jika data dengan kode sama sudah ada, sistem akan memperbarui data tersebut.'],
             ]
         );
 
@@ -126,6 +159,12 @@ class StrukturBarangImportController extends Controller
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls',
         ]);
+
+        if (! $this->hasZipArchiveSupport()) {
+            return back()->withErrors([
+                'file' => 'Import Excel membutuhkan ekstensi PHP zip (ZipArchive). Aktifkan extension=zip pada php.ini yang dipakai web server, lalu restart server.',
+            ]);
+        }
 
         $spreadsheet = IOFactory::load($request->file('file')->getRealPath());
 
@@ -158,6 +197,7 @@ class StrukturBarangImportController extends Controller
             'jenis_barang' => 0,
             'subjenis_barang' => 0,
             'data_barang' => 0,
+            'permendagri_108' => 0,
         ];
 
         try {
@@ -296,6 +336,110 @@ class StrukturBarangImportController extends Controller
 
                     $counters['data_barang']++;
                 }
+
+                // Sheet opsional: mapping kode Permendagri 108 per data barang.
+                if (isset($sheets['permendagri_108'])) {
+                    $permendagriRows = $this->parseSheetRows($sheets['permendagri_108']);
+
+                    foreach ($permendagriRows as $row) {
+                        $kodeDataBarang = $this->requiredValue($row, 'kode_data_barang', 'permendagri_108');
+                        $dataBarang = MasterDataBarang::where('kode_data_barang', $kodeDataBarang)->first();
+
+                        if (! $dataBarang) {
+                            throw new \RuntimeException("Sheet permendagri_108: kode_data_barang '{$kodeDataBarang}' tidak ditemukan.");
+                        }
+
+                        $kodeAkun = $this->normalizePermendagriSegment(
+                            $this->requiredValue($row, 'kode_akun', 'permendagri_108'),
+                            1,
+                            'permendagri_108',
+                            'kode_akun'
+                        );
+                        $kodeKelompok = $this->normalizePermendagriSegment(
+                            $this->requiredValue($row, 'kode_kelompok', 'permendagri_108'),
+                            1,
+                            'permendagri_108',
+                            'kode_kelompok'
+                        );
+                        $kodeJenis = $this->normalizePermendagriSegment(
+                            $this->requiredValue($row, 'kode_jenis_108', 'permendagri_108'),
+                            2,
+                            'permendagri_108',
+                            'kode_jenis_108'
+                        );
+                        $kodeObjek = $this->normalizePermendagriSegment(
+                            $this->requiredValue($row, 'kode_objek', 'permendagri_108'),
+                            2,
+                            'permendagri_108',
+                            'kode_objek'
+                        );
+                        $kodeRincianObjek = $this->normalizePermendagriSegment(
+                            $this->requiredValue($row, 'kode_rincian_objek', 'permendagri_108'),
+                            2,
+                            'permendagri_108',
+                            'kode_rincian_objek'
+                        );
+                        $kodeSubRincianObjek = $this->normalizePermendagriSegment(
+                            $this->requiredValue($row, 'kode_sub_rincian_objek', 'permendagri_108'),
+                            3,
+                            'permendagri_108',
+                            'kode_sub_rincian_objek'
+                        );
+                        $kodeSubSubRincianObjek = $this->normalizePermendagriSegment(
+                            $this->requiredValue($row, 'kode_sub_sub_rincian_objek', 'permendagri_108'),
+                            3,
+                            'permendagri_108',
+                            'kode_sub_sub_rincian_objek'
+                        );
+
+                        $kodeBarang108 = implode('.', [
+                            $kodeAkun,
+                            $kodeKelompok,
+                            $kodeJenis,
+                            $kodeObjek,
+                            $kodeRincianObjek,
+                            $kodeSubRincianObjek,
+                            $kodeSubSubRincianObjek,
+                        ]);
+
+                        $statusValidasi = strtoupper($this->optionalValue($row, 'status_validasi') ?? 'DRAFT');
+                        if (! in_array($statusValidasi, ['DRAFT', 'VALID', 'REVIEW'], true)) {
+                            $statusValidasi = 'DRAFT';
+                        }
+
+                        $hasPlaceholderSegment = in_array($kodeJenis, ['00'], true)
+                            || in_array($kodeObjek, ['00'], true)
+                            || in_array($kodeRincianObjek, ['00'], true)
+                            || in_array($kodeSubRincianObjek, ['000'], true)
+                            || in_array($kodeSubSubRincianObjek, ['000'], true);
+
+                        // Guard: data dengan placeholder tidak boleh langsung status VALID.
+                        if ($statusValidasi === 'VALID' && $hasPlaceholderSegment) {
+                            throw new \RuntimeException(
+                                "Sheet permendagri_108: kode_data_barang '{$kodeDataBarang}' tidak bisa VALID karena segmen masih placeholder (00/000)."
+                            );
+                        }
+
+                        MasterDataBarangPermendagri::updateOrCreate(
+                            ['id_data_barang' => $dataBarang->id_data_barang],
+                            [
+                                'kode_barang_108' => $kodeBarang108,
+                                'kode_akun' => $kodeAkun,
+                                'kode_kelompok' => $kodeKelompok,
+                                'kode_jenis_108' => $kodeJenis,
+                                'kode_objek' => $kodeObjek,
+                                'kode_rincian_objek' => $kodeRincianObjek,
+                                'kode_sub_rincian_objek' => $kodeSubRincianObjek,
+                                'kode_sub_sub_rincian_objek' => $kodeSubSubRincianObjek,
+                                'sumber_mapping' => 'IMPORT',
+                                'status_validasi' => $statusValidasi,
+                                'catatan' => $this->optionalValue($row, 'catatan'),
+                            ]
+                        );
+
+                        $counters['permendagri_108']++;
+                    }
+                }
             });
         } catch (\Throwable $exception) {
             return back()->withErrors([
@@ -310,7 +454,8 @@ class StrukturBarangImportController extends Controller
                 . ', Kategori: ' . $counters['kategori_barang']
                 . ', Jenis: ' . $counters['jenis_barang']
                 . ', Subjenis: ' . $counters['subjenis_barang']
-                . ', Data Barang: ' . $counters['data_barang'] . '.');
+                . ', Data Barang: ' . $counters['data_barang']
+                . ', Mapping Permendagri 108: ' . $counters['permendagri_108'] . '.');
     }
 
     private function fillSheet($sheet, string $title, array $headers, array $rows): void
@@ -386,6 +531,20 @@ class StrukturBarangImportController extends Controller
         $normalized = str_replace(['-', ' '], '_', $normalized);
 
         return preg_replace('/[^a-z0-9_]/', '', $normalized) ?? '';
+    }
+
+    private function normalizePermendagriSegment(string $value, int $length, string $sheetName, string $fieldName): string
+    {
+        $digits = preg_replace('/\D+/', '', $value) ?? '';
+        if ($digits === '') {
+            throw new \RuntimeException("Sheet {$sheetName}: kolom '{$fieldName}' harus angka.");
+        }
+
+        if (strlen($digits) > $length) {
+            throw new \RuntimeException("Sheet {$sheetName}: kolom '{$fieldName}' maksimal {$length} digit.");
+        }
+
+        return str_pad($digits, $length, '0', STR_PAD_LEFT);
     }
 }
 

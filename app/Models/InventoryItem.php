@@ -33,6 +33,17 @@ class InventoryItem extends Model
         'status_item' => 'string',
     ];
 
+    protected static function booted(): void
+    {
+        static::saved(function (InventoryItem $inventoryItem) {
+            // Single source: saat kode_register item berubah, sinkronkan ke register_aset terkait.
+            RegisterAset::query()
+                ->where('id_item', $inventoryItem->id_item)
+                ->where('nomor_register', '!=', $inventoryItem->kode_register)
+                ->update(['nomor_register' => $inventoryItem->kode_register]);
+        });
+    }
+
     // Relationships
     public function inventory(): BelongsTo
     {
