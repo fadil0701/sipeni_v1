@@ -13,6 +13,7 @@ use App\Models\MasterGudang;
 use App\Models\MasterSatuan;
 use App\Models\DataInventory;
 use App\Models\DataStock;
+use App\Services\StockGuardService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,10 @@ use Carbon\Carbon;
 
 class PemakaianBarangController extends Controller
 {
+    public function __construct(
+        private readonly StockGuardService $stockGuard
+    ) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -471,35 +476,40 @@ class PemakaianBarangController extends Controller
             return back()->with('error', 'Hanya pemakaian yang sudah diajukan yang dapat disetujui.');
         }
         
-        // Validasi stok sebelum approve: per inventory qty_pemakaian <= qty_input, dan aggregate per barang <= DataStock qty_akhir
-        foreach ($pemakaian->detailPemakaian as $detail) {
-            $inventory = $detail->inventory;
-            if (!$inventory) {
-                return back()->with('error', 'Data inventory tidak ditemukan untuk salah satu detail.');
+        // Validasi stok sebelum approve: inventory-level + aggregate stock per barang di gudang.
+        try {
+            foreach ($pemakaian->detailPemakaian as $detail) {
+                $inventory = $detail->inventory;
+                if (! $inventory) {
+                    return back()->with('error', 'Data inventory tidak ditemukan untuk salah satu detail.');
+                }
+
+                $this->stockGuard->ensureInventoryQty(
+                    (int) $detail->id_inventory,
+                    (float) $detail->qty_pemakaian,
+                    "approval pemakaian {$pemakaian->no_pemakaian}"
+                );
             }
-            if ($detail->qty_pemakaian > $inventory->qty_input) {
-                return back()->with('error', 'Qty pemakaian untuk ' . ($inventory->dataBarang->nama_barang ?? 'barang') . ' melebihi stok tersedia di inventory (' . number_format($inventory->qty_input, 2) . ').');
+
+            $groupedByBarang = [];
+            foreach ($pemakaian->detailPemakaian as $detail) {
+                $idBarang = (int) $detail->inventory->id_data_barang;
+                if (! isset($groupedByBarang[$idBarang])) {
+                    $groupedByBarang[$idBarang] = 0.0;
+                }
+                $groupedByBarang[$idBarang] += (float) $detail->qty_pemakaian;
             }
-        }
-        $groupedByBarang = [];
-        foreach ($pemakaian->detailPemakaian as $detail) {
-            $idBarang = $detail->inventory->id_data_barang;
-            if (!isset($groupedByBarang[$idBarang])) {
-                $groupedByBarang[$idBarang] = 0;
+
+            foreach ($groupedByBarang as $idDataBarang => $totalQty) {
+                $this->stockGuard->ensureStockQty(
+                    (int) $idDataBarang,
+                    (int) $pemakaian->id_gudang,
+                    (float) $totalQty,
+                    "approval pemakaian {$pemakaian->no_pemakaian}"
+                );
             }
-            $groupedByBarang[$idBarang] += $detail->qty_pemakaian;
-        }
-        foreach ($groupedByBarang as $idDataBarang => $totalQty) {
-            $stock = DataStock::where('id_data_barang', $idDataBarang)
-                ->where('id_gudang', $pemakaian->id_gudang)
-                ->first();
-            if (!$stock) {
-                return back()->with('error', 'Stok gudang tidak ditemukan untuk salah satu barang.');
-            }
-            if ($totalQty > $stock->qty_akhir) {
-                $namaBarang = $pemakaian->detailPemakaian->first(fn($d) => $d->inventory->id_data_barang == $idDataBarang)?->inventory->dataBarang->nama_barang ?? 'Barang';
-                return back()->with('error', 'Total pemakaian ' . $namaBarang . ' (' . number_format($totalQty, 2) . ') melebihi stok gudang (' . number_format($stock->qty_akhir, 2) . ').');
-            }
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
         }
         
         DB::beginTransaction();

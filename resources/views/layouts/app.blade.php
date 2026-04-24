@@ -214,7 +214,7 @@
                                     <li class="px-4 pt-3 text-[11px] uppercase tracking-wide text-blue-300">Stok &amp; Transaksi</li>
                                         <li><a href="{{ route('inventory.scan-qr') }}" class="{{ $linkClass($isRoute(['inventory.scan-qr'])) }}">Scan QR Code</a></li>
                                         <li><a href="{{ route('inventory.data-stock.index') }}" class="{{ $linkClass($isRoute(['inventory.data-stock.*'])) }}">Data Stock</a></li>
-                                        <li><a href="{{ route('reports.stock-gudang') }}" class="{{ $linkClass($isRoute(['reports.stock-gudang'])) }}">Kartu Stok</a></li>
+                                        <li><a href="{{ route('reports.kartu-stok') }}" class="{{ $linkClass($isRoute(['reports.kartu-stok'])) }}">Kartu Stok</a></li>
                                         <li><a href="{{ route('inventory.stock-adjustment.index') }}" class="{{ $linkClass($isRoute(['inventory.stock-adjustment.*'])) }}">Stock Adjustment / Opname</a></li>
                                 </ul>
                             </li>

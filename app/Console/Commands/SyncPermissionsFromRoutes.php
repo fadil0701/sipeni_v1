@@ -9,7 +9,7 @@ use App\Support\PermissionModule;
 
 class SyncPermissionsFromRoutes extends Command
 {
-    protected $signature = 'permission:sync-routes';
+    protected $signature = 'permission:sync-routes {--force : Jalankan tanpa konfirmasi}';
     protected $description = 'Sync permissions from all routes in web.php';
 
     public function handle()
@@ -87,7 +87,10 @@ class SyncPermissionsFromRoutes extends Command
             }, $permissions)
         );
 
-        if ($this->confirm('Apakah Anda ingin menambahkan permission-permission ini ke database?', true)) {
+        $shouldProceed = (bool) $this->option('force')
+            || $this->confirm('Apakah Anda ingin menambahkan permission-permission ini ke database?', true);
+
+        if ($shouldProceed) {
             $this->newLine();
             $this->info('Menambahkan permission...');
 

@@ -147,4 +147,3 @@ class BackfillPermendagriMapping extends Command
         ];
     }
 }
-

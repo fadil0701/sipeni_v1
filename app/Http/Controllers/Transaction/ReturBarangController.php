@@ -16,12 +16,17 @@ use App\Models\MasterGudang;
 use App\Models\MasterSatuan;
 use App\Models\DataInventory;
 use App\Models\DataStock;
+use App\Services\StockGuardService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class ReturBarangController extends Controller
 {
+    public function __construct(
+        private readonly StockGuardService $stockGuard
+    ) {}
+
     public function index(Request $request)
     {
         /** @var User $user */
@@ -444,8 +449,17 @@ class ReturBarangController extends Controller
             // Update stock untuk setiap detail retur
             foreach ($retur->detailRetur as $detail) {
                 $inventory = $detail->inventory;
+                $context = "penerimaan retur {$retur->no_retur}";
+                $this->stockGuard->ensureInventoryQty((int) $detail->id_inventory, (float) $detail->qty_retur, $context);
                 
                 if (in_array($inventory->jenis_inventory, ['PERSEDIAAN', 'FARMASI'])) {
+                    $this->stockGuard->ensureStockQty(
+                        (int) $inventory->id_data_barang,
+                        (int) $retur->id_gudang_asal,
+                        (float) $detail->qty_retur,
+                        $context
+                    );
+
                     // Untuk PERSEDIAAN/FARMASI: Update DataStock
                     
                     // Kurangi stock di gudang asal (gudang unit)
