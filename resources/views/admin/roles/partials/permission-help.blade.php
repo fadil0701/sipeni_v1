@@ -7,7 +7,4 @@
         <li><strong>Level akses Anda</strong> membatasi permission yang dapat dicentang: hanya hak yang sama dengan yang Anda miliki (menurut role dan data permission) yang dapat diberikan ke role lain.</li>
         <li><strong>Pairing aksi otomatis</strong>: `create` dipasangkan dengan `store`, dan `edit` dipasangkan dengan `update` agar assign role lebih aman.</li>
     </ul>
-    <p class="mt-3 text-xs text-slate-600">
-        Setelah mengubah permission role, jalankan sinkronisasi bila perlu: <code class="bg-white px-1 rounded border">php artisan permission:sync-routes</code> agar daftar route terbaru tersedia di database.
-    </p>
 </div>

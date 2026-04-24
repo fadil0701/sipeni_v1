@@ -166,4 +166,3 @@ class AuditRegisterAsetConflicts extends Command
         return true;
     }
 }
-

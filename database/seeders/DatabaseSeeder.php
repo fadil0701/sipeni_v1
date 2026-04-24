@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
             MasterJabatanSeeder::class,
             AdminUserSeeder::class,
             ApprovalFlowDefinitionSeeder::class,
-            // ComprehensiveDummySeeder::class,
+            ComprehensiveDummySeeder::class,
         ]);
     }
 }

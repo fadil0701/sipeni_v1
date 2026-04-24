@@ -99,4 +99,3 @@ class BackfillRegisterAsetItemLink extends Command
         return self::SUCCESS;
     }
 }
-

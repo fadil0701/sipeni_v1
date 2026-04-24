@@ -259,7 +259,10 @@ Route::middleware(['auth'])->group(function () {
     // Reports - Admin, Kepala Pusat, Admin Gudang, Kasubbag TU
     Route::prefix('reports')->name('reports.')->middleware(['role:admin,kepala_pusat,admin_gudang,kasubbag_tu'])->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('kartu-stok', [ReportController::class, 'kartuStok'])->name('kartu-stok');
         Route::get('stock-gudang', [ReportController::class, 'stockGudang'])->name('stock-gudang');
         Route::get('stock-gudang/export', [ReportController::class, 'exportStockGudang'])->name('stock-gudang.export');
+        Route::get('transaksi-summary', [ReportController::class, 'transaksiSummary'])->name('transaksi-summary');
+        Route::get('aset-summary', [ReportController::class, 'asetSummary'])->name('aset-summary');
     });
 });

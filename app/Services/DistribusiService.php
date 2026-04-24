@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\DB;
 class DistribusiService
 {
     public function __construct(
-        private readonly PermintaanBarangStatusService $permintaanBarangStatus
+        private readonly PermintaanBarangStatusService $permintaanBarangStatus,
+        private readonly StockGuardService $stockGuard
     ) {}
 
     public function createDraft(array $validated): TransaksiDistribusi
@@ -84,7 +85,17 @@ class DistribusiService
                     continue;
                 }
 
+                $context = "pengiriman distribusi {$distribusi->no_sbbk}";
+                $this->stockGuard->ensureInventoryQty((int) $detail->id_inventory, (float) $detail->qty_distribusi, $context);
+
                 if (in_array($inventory->jenis_inventory, ['PERSEDIAAN', 'FARMASI'])) {
+                    $this->stockGuard->ensureStockQty(
+                        (int) $inventory->id_data_barang,
+                        (int) $distribusi->id_gudang_asal,
+                        (float) $detail->qty_distribusi,
+                        $context
+                    );
+
                     $stockAsal = \App\Models\DataStock::where('id_data_barang', $inventory->id_data_barang)
                         ->where('id_gudang', $distribusi->id_gudang_asal)
                         ->first();

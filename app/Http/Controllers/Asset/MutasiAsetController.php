@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Asset;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\MutasiAset;
+use App\Models\AssetHistory;
 use App\Models\RegisterAset;
 use App\Models\MasterRuangan;
 use App\Models\KartuInventarisRuangan;
@@ -157,6 +158,10 @@ class MutasiAsetController extends Controller
             
             // Sinkronkan ruangan ke Register Aset dan inventory_item
             $registerAset = RegisterAset::findOrFail($validated['id_register_aset']);
+            $beforeState = [
+                'id_unit_kerja' => $registerAset->id_unit_kerja,
+                'id_ruangan' => $registerAset->id_ruangan,
+            ];
             $registerAset->update([
                 'id_ruangan' => $validated['id_ruangan_tujuan'],
                 'id_unit_kerja' => $ruangTujuan->id_unit_kerja,
@@ -165,6 +170,19 @@ class MutasiAsetController extends Controller
                 \App\Models\InventoryItem::where('id_inventory', $registerAset->inventory->id_inventory)
                     ->update(['id_ruangan' => $validated['id_ruangan_tujuan']]);
             }
+
+            AssetHistory::create([
+                'id_register_aset' => $registerAset->id_register_aset,
+                'event' => 'mutasi_aset_created',
+                'before_state' => $beforeState,
+                'after_state' => [
+                    'id_unit_kerja' => $registerAset->id_unit_kerja,
+                    'id_ruangan' => $registerAset->id_ruangan,
+                    'id_mutasi' => $mutasiAset->id_mutasi,
+                ],
+                'notes' => 'Mutasi aset berhasil dibuat dan sinkron KIR/register/inventory item.',
+                'created_by' => Auth::id(),
+            ]);
             
             DB::commit();
             
@@ -277,6 +295,10 @@ class MutasiAsetController extends Controller
 
             $registerAset = $mutasiAset->registerAset;
             if ($registerAset) {
+                $beforeState = [
+                    'id_unit_kerja' => $registerAset->id_unit_kerja,
+                    'id_ruangan' => $registerAset->id_ruangan,
+                ];
                 $registerAset->update([
                     'id_ruangan' => $validated['id_ruangan_tujuan'],
                     'id_unit_kerja' => $ruangTujuan->id_unit_kerja,
@@ -285,6 +307,19 @@ class MutasiAsetController extends Controller
                     \App\Models\InventoryItem::where('id_inventory', $registerAset->inventory->id_inventory)
                         ->update(['id_ruangan' => $validated['id_ruangan_tujuan']]);
                 }
+
+                AssetHistory::create([
+                    'id_register_aset' => $registerAset->id_register_aset,
+                    'event' => 'mutasi_aset_updated',
+                    'before_state' => $beforeState,
+                    'after_state' => [
+                        'id_unit_kerja' => $registerAset->id_unit_kerja,
+                        'id_ruangan' => $registerAset->id_ruangan,
+                        'id_mutasi' => $mutasiAset->id_mutasi,
+                    ],
+                    'notes' => 'Mutasi aset diperbarui dan sinkronisasi lokasi dijalankan ulang.',
+                    'created_by' => Auth::id(),
+                ]);
             }
             
             DB::commit();
