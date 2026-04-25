@@ -29,6 +29,12 @@
     </div>
 @endif
 
+<x-index.filter-toolbar
+    :action="route('master-data.sumber-anggaran.index')"
+    search-placeholder="Cari nama sumber anggaran..."
+    button-text="Terapkan"
+/>
+
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table
@@ -39,6 +45,7 @@
                 <tr>
                     <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Anggaran</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
             </thead>
@@ -48,6 +55,9 @@
                         <x-table.num-td :paginator="$sumberAnggarans" />
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $sumberAnggaran->nama_anggaran }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ $sumberAnggaran->keterangan }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex items-center justify-end space-x-3">

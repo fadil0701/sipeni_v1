@@ -142,29 +142,102 @@
                 </div>
             </div>
 
-            <!-- Approval History -->
-            @if($permintaan->approval->count() > 0)
+            <!-- Alur Approval PPKP -->
             <div>
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Riwayat Persetujuan</h3>
-                <div class="space-y-3">
-                    @foreach($permintaan->approval as $approval)
-                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">{{ $approval->approver->nama_pegawai ?? 'N/A' }}</p>
-                                <p class="text-xs text-gray-500 mt-1">{{ $approval->tanggal_approval ? $approval->tanggal_approval->format('d/m/Y H:i') : '-' }}</p>
-                                @if($approval->catatan)
-                                    <p class="text-sm text-gray-700 mt-2">{{ $approval->catatan }}</p>
-                                @endif
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Alur Approval PPKP</h3>
+                @if(isset($approvalFlow) && $approvalFlow->count() > 0)
+                    <div class="space-y-3">
+                        @foreach($approvalFlow as $flow)
+                            @php
+                                $log = (isset($approvalHistory) ? $approvalHistory->firstWhere('id_approval_flow', $flow->id) : null);
+                                $stepStatus = $log?->status ?? 'BELUM_DIAJUKAN';
+                                $stepBadge = match($stepStatus) {
+                                    'DISETUJUI', 'DIKETAHUI', 'DIVERIFIKASI', 'DIDISPOSISIKAN', 'DIPROSES' => 'bg-green-100 text-green-800',
+                                    'MENUNGGU' => 'bg-yellow-100 text-yellow-800',
+                                    'DITOLAK' => 'bg-red-100 text-red-800',
+                                    default => 'bg-gray-100 text-gray-700',
+                                };
+                                $stepLabel = $stepStatus === 'BELUM_DIAJUKAN' ? 'Belum diajukan' : $stepStatus;
+                            @endphp
+                            <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-900">
+                                            Step {{ $flow->step_order }} - {{ $flow->nama_step }}
+                                        </p>
+                                        <p class="mt-1 text-xs text-gray-600">
+                                            Role: {{ $flow->role->display_name ?? $flow->role->name ?? 'N/A' }}
+                                        </p>
+                                        @if($log?->user)
+                                            <p class="mt-1 text-xs text-gray-600">
+                                                Diproses oleh: {{ $log->user->name }}
+                                            </p>
+                                        @endif
+                                        @if($log?->catatan)
+                                            <p class="mt-2 text-sm text-gray-700">{{ $log->catatan }}</p>
+                                        @endif
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {{ $stepBadge }}">
+                                            {{ $stepLabel }}
+                                        </span>
+                                        @if($log)
+                                            <p class="mt-1 text-xs text-gray-500">
+                                                {{ ($log->approved_at ?? $log->created_at)?->format('d/m/Y H:i') }}
+                                            </p>
+                                        @endif
+                                    </div>
+                                </div>
                             </div>
-                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $approval->status_approval == 'DISETUJUI' ? 'bg-green-100 text-green-800' : ($approval->status_approval == 'DITOLAK' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800') }}">
-                                {{ $approval->status_approval }}
-                            </span>
-                        </div>
+                        @endforeach
                     </div>
-                    @endforeach
-                </div>
+                @else
+                    <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
+                        Alur approval belum dikonfigurasi.
+                    </div>
+                @endif
             </div>
+
+            <!-- Riwayat Persetujuan -->
+            @if(isset($approvalHistory) && $approvalHistory->count() > 0)
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Riwayat Persetujuan</h3>
+                    <div class="space-y-3">
+                        @foreach($approvalHistory as $log)
+                            @php
+                                $statusClasses = match($log->status) {
+                                    'DISETUJUI', 'DIKETAHUI', 'DIVERIFIKASI', 'DIDISPOSISIKAN', 'DIPROSES' => 'bg-green-100 text-green-800',
+                                    'DITOLAK' => 'bg-red-100 text-red-800',
+                                    'MENUNGGU' => 'bg-yellow-100 text-yellow-800',
+                                    default => 'bg-gray-100 text-gray-700',
+                                };
+                            @endphp
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                <div class="flex justify-between items-start gap-3">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">
+                                            {{ $log->approvalFlow?->nama_step ?? 'Step approval' }}
+                                        </p>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            {{ $log->user?->name ?? ($log->role?->display_name ?? 'System') }}
+                                        </p>
+                                        @if($log->catatan)
+                                            <p class="text-sm text-gray-700 mt-2">{{ $log->catatan }}</p>
+                                        @endif
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusClasses }}">
+                                            {{ $log->status }}
+                                        </span>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            {{ ($log->approved_at ?? $log->created_at)?->format('d/m/Y H:i') }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
             @endif
         </div>
     </div>

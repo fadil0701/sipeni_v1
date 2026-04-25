@@ -11,13 +11,38 @@ use App\Models\DataInventory;
 use App\Models\TransaksiDistribusi;
 use App\Models\ApprovalFlowDefinition;
 use App\Models\ApprovalLog;
+use App\Models\DraftDetailDistribusi;
+use App\Models\PenerimaanBarang;
+use App\Models\ReturBarang;
+use App\Models\PemakaianBarang;
 use App\Enums\PermintaanBarangStatus;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
+        $sessionScopeKey = 'dashboard.workspace_scope';
+        $allowedScopes = ['all', 'my'];
+
+        if ($request->has('workspace_scope') && in_array($request->query('workspace_scope'), $allowedScopes, true)) {
+            $workspaceScope = $request->query('workspace_scope');
+            $request->session()->put($sessionScopeKey, $workspaceScope);
+        } else {
+            $workspaceScope = $request->session()->get($sessionScopeKey, 'all');
+            if (!in_array($workspaceScope, $allowedScopes, true)) {
+                $workspaceScope = 'all';
+            }
+        }
+        $pegawaiId = optional($user->pegawai)->id;
+        $isPengurusBarangWorkspace = $user->hasAnyRole([
+            'admin',
+            'admin_gudang',
+            'admin_gudang_aset',
+            'admin_gudang_persediaan',
+            'admin_gudang_farmasi',
+            'admin_gudang_unit',
+        ]);
         
         // Get statistics
         $totalAssets = InventoryItem::whereHas('inventory', function ($query) {
@@ -179,6 +204,178 @@ class DashboardController extends Controller
             'ditolak' => PermintaanBarang::where('status', PermintaanBarangStatus::Ditolak->value)->count(),
         ];
 
+        $workspaceStats = [
+            'approval_perlu_diproses' => 0,
+            'draft_distribusi' => 0,
+            'distribusi_perlu_proses' => 0,
+            'distribusi_perlu_diterima' => 0,
+            'retur_diajukan' => 0,
+            'pemakaian_diajukan' => 0,
+        ];
+        $urgentQueue = collect();
+        $workspaceSla = [
+            'approval_over_sla' => 0,
+            'distribusi_over_sla' => 0,
+            'retur_over_sla' => 0,
+            'pemakaian_over_sla' => 0,
+        ];
+
+        if ($isPengurusBarangWorkspace) {
+            $roleIds = $user->roles->pluck('id');
+
+            $workspaceStats['approval_perlu_diproses'] = ApprovalLog::query()
+                ->where('modul_approval', 'PERMINTAAN_BARANG')
+                ->where('status', 'MENUNGGU')
+                ->whereIn('role_id', $roleIds)
+                ->when($workspaceScope === 'my', function ($q) use ($user) {
+                    // Untuk approval, item personal didefinisikan sebagai log yang pernah diproses user ini.
+                    $q->where('user_id', $user->id);
+                })
+                ->count();
+
+            $workspaceStats['draft_distribusi'] = DraftDetailDistribusi::query()
+                ->where(function ($q) {
+                    $q->whereNull('status')
+                        ->orWhereIn('status', ['MENUNGGU', 'DRAFT']);
+                })
+                ->when($workspaceScope === 'my', function ($q) use ($user) {
+                    $q->where('created_by', $user->id);
+                })
+                ->count();
+
+            $workspaceStats['distribusi_perlu_proses'] = TransaksiDistribusi::query()
+                ->whereIn('status_distribusi', ['draft', 'diproses'])
+                ->when($workspaceScope === 'my' && $pegawaiId, function ($q) use ($pegawaiId) {
+                    $q->where('id_pegawai_pengirim', $pegawaiId);
+                })
+                ->count();
+
+            $workspaceStats['distribusi_perlu_diterima'] = TransaksiDistribusi::query()
+                ->where('status_distribusi', 'dikirim')
+                ->when($workspaceScope === 'my' && $pegawaiId, function ($q) use ($pegawaiId) {
+                    $q->where('id_pegawai_pengirim', $pegawaiId);
+                })
+                ->count();
+
+            $workspaceStats['retur_diajukan'] = ReturBarang::query()
+                ->where('status_retur', 'DIAJUKAN')
+                ->when($workspaceScope === 'my' && $pegawaiId, function ($q) use ($pegawaiId) {
+                    $q->where('id_pegawai_pengirim', $pegawaiId);
+                })
+                ->count();
+
+            $workspaceStats['pemakaian_diajukan'] = PemakaianBarang::query()
+                ->where('status_pemakaian', 'DIAJUKAN')
+                ->when($workspaceScope === 'my' && $pegawaiId, function ($q) use ($pegawaiId) {
+                    $q->where('id_pegawai_pemakai', $pegawaiId);
+                })
+                ->count();
+
+            // Queue prioritas (oldest pending first, lalu dihitung skor urgensi)
+            $approvalQueue = ApprovalLog::query()
+                ->with(['approvalFlow', 'permintaan'])
+                ->where('modul_approval', 'PERMINTAAN_BARANG')
+                ->where('status', 'MENUNGGU')
+                ->whereIn('role_id', $roleIds)
+                ->when($workspaceScope === 'my', function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                })
+                ->orderBy('created_at')
+                ->limit(8)
+                ->get()
+                ->map(function ($item) {
+                    $ageHours = (int) $item->created_at->diffInHours(now());
+                    return [
+                        'source' => 'approval',
+                        'title' => $item->permintaan->no_permintaan ?? ('Approval #' . $item->id),
+                        'subtitle' => $item->approvalFlow->nama_step ?? 'Step Approval',
+                        'status' => 'MENUNGGU',
+                        'age_hours' => $ageHours,
+                        'priority_score' => 300 + $ageHours,
+                        'url' => route('transaction.approval.show', $item->id),
+                    ];
+                });
+
+            $distribusiQueue = TransaksiDistribusi::query()
+                ->whereIn('status_distribusi', ['draft', 'diproses', 'dikirim'])
+                ->when($workspaceScope === 'my' && $pegawaiId, function ($q) use ($pegawaiId) {
+                    $q->where('id_pegawai_pengirim', $pegawaiId);
+                })
+                ->orderBy('tanggal_distribusi')
+                ->limit(8)
+                ->get()
+                ->map(function ($item) {
+                    $ageHours = (int) optional($item->tanggal_distribusi)->diffInHours(now());
+                    $status = strtoupper((string) ($item->status_distribusi?->value ?? $item->status_distribusi));
+                    $base = $status === 'DIKIRIM' ? 280 : 220;
+                    return [
+                        'source' => 'distribusi',
+                        'title' => $item->no_sbbk,
+                        'subtitle' => 'Distribusi Barang',
+                        'status' => $status,
+                        'age_hours' => $ageHours,
+                        'priority_score' => $base + $ageHours,
+                        'url' => route('transaction.distribusi.show', $item->id_distribusi),
+                    ];
+                });
+
+            $returQueue = ReturBarang::query()
+                ->where('status_retur', 'DIAJUKAN')
+                ->when($workspaceScope === 'my' && $pegawaiId, function ($q) use ($pegawaiId) {
+                    $q->where('id_pegawai_pengirim', $pegawaiId);
+                })
+                ->orderBy('tanggal_retur')
+                ->limit(8)
+                ->get()
+                ->map(function ($item) {
+                    $ageHours = (int) optional($item->tanggal_retur)->diffInHours(now());
+                    return [
+                        'source' => 'retur',
+                        'title' => $item->no_retur,
+                        'subtitle' => 'Retur Barang',
+                        'status' => 'DIAJUKAN',
+                        'age_hours' => $ageHours,
+                        'priority_score' => 200 + $ageHours,
+                        'url' => route('transaction.retur-barang.show', $item->id_retur),
+                    ];
+                });
+
+            $pemakaianQueue = PemakaianBarang::query()
+                ->where('status_pemakaian', 'DIAJUKAN')
+                ->when($workspaceScope === 'my' && $pegawaiId, function ($q) use ($pegawaiId) {
+                    $q->where('id_pegawai_pemakai', $pegawaiId);
+                })
+                ->orderBy('tanggal_pemakaian')
+                ->limit(8)
+                ->get()
+                ->map(function ($item) {
+                    $ageHours = (int) optional($item->tanggal_pemakaian)->diffInHours(now());
+                    return [
+                        'source' => 'pemakaian',
+                        'title' => $item->no_pemakaian,
+                        'subtitle' => 'Pemakaian Barang',
+                        'status' => 'DIAJUKAN',
+                        'age_hours' => $ageHours,
+                        'priority_score' => 180 + $ageHours,
+                        'url' => route('transaction.pemakaian-barang.show', $item->id_pemakaian),
+                    ];
+                });
+
+            $urgentQueue = $approvalQueue
+                ->concat($distribusiQueue)
+                ->concat($returQueue)
+                ->concat($pemakaianQueue)
+                ->sortByDesc('priority_score')
+                ->take(5)
+                ->values();
+
+            // SLA sederhana (jam)
+            $workspaceSla['approval_over_sla'] = $approvalQueue->where('age_hours', '>', 24)->count();
+            $workspaceSla['distribusi_over_sla'] = $distribusiQueue->where('age_hours', '>', 48)->count();
+            $workspaceSla['retur_over_sla'] = $returQueue->where('age_hours', '>', 72)->count();
+            $workspaceSla['pemakaian_over_sla'] = $pemakaianQueue->where('age_hours', '>', 48)->count();
+        }
+
         return view('user.dashboard', compact(
             'totalAssets',
             'totalStock',
@@ -191,7 +388,12 @@ class DashboardController extends Controller
             'inventoryCategoryData',
             'latestAssets',
             'latestTransactions',
-            'requestStatusData'
+            'requestStatusData',
+            'isPengurusBarangWorkspace',
+            'workspaceStats',
+            'urgentQueue',
+            'workspaceSla',
+            'workspaceScope'
         ));
     }
 }

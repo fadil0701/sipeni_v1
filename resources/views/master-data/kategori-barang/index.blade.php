@@ -29,6 +29,30 @@
     </div>
 @endif
 
+<x-index.filter-toolbar
+    :action="route('master-data.kategori-barang.index')"
+    search-placeholder="Cari kode kategori, nama kategori, atau kode barang..."
+    button-text="Terapkan"
+>
+    <x-slot:filters>
+        <div class="w-full min-w-0 lg:w-auto lg:min-w-[18rem]">
+            <label for="id_kode_barang" class="block text-sm font-medium text-gray-700 mb-1">Kode Barang</label>
+            <select
+                id="id_kode_barang"
+                name="id_kode_barang"
+                class="block w-full rounded-md border border-gray-300 py-2 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+                <option value="">Semua Kode Barang</option>
+                @foreach(($kodeBarangs ?? collect()) as $kodeBarang)
+                    <option value="{{ $kodeBarang->id_kode_barang }}" {{ (string) request('id_kode_barang') === (string) $kodeBarang->id_kode_barang ? 'selected' : '' }}>
+                        {{ $kodeBarang->kode_barang }} - {{ $kodeBarang->nama_kode_barang }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+    </x-slot:filters>
+</x-index.filter-toolbar>
+
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table

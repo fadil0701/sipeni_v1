@@ -11,6 +11,135 @@
     </div>
 </div>
 
+@if($isPengurusBarangWorkspace ?? false)
+@php
+    $currentUser = auth()->user();
+@endphp
+<div class="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-5">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h2 class="text-lg font-semibold text-blue-900">Workspace Pengurus Barang</h2>
+            <p class="mt-1 text-sm text-blue-700">Ringkasan kerja harian dan aksi cepat operasional barang.</p>
+        </div>
+        <div class="inline-flex rounded-md border border-blue-200 bg-white p-1 text-xs">
+            <a
+                href="{{ route('user.dashboard', array_merge(request()->query(), ['workspace_scope' => 'all'])) }}"
+                class="rounded px-2 py-1 font-medium {{ ($workspaceScope ?? 'all') === 'all' ? 'bg-blue-600 text-white' : 'text-blue-700 hover:bg-blue-50' }}"
+            >
+                Semua item role
+            </a>
+            <a
+                href="{{ route('user.dashboard', array_merge(request()->query(), ['workspace_scope' => 'my'])) }}"
+                class="rounded px-2 py-1 font-medium {{ ($workspaceScope ?? 'all') === 'my' ? 'bg-blue-600 text-white' : 'text-blue-700 hover:bg-blue-50' }}"
+            >
+                Hanya item saya
+            </a>
+        </div>
+    </div>
+    <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <div class="rounded-lg bg-white p-3 shadow-sm">
+            <p class="text-xs text-gray-500">Approval Menunggu</p>
+            <p class="mt-1 text-xl font-semibold text-gray-900">{{ number_format($workspaceStats['approval_perlu_diproses'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="rounded-lg bg-white p-3 shadow-sm">
+            <p class="text-xs text-gray-500">Draft Distribusi</p>
+            <p class="mt-1 text-xl font-semibold text-gray-900">{{ number_format($workspaceStats['draft_distribusi'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="rounded-lg bg-white p-3 shadow-sm">
+            <p class="text-xs text-gray-500">Distribusi Diproses</p>
+            <p class="mt-1 text-xl font-semibold text-gray-900">{{ number_format($workspaceStats['distribusi_perlu_proses'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="rounded-lg bg-white p-3 shadow-sm">
+            <p class="text-xs text-gray-500">Perlu Penerimaan</p>
+            <p class="mt-1 text-xl font-semibold text-gray-900">{{ number_format($workspaceStats['distribusi_perlu_diterima'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="rounded-lg bg-white p-3 shadow-sm">
+            <p class="text-xs text-gray-500">Retur Diajukan</p>
+            <p class="mt-1 text-xl font-semibold text-gray-900">{{ number_format($workspaceStats['retur_diajukan'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="rounded-lg bg-white p-3 shadow-sm">
+            <p class="text-xs text-gray-500">Pemakaian Diajukan</p>
+            <p class="mt-1 text-xl font-semibold text-gray-900">{{ number_format($workspaceStats['pemakaian_diajukan'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+    </div>
+    <div class="mt-4 flex flex-wrap gap-2">
+        @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.approval.index'))
+            <a href="{{ route('transaction.approval.index') }}" class="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700">Buka Approval</a>
+        @endif
+        @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.draft-distribusi.index'))
+            <a href="{{ route('transaction.draft-distribusi.index') }}" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-700">Draft Distribusi</a>
+        @endif
+        @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.distribusi.index'))
+            <a href="{{ route('transaction.distribusi.index') }}" class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700">Distribusi (SBBK)</a>
+        @endif
+        @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.penerimaan-barang.index'))
+            <a href="{{ route('transaction.penerimaan-barang.index') }}" class="inline-flex items-center rounded-md bg-cyan-600 px-3 py-2 text-xs font-medium text-white hover:bg-cyan-700">Penerimaan Barang</a>
+        @endif
+        @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.retur-barang.index'))
+            <a href="{{ route('transaction.retur-barang.index') }}" class="inline-flex items-center rounded-md bg-amber-600 px-3 py-2 text-xs font-medium text-white hover:bg-amber-700">Retur Barang</a>
+        @endif
+        @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.pemakaian-barang.index'))
+            <a href="{{ route('transaction.pemakaian-barang.index') }}" class="inline-flex items-center rounded-md bg-fuchsia-600 px-3 py-2 text-xs font-medium text-white hover:bg-fuchsia-700">Pemakaian Barang</a>
+        @endif
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div class="rounded-lg border border-blue-100 bg-white p-4">
+            <h3 class="text-sm font-semibold text-gray-900">Antrian Prioritas</h3>
+            <p class="mt-1 text-xs text-gray-500">Top 5 item paling urgent berdasarkan usia antrian.</p>
+            <div class="mt-3 space-y-2">
+                @forelse(($urgentQueue ?? collect()) as $row)
+                    @php
+                        $statusClass = match($row['status']) {
+                            'MENUNGGU', 'DIAJUKAN' => 'bg-yellow-100 text-yellow-800',
+                            'DIPROSES' => 'bg-blue-100 text-blue-800',
+                            'DIKIRIM' => 'bg-indigo-100 text-indigo-800',
+                            default => 'bg-gray-100 text-gray-800',
+                        };
+                    @endphp
+                    <a href="{{ $row['url'] }}" class="flex items-center justify-between rounded-md border border-gray-100 px-3 py-2 hover:bg-gray-50">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">{{ $row['title'] }}</p>
+                            <p class="text-xs text-gray-500">{{ $row['subtitle'] }} · {{ $row['age_hours'] }} jam</p>
+                        </div>
+                        <span class="inline-flex rounded-full px-2 py-1 text-[10px] font-semibold {{ $statusClass }}">
+                            {{ $row['status'] }}
+                        </span>
+                    </a>
+                @empty
+                    <div class="rounded-md border border-dashed border-gray-200 px-3 py-4 text-center text-xs text-gray-500">
+                        Tidak ada antrian prioritas saat ini.
+                    </div>
+                @endforelse
+            </div>
+        </div>
+
+        <div class="rounded-lg border border-blue-100 bg-white p-4">
+            <h3 class="text-sm font-semibold text-gray-900">SLA Monitoring</h3>
+            <p class="mt-1 text-xs text-gray-500">Jumlah item melewati batas SLA sederhana.</p>
+            <div class="mt-3 grid grid-cols-2 gap-3">
+                <div class="rounded-md bg-red-50 p-3">
+                    <p class="text-[11px] text-red-700">Approval &gt; 24 jam</p>
+                    <p class="mt-1 text-xl font-semibold text-red-800">{{ $workspaceSla['approval_over_sla'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-md bg-orange-50 p-3">
+                    <p class="text-[11px] text-orange-700">Distribusi &gt; 48 jam</p>
+                    <p class="mt-1 text-xl font-semibold text-orange-800">{{ $workspaceSla['distribusi_over_sla'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-md bg-amber-50 p-3">
+                    <p class="text-[11px] text-amber-700">Retur &gt; 72 jam</p>
+                    <p class="mt-1 text-xl font-semibold text-amber-800">{{ $workspaceSla['retur_over_sla'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-md bg-yellow-50 p-3">
+                    <p class="text-[11px] text-yellow-700">Pemakaian &gt; 48 jam</p>
+                    <p class="mt-1 text-xl font-semibold text-yellow-800">{{ $workspaceSla['pemakaian_over_sla'] ?? 0 }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-5 mb-6">
     <div class="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
         <div class="flex items-center justify-between">

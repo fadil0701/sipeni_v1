@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class InventoryQrCodeService
@@ -14,21 +15,6 @@ class InventoryQrCodeService
     public function generateForKodeRegister(string $kodeRegister): ?string
     {
         try {
-            $pathParts = explode('/', $kodeRegister);
-            $baseDir = storage_path('app/public/qrcodes/inventory_item');
-
-            $currentDir = $baseDir;
-            for ($i = 0; $i < count($pathParts) - 1; $i++) {
-                $currentDir .= DIRECTORY_SEPARATOR.$pathParts[$i];
-                if (! file_exists($currentDir)) {
-                    if (! mkdir($currentDir, 0755, true) && ! is_dir($currentDir)) {
-                        Log::error('QR Code directory tidak dapat dibuat: '.$currentDir);
-
-                        return null;
-                    }
-                }
-            }
-
             // simple-qrcode mendukung svg/png/eps.
             // PNG membutuhkan ekstensi imagick. Jika tidak ada, fallback ke SVG agar proses tidak gagal.
             $format = strtolower((string) config('app.qr_code_format', env('QR_CODE_FORMAT', 'png')));
@@ -40,13 +26,11 @@ class InventoryQrCodeService
                 $format = 'svg';
             }
 
-            $qrCodeFileName = end($pathParts).'.'.$format;
             $qrCodePath = 'qrcodes/inventory_item/'.str_replace('\\', '/', $kodeRegister).'.'.$format;
-            $fullPath = $currentDir.DIRECTORY_SEPARATOR.$qrCodeFileName;
-
             $scanUrl = rtrim((string) config('app.url'), '/').'/scan/inventory-item?kode_register='.urlencode($kodeRegister);
+            $qrContent = QrCode::format($format)->size(200)->generate($scanUrl);
 
-            QrCode::format($format)->size(200)->generate($scanUrl, $fullPath);
+            Storage::disk('public')->put($qrCodePath, $qrContent);
 
             return $qrCodePath;
         } catch (\Exception $e) {

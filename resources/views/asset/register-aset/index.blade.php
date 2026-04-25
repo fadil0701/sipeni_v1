@@ -93,7 +93,7 @@
                     </div>
                     <div class="min-w-0">
                         <h3 class="text-lg font-semibold text-gray-900 truncate">{{ $gudang->nama_gudang }}</h3>
-                        @if($gudang->relationLoaded('unitKerja') && $gudang->unitKerja)
+                        @if(!empty($gudang->unitKerja))
                         <p class="text-xs text-gray-500 mt-0.5">{{ $gudang->unitKerja->nama_unit_kerja }}</p>
                         @else
                         <p class="text-xs text-gray-500 mt-0.5">Gudang Unit</p>

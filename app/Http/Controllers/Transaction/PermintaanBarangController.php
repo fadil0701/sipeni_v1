@@ -11,14 +11,17 @@ use App\Models\MasterDataBarang;
 use App\Models\MasterSatuan;
 use App\Models\DataStock;
 use App\Models\DataInventory;
+use App\Models\ApprovalFlowDefinition;
 use Illuminate\Support\Facades\Auth;
 use App\Enums\PermintaanBarangStatus;
 use App\Services\PermintaanService;
+use App\Services\ApprovalService;
 
 class PermintaanBarangController extends Controller
 {
     public function __construct(
-        private readonly PermintaanService $permintaanService
+        private readonly PermintaanService $permintaanService,
+        private readonly ApprovalService $approvalService
     ) {}
 
     public function index(Request $request)
@@ -278,8 +281,14 @@ class PermintaanBarangController extends Controller
     {
         $permintaan = PermintaanBarang::with(['unitKerja', 'pemohon.jabatan', 'detailPermintaan.dataBarang', 'detailPermintaan.satuan', 'approval'])
             ->findOrFail($id);
+        $approvalHistory = $this->approvalService->history('PERMINTAAN_BARANG', (int) $permintaan->id_permintaan);
+        $approvalFlow = ApprovalFlowDefinition::query()
+            ->where('modul_approval', 'PERMINTAAN_BARANG')
+            ->with('role')
+            ->orderBy('step_order')
+            ->get();
 
-        return view('transaction.permintaan-barang.show', compact('permintaan'));
+        return view('transaction.permintaan-barang.show', compact('permintaan', 'approvalHistory', 'approvalFlow'));
     }
 
     public function edit($id)

@@ -17,8 +17,26 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
-        $users = User::with('roles')->latest()->paginate($perPage)->appends($request->query());
-        return view('admin.users.index', compact('users'));
+        $query = User::with('roles')->latest();
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('email', 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($request->filled('role_id')) {
+            $query->whereHas('roles', function ($q) use ($request) {
+                $q->where('roles.id', $request->integer('role_id'));
+            });
+        }
+
+        $users = $query->paginate($perPage)->appends($request->query());
+        $roles = Role::orderBy('display_name')->get();
+
+        return view('admin.users.index', compact('users', 'roles'));
     }
 
     public function create(Request $request)

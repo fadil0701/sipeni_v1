@@ -44,12 +44,15 @@
     </div>
 @endif
 
-<!-- Filters -->
-<div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
-    <form method="GET" action="{{ route('master-manajemen.master-pegawai.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <div>
-            <label for="unit_kerja" class="block text-sm font-medium text-gray-700 mb-1">Unit Kerja</label>
-            <select id="unit_kerja" name="unit_kerja" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+<x-index.filter-toolbar
+    :action="route('master-manajemen.master-pegawai.index')"
+    form-id="filterFormPegawai"
+    search-placeholder="NIP, Nama, Email..."
+>
+    <x-slot:filters>
+        <div class="w-full shrink-0 sm:min-w-[11rem] sm:w-52">
+            <label for="unit_kerja" class="mb-1 block text-sm font-medium text-gray-700">Unit Kerja</label>
+            <select id="unit_kerja" name="unit_kerja" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Semua Unit Kerja</option>
                 @foreach($unitKerjas as $unitKerja)
                     <option value="{{ $unitKerja->id_unit_kerja }}" {{ request('unit_kerja') == $unitKerja->id_unit_kerja ? 'selected' : '' }}>
@@ -58,10 +61,9 @@
                 @endforeach
             </select>
         </div>
-
-        <div>
-            <label for="jabatan" class="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
-            <select id="jabatan" name="jabatan" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        <div class="w-full shrink-0 sm:min-w-[11rem] sm:w-52">
+            <label for="jabatan" class="mb-1 block text-sm font-medium text-gray-700">Jabatan</label>
+            <select id="jabatan" name="jabatan" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Semua Jabatan</option>
                 @foreach($jabatans as $jabatan)
                     <option value="{{ $jabatan->id_jabatan }}" {{ request('jabatan') == $jabatan->id_jabatan ? 'selected' : '' }}>
@@ -70,29 +72,16 @@
                 @endforeach
             </select>
         </div>
-
-        <div>
-            <label for="has_user" class="block text-sm font-medium text-gray-700 mb-1">Status User</label>
-            <select id="has_user" name="has_user" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        <div class="w-full shrink-0 sm:min-w-[11rem] sm:w-44">
+            <label for="has_user" class="mb-1 block text-sm font-medium text-gray-700">Status User</label>
+            <select id="has_user" name="has_user" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Semua</option>
                 <option value="yes" {{ request('has_user') == 'yes' ? 'selected' : '' }}>Sudah Punya User</option>
                 <option value="no" {{ request('has_user') == 'no' ? 'selected' : '' }}>Belum Punya User</option>
             </select>
         </div>
-
-        <div>
-            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cari</label>
-            <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                </div>
-                <input type="text" id="search" name="search" value="{{ request('search') }}" placeholder="NIP, Nama, Email..." class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-            </div>
-        </div>
-    </form>
-</div>
+    </x-slot:filters>
+</x-index.filter-toolbar>
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">

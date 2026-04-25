@@ -49,6 +49,12 @@
     </div>
 @endif
 
+<x-index.filter-toolbar
+    :action="route('admin.roles.index')"
+    form-id="filterFormRoles"
+    search-placeholder="Kode role, nama tampilan, deskripsi..."
+/>
+
 <!-- Table Card -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">

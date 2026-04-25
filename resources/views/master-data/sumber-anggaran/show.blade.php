@@ -27,6 +27,10 @@
                 <dt class="text-sm font-medium text-gray-500 mb-1">Nama Anggaran</dt>
                 <dd class="text-sm font-semibold text-gray-900">{{ $sumberAnggaran->nama_anggaran }}</dd>
             </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500 mb-1">Keterangan</dt>
+                <dd class="text-sm font-semibold text-gray-900">{{ $sumberAnggaran->keterangan }}</dd>
+            </div>
         </dl>
     </div>
 </div>

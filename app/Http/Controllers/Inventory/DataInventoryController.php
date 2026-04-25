@@ -14,6 +14,8 @@ use App\Models\MasterDataBarang;
 use App\Models\MasterGudang;
 use App\Models\MasterSumberAnggaran;
 use App\Models\MasterSubKegiatan;
+use App\Models\MasterProgram;
+use App\Models\MasterKegiatan;
 use App\Models\MasterSatuan;
 use App\Models\MasterUnitKerja;
 use App\Models\MasterPegawai;
@@ -24,7 +26,7 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 class DataInventoryController extends Controller
 {
     public function index(Request $request)
-    {
+    {   
         $user = Auth::user();
         
         // GUDANG PUSAT (Admin/Admin Gudang): Melihat SEMUA data inventory (global view)
@@ -190,11 +192,12 @@ class DataInventoryController extends Controller
         $gudangs = MasterGudang::where('jenis_gudang', 'PUSAT')->get();
         $sumberAnggarans = MasterSumberAnggaran::all();
         $subKegiatans = MasterSubKegiatan::all();
+        $defaultSubKegiatanId = MasterSubKegiatan::query()->value('id_sub_kegiatan');
         $satuans = MasterSatuan::all();
         $unitKerjas = MasterUnitKerja::all();
 
         return view('inventory.data-inventory.create', compact(
-            'dataBarangs', 'gudangs', 'sumberAnggarans', 'subKegiatans', 'satuans', 'unitKerjas'
+            'dataBarangs', 'gudangs', 'sumberAnggarans', 'subKegiatans', 'satuans', 'unitKerjas', 'defaultSubKegiatanId'
         ));
     }
 
@@ -213,7 +216,7 @@ class DataInventoryController extends Controller
                 },
             ],
             'id_anggaran' => 'required|exists:master_sumber_anggaran,id_anggaran',
-            'id_sub_kegiatan' => 'required|exists:master_sub_kegiatan,id_sub_kegiatan',
+            'id_sub_kegiatan' => 'nullable|exists:master_sub_kegiatan,id_sub_kegiatan',
             'jenis_inventory' => 'required|in:ASET,PERSEDIAAN,FARMASI',
             'jenis_barang' => 'nullable|string|max:50',
             'tahun_anggaran' => 'required|integer|min:2000|max:2100',
@@ -232,6 +235,12 @@ class DataInventoryController extends Controller
             'upload_foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'upload_dokumen' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
         ]);
+
+        // Form saat ini menyembunyikan field sub kegiatan, sementara kolom DB wajib.
+        // Gunakan default sub kegiatan aktif pertama jika tidak dikirim.
+        if (empty($validated['id_sub_kegiatan'])) {
+            $validated['id_sub_kegiatan'] = $this->resolveDefaultSubKegiatanId();
+        }
 
         // Untuk jenis inventory FARMASI, No Batch dan Tanggal Kedaluwarsa wajib
         if (($validated['jenis_inventory'] ?? '') === 'FARMASI') {
@@ -530,11 +539,12 @@ class DataInventoryController extends Controller
         
         $sumberAnggarans = MasterSumberAnggaran::all();
         $subKegiatans = MasterSubKegiatan::all();
+        $defaultSubKegiatanId = MasterSubKegiatan::query()->value('id_sub_kegiatan');
         $satuans = MasterSatuan::all();
         $unitKerjas = MasterUnitKerja::all();
 
         return view('inventory.data-inventory.edit', compact(
-            'dataInventory', 'dataBarangs', 'gudangs', 'sumberAnggarans', 'subKegiatans', 'satuans', 'unitKerjas'
+            'dataInventory', 'dataBarangs', 'gudangs', 'sumberAnggarans', 'subKegiatans', 'satuans', 'unitKerjas', 'defaultSubKegiatanId'
         ));
     }
 
@@ -587,7 +597,7 @@ class DataInventoryController extends Controller
             'id_data_barang' => 'required|exists:master_data_barang,id_data_barang',
             'id_gudang' => $gudangRules,
             'id_anggaran' => 'required|exists:master_sumber_anggaran,id_anggaran',
-            'id_sub_kegiatan' => 'required|exists:master_sub_kegiatan,id_sub_kegiatan',
+            'id_sub_kegiatan' => 'nullable|exists:master_sub_kegiatan,id_sub_kegiatan',
             'jenis_inventory' => 'required|in:ASET,PERSEDIAAN,FARMASI',
             'jenis_barang' => 'nullable|string|max:50',
             'tahun_anggaran' => 'required|integer|min:2000|max:2100',
@@ -606,6 +616,10 @@ class DataInventoryController extends Controller
             'upload_foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'upload_dokumen' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
         ]);
+
+        if (empty($validated['id_sub_kegiatan'])) {
+            $validated['id_sub_kegiatan'] = $this->resolveDefaultSubKegiatanId();
+        }
 
         // Untuk jenis inventory FARMASI, No Batch dan Tanggal Kedaluwarsa wajib
         if (($validated['jenis_inventory'] ?? '') === 'FARMASI') {
@@ -743,5 +757,42 @@ class DataInventoryController extends Controller
 
         return redirect()->route('inventory.data-inventory.index')
             ->with('success', 'Data Inventory berhasil dihapus.');
+    }
+
+    private function resolveDefaultSubKegiatanId(): int
+    {
+        $id = MasterSubKegiatan::query()->value('id_sub_kegiatan');
+        if ($id) {
+            return (int) $id;
+        }
+
+        // Auto-bootstrap master hirarki minimum agar input inventory tidak gagal
+        $programDefaults = [];
+        if (Schema::hasColumn('master_program', 'kode_program')) {
+            $programDefaults['kode_program'] = 'SYS-DEFAULT-PROGRAM';
+        }
+        $program = MasterProgram::query()->firstOrCreate(
+            ['nama_program' => 'PROGRAM DEFAULT SISTEM'],
+            $programDefaults
+        );
+
+        $kegiatanDefaults = [];
+        if (Schema::hasColumn('master_kegiatan', 'kode_kegiatan')) {
+            $kegiatanDefaults['kode_kegiatan'] = 'SYS-DEFAULT-KEGIATAN';
+        }
+        $kegiatan = MasterKegiatan::query()->firstOrCreate(
+            ['id_program' => $program->id_program, 'nama_kegiatan' => 'KEGIATAN DEFAULT SISTEM'],
+            $kegiatanDefaults
+        );
+
+        $subKegiatan = MasterSubKegiatan::query()->firstOrCreate(
+            ['kode_sub_kegiatan' => 'SYS-DEFAULT-SUB-KEGIATAN'],
+            [
+                'id_kegiatan' => $kegiatan->id_kegiatan,
+                'nama_sub_kegiatan' => 'SUB KEGIATAN DEFAULT SISTEM',
+            ]
+        );
+
+        return (int) $subKegiatan->id_sub_kegiatan;
     }
 }

@@ -11,9 +11,27 @@ class KodeBarangController extends Controller
 {
     public function index(Request $request)
     {
+        $search = trim((string) $request->query('search', ''));
+        $idAset = $request->query('id_aset');
+
+        $query = MasterKodeBarang::with('aset');
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('kode_barang', 'like', "%{$search}%")
+                    ->orWhere('nama_kode_barang', 'like', "%{$search}%")
+                    ->orWhereHas('aset', function ($asetQ) use ($search) {
+                        $asetQ->where('nama_aset', 'like', "%{$search}%");
+                    });
+            });
+        }
+        if (!empty($idAset)) {
+            $query->where('id_aset', $idAset);
+        }
+
+        $asets = MasterAset::query()->orderBy('nama_aset')->get(['id_aset', 'nama_aset']);
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
-        $kodeBarangs = MasterKodeBarang::with('aset')->latest()->paginate($perPage)->appends($request->query());
-        return view('master-data.kode-barang.index', compact('kodeBarangs'));
+        $kodeBarangs = $query->latest()->paginate($perPage)->appends($request->query());
+        return view('master-data.kode-barang.index', compact('kodeBarangs', 'asets'));
     }
 
     public function create()

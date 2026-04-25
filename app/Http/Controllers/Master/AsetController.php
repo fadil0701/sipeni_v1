@@ -10,8 +10,15 @@ class AsetController extends Controller
 {
     public function index(Request $request)
     {
+        $search = trim((string) $request->query('search', ''));
+        $query = MasterAset::query();
+
+        if ($search !== '') {
+            $query->where('nama_aset', 'like', "%{$search}%");
+        }
+
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
-        $asets = MasterAset::latest()->paginate($perPage)->appends($request->query());
+        $asets = $query->latest()->paginate($perPage)->appends($request->query());
         return view('master-data.aset.index', compact('asets'));
     }
 

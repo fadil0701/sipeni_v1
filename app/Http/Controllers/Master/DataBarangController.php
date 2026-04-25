@@ -14,16 +14,41 @@ class DataBarangController extends Controller
     public function index(Request $request)
     {
         $query = MasterDataBarang::with(['subjenisBarang', 'satuan']);
+        $idSubjenisBarang = $request->query('id_subjenis_barang');
+        $idSatuan = $request->query('id_satuan');
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where('nama_barang', 'like', "%{$search}%")
-                  ->orWhere('kode_data_barang', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_barang', 'like', "%{$search}%")
+                    ->orWhere('kode_data_barang', 'like', "%{$search}%")
+                    ->orWhereHas('subjenisBarang', function ($subjenisQ) use ($search) {
+                        $subjenisQ->where('nama_subjenis_barang', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('satuan', function ($satuanQ) use ($search) {
+                        $satuanQ->where('nama_satuan', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if (!empty($idSubjenisBarang)) {
+            $query->where('id_subjenis_barang', $idSubjenisBarang);
+        }
+
+        if (!empty($idSatuan)) {
+            $query->where('id_satuan', $idSatuan);
         }
 
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
         $dataBarangs = $query->latest()->paginate($perPage)->appends($request->query());
-        return view('master-data.data-barang.index', compact('dataBarangs'));
+        $subjenisBarangs = MasterSubjenisBarang::query()
+            ->orderBy('nama_subjenis_barang')
+            ->get(['id_subjenis_barang', 'nama_subjenis_barang']);
+        $satuans = MasterSatuan::query()
+            ->orderBy('nama_satuan')
+            ->get(['id_satuan', 'nama_satuan']);
+
+        return view('master-data.data-barang.index', compact('dataBarangs', 'subjenisBarangs', 'satuans'));
     }
 
     public function create()

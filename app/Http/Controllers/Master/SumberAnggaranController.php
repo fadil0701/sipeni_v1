@@ -10,8 +10,16 @@ class SumberAnggaranController extends Controller
 {
     public function index(Request $request)
     {
+        $search = trim((string) $request->query('search', ''));
+        $query = MasterSumberAnggaran::query();
+
+        if ($search !== '') {
+            $query->where('nama_anggaran', 'like', "%{$search}%");
+            $query->where('keterangan', 'like', "%{$search}%");
+        }
+
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
-        $sumberAnggarans = MasterSumberAnggaran::latest()->paginate($perPage)->appends($request->query());
+        $sumberAnggarans = $query->latest()->paginate($perPage)->appends($request->query());
         return view('master-data.sumber-anggaran.index', compact('sumberAnggarans'));
     }
 
@@ -24,6 +32,7 @@ class SumberAnggaranController extends Controller
     {
         $validated = $request->validate([
             'nama_anggaran' => 'required|string|max:255|unique:master_sumber_anggaran,nama_anggaran',
+            'keterangan' => 'required|string|max:255',
         ]);
 
         MasterSumberAnggaran::create($validated);
@@ -50,6 +59,7 @@ class SumberAnggaranController extends Controller
 
         $validated = $request->validate([
             'nama_anggaran' => 'required|string|max:255|unique:master_sumber_anggaran,nama_anggaran,' . $id . ',id_anggaran',
+            'keterangan' => 'required|string|max:255',
         ]);
 
         $sumberAnggaran->update($validated);

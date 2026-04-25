@@ -49,6 +49,26 @@
     </div>
 @endif
 
+<x-index.filter-toolbar
+    :action="route('admin.users.index')"
+    form-id="filterFormUsers"
+    search-placeholder="Nama, email..."
+>
+    <x-slot:filters>
+        <div class="w-full shrink-0 sm:min-w-[11rem] sm:w-56">
+            <label for="role_id" class="mb-1 block text-sm font-medium text-gray-700">Role</label>
+            <select id="role_id" name="role_id" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Semua Role</option>
+                @foreach($roles as $role)
+                    <option value="{{ $role->id }}" {{ request('role_id') == $role->id ? 'selected' : '' }}>
+                        {{ $role->display_name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+    </x-slot:filters>
+</x-index.filter-toolbar>
+
 <!-- Table Card -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
@@ -69,6 +89,7 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($users as $user)
                     <tr class="hover:bg-gray-50 transition-colors">
+                        <x-table.num-td :paginator="$users" />
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $user->name }}</div>
                         </td>

@@ -8,8 +8,10 @@ use App\Models\KartuInventarisRuangan;
 use App\Models\RegisterAset;
 use App\Models\MasterRuangan;
 use App\Models\MasterPegawai;
+use App\Models\InventoryItem;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class KartuInventarisRuanganController extends Controller
 {
@@ -20,82 +22,117 @@ class KartuInventarisRuanganController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
-        
-        // Query InventoryItem yang memiliki RegisterAset dengan ruangan (untuk KIR)
-        // KIR = RegisterAset yang memiliki id_ruangan (tidak null)
-        $query = \App\Models\InventoryItem::with([
-            'inventory.dataBarang',
-            'inventory.gudang.unitKerja',
-            'ruangan.unitKerja',
-            'gudang.unitKerja',
-            'inventory.registerAset' => function($q) {
-                $q->whereNotNull('id_ruangan')
-                  ->with(['kartuInventarisRuangan.penanggungJawab', 'ruangan.unitKerja']);
-            }
-        ])->whereHas('inventory', function($q) {
-            $q->where('jenis_inventory', 'ASET')
-              ->whereHas('registerAset', function($registerQ) {
-                  // Hanya tampilkan InventoryItem yang memiliki RegisterAset dengan ruangan
-                  $registerQ->whereNotNull('id_ruangan');
-              });
-        });
-        
-        // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
+
+        // KIR index = daftar dokumen KIR per unit kerja (siap cetak).
+        $summaryQuery = RegisterAset::query()
+            ->whereNotNull('id_unit_kerja')
+            ->whereNotNull('id_ruangan')
+            ->whereHas('kartuInventarisRuangan')
+            ->selectRaw('id_unit_kerja, COUNT(*) as total_item, MAX(updated_at) as last_update')
+            ->groupBy('id_unit_kerja');
+
+        if ($request->filled('id_unit_kerja')) {
+            $summaryQuery->where('id_unit_kerja', $request->id_unit_kerja);
+        }
+
+        // Kepala unit/pegawai hanya melihat dokumen unit kerjanya.
         if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
-                $query->whereHas('inventory.registerAset', function($q) use ($pegawai) {
-                    $q->whereHas('ruangan', function($ruanganQ) use ($pegawai) {
-                        $ruanganQ->where('id_unit_kerja', $pegawai->id_unit_kerja);
-                    });
-                });
+                $summaryQuery->where('id_unit_kerja', $pegawai->id_unit_kerja);
             } else {
-                $query->whereRaw('1 = 0'); // Tidak ada data jika user tidak punya unit kerja
+                $summaryQuery->whereRaw('1 = 0');
             }
         }
-        
-        // Filter berdasarkan ruangan jika ada
-        if ($request->filled('id_ruangan')) {
-            $query->whereHas('inventory.registerAset', function($q) use ($request) {
-                $q->where('id_ruangan', $request->id_ruangan);
-            });
-        }
-        
-        // Filter berdasarkan unit kerja jika ada
-        if ($request->filled('id_unit_kerja')) {
-            $query->whereHas('inventory.registerAset', function($q) use ($request) {
-                $q->whereHas('ruangan', function($ruanganQ) use ($request) {
-                    $ruanganQ->where('id_unit_kerja', $request->id_unit_kerja);
-                });
-            });
-        }
-        
-        // Urutkan berdasarkan kode_register
-        $query->orderBy('kode_register');
-        
+
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 15);
-        $inventoryItems = $query->paginate($perPage)->appends($request->query());
-        
-        // Preload KIR berdasarkan RegisterAset yang memiliki ruangan
-        $inventoryIds = $inventoryItems->pluck('id_inventory')->unique()->toArray();
-        
-        // Ambil semua RegisterAset yang memiliki ruangan untuk inventory ini
-        $registerAsets = RegisterAset::whereIn('id_inventory', $inventoryIds)
+        $summaries = $summaryQuery
+            ->orderByDesc('last_update')
+            ->paginate($perPage)
+            ->appends($request->query());
+
+        $unitKerjaIds = collect($summaries->items())->pluck('id_unit_kerja')->all();
+        $units = \App\Models\MasterUnitKerja::query()
+            ->whereIn('id_unit_kerja', $unitKerjaIds)
+            ->orderBy('nama_unit_kerja')
+            ->get()
+            ->keyBy('id_unit_kerja');
+
+        $gudangByUnit = \App\Models\MasterGudang::query()
+            ->where('jenis_gudang', 'UNIT')
+            ->whereIn('id_unit_kerja', $unitKerjaIds)
+            ->get()
+            ->keyBy('id_unit_kerja');
+
+        $ruanganByUnit = RegisterAset::query()
+            ->whereIn('id_unit_kerja', $unitKerjaIds)
             ->whereNotNull('id_ruangan')
-            ->with('kartuInventarisRuangan.penanggungJawab', 'ruangan')
+            ->with('ruangan:id_ruangan,nama_ruangan')
+            ->get()
+            ->groupBy('id_unit_kerja')
+            ->map(function ($items) {
+                return $items
+                    ->pluck('ruangan.nama_ruangan')
+                    ->filter()
+                    ->unique()
+                    ->values();
+            });
+
+        $unitOptions = \App\Models\MasterUnitKerja::query()
+            ->orderBy('nama_unit_kerja')
+            ->get(['id_unit_kerja', 'nama_unit_kerja']);
+
+        return view('asset.kartu-inventaris-ruangan.index', compact('summaries', 'units', 'gudangByUnit', 'ruanganByUnit', 'unitOptions'));
+    }
+
+    public function dokumenUnitKerja(Request $request, int $idUnitKerja)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+            $pegawai = MasterPegawai::where('user_id', $user->id)->first();
+            if (!$pegawai || (int) $pegawai->id_unit_kerja !== $idUnitKerja) {
+                abort(403, 'Unauthorized - Anda hanya dapat melihat dokumen KIR unit kerja Anda sendiri');
+            }
+        }
+
+        $unitKerja = \App\Models\MasterUnitKerja::findOrFail($idUnitKerja);
+        $rows = KartuInventarisRuangan::query()
+            ->with([
+                'registerAset.inventory.dataBarang',
+                'registerAset.inventory.satuan',
+                'registerAset.inventoryItem',
+                'registerAset',
+                'ruangan',
+                'penanggungJawab',
+            ])
+            ->whereHas('registerAset', function ($q) use ($idUnitKerja) {
+                $q->where('id_unit_kerja', $idUnitKerja)
+                    ->whereNotNull('id_ruangan');
+            })
+            ->orderBy('tanggal_penempatan')
+            ->orderBy('id_kir')
             ->get();
-        
-        // Buat map untuk akses cepat: id_register_aset => KIR
-        $kirs = $registerAsets->keyBy(function($registerAset) {
-            return $registerAset->id_register_aset;
-        })->map(function($registerAset) {
-            return $registerAset->kartuInventarisRuangan->first();
-        })->filter();
-        
-        // Data untuk filter
-        $ruangans = MasterRuangan::with('unitKerja')->orderBy('nama_ruangan')->get();
-        
-        return view('asset.kartu-inventaris-ruangan.index', compact('inventoryItems', 'ruangans', 'kirs'));
+
+        $payload = [
+            'unitKerja' => $unitKerja,
+            'rows' => $rows,
+            'printMode' => $request->boolean('print'),
+            'downloadMode' => $request->boolean('download'),
+        ];
+
+        if ($request->boolean('download')) {
+            $html = view('asset.kartu-inventaris-ruangan.document-unit', $payload)->render();
+            $filename = 'dokumen-kir-unit-'.preg_replace('/[^A-Za-z0-9_-]+/', '-', strtolower($unitKerja->nama_unit_kerja)).'.html';
+
+            return response($html, 200, [
+                'Content-Type' => 'text/html; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            ]);
+        }
+
+        return view('asset.kartu-inventaris-ruangan.document-unit', $payload);
     }
 
     /**
@@ -160,9 +197,9 @@ class KartuInventarisRuanganController extends Controller
 
         // Sinkronkan ruangan ke Register Aset dan InventoryItem
         $registerAset->update(['id_ruangan' => $validated['id_ruangan']]);
-        if ($registerAset->inventory) {
-            \App\Models\InventoryItem::where('id_inventory', $registerAset->inventory->id_inventory)
-                ->update(['id_ruangan' => $validated['id_ruangan']]);
+        $inventoryItem = $this->resolveInventoryItemForRegisterAset($registerAset);
+        if ($inventoryItem) {
+            $inventoryItem->update(['id_ruangan' => $validated['id_ruangan']]);
         }
         
         $kir = KartuInventarisRuangan::create($validated);
@@ -297,9 +334,9 @@ class KartuInventarisRuanganController extends Controller
             $registerAset = $kir->registerAset;
             if ($registerAset) {
                 $registerAset->update(['id_ruangan' => $validated['id_ruangan']]);
-                if ($registerAset->inventory) {
-                    \App\Models\InventoryItem::where('id_inventory', $registerAset->inventory->id_inventory)
-                        ->update(['id_ruangan' => $validated['id_ruangan']]);
+                $inventoryItem = $this->resolveInventoryItemForRegisterAset($registerAset);
+                if ($inventoryItem) {
+                    $inventoryItem->update(['id_ruangan' => $validated['id_ruangan']]);
                 }
             }
         }
@@ -329,9 +366,9 @@ class KartuInventarisRuanganController extends Controller
         // Lepas ruangan dari Register Aset dan InventoryItem
         if ($registerAset) {
             $registerAset->update(['id_ruangan' => null]);
-            if ($registerAset->inventory) {
-                \App\Models\InventoryItem::where('id_inventory', $registerAset->inventory->id_inventory)
-                    ->update(['id_ruangan' => null]);
+            $inventoryItem = $this->resolveInventoryItemForRegisterAset($registerAset);
+            if ($inventoryItem) {
+                $inventoryItem->update(['id_ruangan' => null]);
             }
         }
         
@@ -355,5 +392,23 @@ class KartuInventarisRuanganController extends Controller
             ->where('id', $idPegawai)
             ->where('id_unit_kerja', $idUnitKerja)
             ->exists();
+    }
+
+    private function resolveInventoryItemForRegisterAset(RegisterAset $registerAset): ?InventoryItem
+    {
+        $hasIdItemColumn = Schema::hasColumn('register_aset', 'id_item');
+        if ($hasIdItemColumn && !empty($registerAset->id_item)) {
+            return InventoryItem::query()->find($registerAset->id_item);
+        }
+
+        // Fallback untuk data lama (sebelum kolom id_item dipakai penuh).
+        if (!$registerAset->id_inventory) {
+            return null;
+        }
+
+        return InventoryItem::query()
+            ->where('id_inventory', $registerAset->id_inventory)
+            ->orderBy('id_item')
+            ->first();
     }
 }

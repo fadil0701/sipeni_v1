@@ -4,8 +4,8 @@
 <!-- Page Header -->
 <div class="mb-6 flex justify-between items-center">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">Kartu Inventaris Ruangan (KIR)</h1>
-        <p class="mt-1 text-sm text-gray-600">Daftar aset yang ditempatkan di ruangan</p>
+        <h1 class="text-2xl font-bold text-gray-900">Dokumen KIR per Unit Kerja</h1>
+        <p class="mt-1 text-sm text-gray-600">Daftar dokumen KIR yang siap cetak berdasarkan unit kerja</p>
     </div>
     @php
         use App\Helpers\PermissionHelper;
@@ -28,16 +28,16 @@
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
     <form method="GET" action="{{ route('asset.kartu-inventaris-ruangan.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
-            <label for="id_ruangan" class="block text-sm font-medium text-gray-700 mb-1">Ruangan</label>
+            <label for="id_unit_kerja" class="block text-sm font-medium text-gray-700 mb-1">Unit Kerja</label>
             <select 
-                id="id_ruangan" 
-                name="id_ruangan" 
+                id="id_unit_kerja" 
+                name="id_unit_kerja" 
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             >
-                <option value="">Semua Ruangan</option>
-                @foreach($ruangans as $ruangan)
-                    <option value="{{ $ruangan->id_ruangan }}" {{ request('id_ruangan') == $ruangan->id_ruangan ? 'selected' : '' }}>
-                        {{ $ruangan->nama_ruangan }} ({{ $ruangan->unitKerja->nama_unit_kerja ?? '-' }})
+                <option value="">Semua Unit Kerja</option>
+                @foreach($unitOptions as $unit)
+                    <option value="{{ $unit->id_unit_kerja }}" {{ (string) request('id_unit_kerja') === (string) $unit->id_unit_kerja ? 'selected' : '' }}>
+                        {{ $unit->nama_unit_kerja }}
                     </option>
                 @endforeach
             </select>
@@ -65,98 +65,64 @@
     <div class="overflow-x-auto">
         <table
             class="min-w-full divide-y divide-gray-200"
-            @if($inventoryItems instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $inventoryItems->firstItem() }}" @endif
+            @if($summaries instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $summaries->firstItem() }}" @endif
         >
             <thead class="bg-gray-50">
                 <tr>
                     <x-table.num-th />
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nomor Register</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Barang</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Barang</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ruangan</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Penanggung Jawab</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Penempatan</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Kerja</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ruangan Unit Kerja</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Item KIR</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Update Terakhir</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                @forelse($inventoryItems as $item)
+                @forelse($summaries as $summary)
                 @php
-                    // Ambil RegisterAset yang memiliki ruangan dari inventory ini
-                    $registerAset = $item->inventory->registerAset->firstWhere('id_ruangan', '!=', null);
-                    $kir = null;
-                    $penanggungJawab = null;
-                    $tanggalPenempatan = null;
-                    $ruangan = null;
-                    
-                    if ($registerAset) {
-                        $kir = $registerAset->kartuInventarisRuangan->first();
-                        $ruangan = $registerAset->ruangan;
-                        
-                        if ($kir) {
-                            $penanggungJawab = $kir->penanggungJawab;
-                            $tanggalPenempatan = $kir->tanggal_penempatan;
-                        }
-                    }
+                    $unit = $units[$summary->id_unit_kerja] ?? null;
+                    $ruanganNames = $ruanganByUnit[$summary->id_unit_kerja] ?? collect();
                 @endphp
                 <tr class="hover:bg-gray-50">
-                    <x-table.num-td :paginator="$inventoryItems" />
+                    <x-table.num-td :paginator="$summaries" />
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {{ $registerAset->nomor_register ?? $item->kode_register ?? '-' }}
+                        {{ $unit?->nama_unit_kerja ?? ('Unit #'.$summary->id_unit_kerja) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {{ $item->inventory->dataBarang->nama_barang ?? '-' }}
-                        @if($item->no_seri)
-                            <span class="text-gray-500 text-xs block">No. Seri: {{ $item->no_seri }}</span>
-                        @endif
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {{ $item->inventory->jenis_barang ?? '-' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        @if($ruangan)
-                            {{ $ruangan->nama_ruangan ?? '-' }}
-                            <span class="text-gray-500 text-xs block">{{ $ruangan->unitKerja->nama_unit_kerja ?? '-' }}</span>
+                        @if($ruanganNames->isNotEmpty())
+                            {{ $ruanganNames->implode(', ') }}
                         @else
-                            <span class="text-gray-400">Belum ditempatkan</span>
-                            @if($item->gudang)
-                                <span class="text-gray-500 text-xs block">Gudang: {{ $item->gudang->nama_gudang ?? '-' }}</span>
-                            @endif
+                            -
                         @endif
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {{ $penanggungJawab->nama_pegawai ?? '-' }}
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
+                            {{ number_format((int) $summary->total_item, 0, ',', '.') }} item
+                        </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {{ $tanggalPenempatan ? $tanggalPenempatan->format('d/m/Y') : '-' }}
+                        {{ \Illuminate\Support\Carbon::parse($summary->last_update)->format('d/m/Y H:i') }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        @if($kir)
-                            <a 
-                                href="{{ route('asset.kartu-inventaris-ruangan.show', $kir->id_kir) }}" 
-                                class="text-blue-600 hover:text-blue-900 mr-3"
-                            >
-                                Detail
-                            </a>
-                            @if(PermissionHelper::canAccess($user, 'asset.kartu-inventaris-ruangan.edit'))
-                            <a 
-                                href="{{ route('asset.kartu-inventaris-ruangan.edit', $kir->id_kir) }}" 
-                                class="text-indigo-600 hover:text-indigo-900"
-                            >
-                                Edit
-                            </a>
-                            @endif
-                        @elseif($registerAset && $registerAset->id_ruangan)
-                            <span class="text-gray-400 text-xs">Belum ada KIR</span>
-                        @else
-                            <span class="text-gray-400 text-xs">Belum ditempatkan</span>
-                        @endif
+                        <a 
+                            href="{{ route('asset.kartu-inventaris-ruangan.dokumen-unit', ['id_unit_kerja' => $summary->id_unit_kerja, 'download' => 1]) }}" 
+                            class="text-blue-600 hover:text-blue-900 mr-3"
+                        >
+                            Download Dokumen
+                        </a>
+                        <a 
+                            href="{{ route('asset.kartu-inventaris-ruangan.dokumen-unit', ['id_unit_kerja' => $summary->id_unit_kerja, 'print' => 1]) }}" 
+                            target="_blank"
+                            class="text-indigo-600 hover:text-indigo-900"
+                        >
+                            Cetak
+                        </a>
                     </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">
-                        Tidak ada data aset
+                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                        Belum ada dokumen KIR yang siap cetak
                     </td>
                 </tr>
                 @endforelse
@@ -165,9 +131,9 @@
     </div>
     
     <!-- Pagination -->
-    @if($inventoryItems->hasPages())
+    @if($summaries->hasPages())
     <div class="px-6 py-4 border-t border-gray-200">
-        {{ $inventoryItems->links() }}
+        {{ $summaries->links() }}
     </div>
     @endif
 </div>

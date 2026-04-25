@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('master_sumber_anggaran', function (Blueprint $table) {
             $table->id('id_anggaran');
             $table->string('nama_anggaran', 255);
+            $table->string('keterangan', 255);
             $table->timestamps();
         });
     }

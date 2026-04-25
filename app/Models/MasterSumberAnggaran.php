@@ -13,6 +13,7 @@ class MasterSumberAnggaran extends Model
 
     protected $fillable = [
         'nama_anggaran',
+        'keterangan',
     ];
 
     // Relationships

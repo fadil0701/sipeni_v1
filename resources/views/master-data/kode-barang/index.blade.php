@@ -29,6 +29,30 @@
     </div>
 @endif
 
+<x-index.filter-toolbar
+    :action="route('master-data.kode-barang.index')"
+    search-placeholder="Cari kode barang, nama kode, atau aset..."
+    button-text="Terapkan"
+>
+    <x-slot:filters>
+        <div class="w-full min-w-0 lg:w-auto lg:min-w-[16rem]">
+            <label for="id_aset" class="block text-sm font-medium text-gray-700 mb-1">Aset</label>
+            <select
+                id="id_aset"
+                name="id_aset"
+                class="block w-full rounded-md border border-gray-300 py-2 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+                <option value="">Semua Aset</option>
+                @foreach(($asets ?? collect()) as $aset)
+                    <option value="{{ $aset->id_aset }}" {{ (string) request('id_aset') === (string) $aset->id_aset ? 'selected' : '' }}>
+                        {{ $aset->nama_aset }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+    </x-slot:filters>
+</x-index.filter-toolbar>
+
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table

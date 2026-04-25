@@ -11,9 +11,30 @@ class KategoriBarangController extends Controller
 {
     public function index(Request $request)
     {
+        $search = trim((string) $request->query('search', ''));
+        $idKodeBarang = $request->query('id_kode_barang');
+
+        $query = MasterKategoriBarang::with('kodeBarang.aset');
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('kode_kategori_barang', 'like', "%{$search}%")
+                    ->orWhere('nama_kategori_barang', 'like', "%{$search}%")
+                    ->orWhereHas('kodeBarang', function ($kodeQ) use ($search) {
+                        $kodeQ->where('kode_barang', 'like', "%{$search}%")
+                            ->orWhere('nama_kode_barang', 'like', "%{$search}%");
+                    });
+            });
+        }
+        if (!empty($idKodeBarang)) {
+            $query->where('id_kode_barang', $idKodeBarang);
+        }
+
+        $kodeBarangs = MasterKodeBarang::query()
+            ->orderBy('kode_barang')
+            ->get(['id_kode_barang', 'kode_barang', 'nama_kode_barang']);
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
-        $kategoriBarangs = MasterKategoriBarang::with('kodeBarang.aset')->latest()->paginate($perPage)->appends($request->query());
-        return view('master-data.kategori-barang.index', compact('kategoriBarangs'));
+        $kategoriBarangs = $query->latest()->paginate($perPage)->appends($request->query());
+        return view('master-data.kategori-barang.index', compact('kategoriBarangs', 'kodeBarangs'));
     }
 
     public function create()

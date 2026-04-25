@@ -24,112 +24,95 @@
     @endif
 </div>
 
-<!-- Filters -->
-<div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
-    <form method="GET" action="{{ route('inventory.data-inventory.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-        <div>
-            <label for="jenis_inventory" class="block text-sm font-medium text-gray-700 mb-1">Jenis Inventory</label>
-            <select 
-                id="jenis_inventory" 
-                name="jenis_inventory" 
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-                <option value="">Semua Jenis</option>
-                <option value="ASET" {{ request('jenis_inventory') == 'ASET' ? 'selected' : '' }}>Aset</option>
-                <option value="PERSEDIAAN" {{ request('jenis_inventory') == 'PERSEDIAAN' ? 'selected' : '' }}>Persediaan</option>
-                <option value="FARMASI" {{ request('jenis_inventory') == 'FARMASI' ? 'selected' : '' }}>Farmasi</option>
-            </select>
-        </div>
-
-        <div>
-            <label for="gudang" class="block text-sm font-medium text-gray-700 mb-1">Gudang</label>
-            <select 
-                id="gudang" 
-                name="gudang" 
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-                <option value="">Semua Gudang</option>
-                @foreach($gudangs as $gudang)
-                    <option value="{{ $gudang->id_gudang }}" {{ request('gudang') == $gudang->id_gudang ? 'selected' : '' }}>
-                        {{ $gudang->nama_gudang }}
-                    </option>
-                @endforeach
-            </select>
-        </div>
-
-        <div>
-            <label for="merk" class="block text-sm font-medium text-gray-700 mb-1">Merk</label>
-            <input 
-                type="text" 
-                id="merk" 
-                name="merk" 
-                value="{{ request('merk') }}"
-                placeholder="Cari merk..."
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-        </div>
-
-        <div>
-            <label for="jenis_barang" class="block text-sm font-medium text-gray-700 mb-1">Jenis Barang</label>
-            <select 
-                id="jenis_barang" 
-                name="jenis_barang" 
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-                <option value="">Semua Jenis Barang</option>
-                <optgroup label="Aset">
-                    <option value="ALKES" {{ request('jenis_barang') == 'ALKES' ? 'selected' : '' }}>ALKES</option>
-                    <option value="NON ALKES" {{ request('jenis_barang') == 'NON ALKES' ? 'selected' : '' }}>NON ALKES</option>
-                </optgroup>
-                <optgroup label="Farmasi">
-                    <option value="OBAT" {{ request('jenis_barang') == 'OBAT' ? 'selected' : '' }}>OBAT</option>
-                    <option value="Vaksin" {{ request('jenis_barang') == 'Vaksin' ? 'selected' : '' }}>Vaksin</option>
-                    <option value="BHP" {{ request('jenis_barang') == 'BHP' ? 'selected' : '' }}>BHP</option>
-                    <option value="BMHP" {{ request('jenis_barang') == 'BMHP' ? 'selected' : '' }}>BMHP</option>
-                    <option value="REAGEN" {{ request('jenis_barang') == 'REAGEN' ? 'selected' : '' }}>REAGEN</option>
-                    <option value="ALKES" {{ request('jenis_barang') == 'ALKES' ? 'selected' : '' }}>ALKES</option>
-                </optgroup>
-                <optgroup label="Persediaan">
-                    <option value="ATK" {{ request('jenis_barang') == 'ATK' ? 'selected' : '' }}>ATK</option>
-                    <option value="ART" {{ request('jenis_barang') == 'ART' ? 'selected' : '' }}>ART</option>
-                    <option value="CETAKAN UMUM" {{ request('jenis_barang') == 'CETAKAN UMUM' ? 'selected' : '' }}>CETAKAN UMUM</option>
-                    <option value="CETAK KHUSUS" {{ request('jenis_barang') == 'CETAK KHUSUS' ? 'selected' : '' }}>CETAK KHUSUS</option>
-                </optgroup>
-            </select>
-        </div>
-
-        <div>
-            <label for="no_batch" class="block text-sm font-medium text-gray-700 mb-1">Nomor Batch</label>
-            <input 
-                type="text" 
-                id="no_batch" 
-                name="no_batch" 
-                value="{{ request('no_batch') }}"
-                placeholder="Cari nomor batch..."
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-        </div>
-
-        <div class="sm:col-span-2">
-            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cari</label>
-            <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                </div>
-                <input 
-                    type="text" 
-                    id="search" 
-                    name="search" 
-                    value="{{ request('search') }}"
-                    placeholder="Cari nama barang atau kode..."
-                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+<x-index.filter-toolbar
+    stacked
+    :action="route('inventory.data-inventory.index')"
+    form-id="dataInventoryFilterForm"
+    search-placeholder="Cari nama barang atau kode..."
+>
+    <x-slot:filters>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div>
+                <label for="jenis_inventory" class="mb-1 block text-sm font-medium text-gray-700">Jenis Inventory</label>
+                <select
+                    id="jenis_inventory"
+                    name="jenis_inventory"
+                    class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    <option value="">Semua Jenis</option>
+                    <option value="ASET" {{ request('jenis_inventory') == 'ASET' ? 'selected' : '' }}>Aset</option>
+                    <option value="PERSEDIAAN" {{ request('jenis_inventory') == 'PERSEDIAAN' ? 'selected' : '' }}>Persediaan</option>
+                    <option value="FARMASI" {{ request('jenis_inventory') == 'FARMASI' ? 'selected' : '' }}>Farmasi</option>
+                </select>
+            </div>
+            <div>
+                <label for="gudang" class="mb-1 block text-sm font-medium text-gray-700">Gudang</label>
+                <select
+                    id="gudang"
+                    name="gudang"
+                    class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    <option value="">Semua Gudang</option>
+                    @foreach($gudangs as $gudang)
+                        <option value="{{ $gudang->id_gudang }}" {{ request('gudang') == $gudang->id_gudang ? 'selected' : '' }}>
+                            {{ $gudang->nama_gudang }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label for="merk" class="mb-1 block text-sm font-medium text-gray-700">Merk</label>
+                <input
+                    type="text"
+                    id="merk"
+                    name="merk"
+                    value="{{ request('merk') }}"
+                    placeholder="Cari merk..."
+                    class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+            </div>
+            <div>
+                <label for="jenis_barang" class="mb-1 block text-sm font-medium text-gray-700">Jenis Barang</label>
+                <select
+                    id="jenis_barang"
+                    name="jenis_barang"
+                    class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    <option value="">Semua Jenis Barang</option>
+                    <optgroup label="Aset">
+                        <option value="ALKES" {{ request('jenis_barang') == 'ALKES' ? 'selected' : '' }}>ALKES</option>
+                        <option value="NON ALKES" {{ request('jenis_barang') == 'NON ALKES' ? 'selected' : '' }}>NON ALKES</option>
+                    </optgroup>
+                    <optgroup label="Farmasi">
+                        <option value="OBAT" {{ request('jenis_barang') == 'OBAT' ? 'selected' : '' }}>OBAT</option>
+                        <option value="Vaksin" {{ request('jenis_barang') == 'Vaksin' ? 'selected' : '' }}>Vaksin</option>
+                        <option value="BHP" {{ request('jenis_barang') == 'BHP' ? 'selected' : '' }}>BHP</option>
+                        <option value="BMHP" {{ request('jenis_barang') == 'BMHP' ? 'selected' : '' }}>BMHP</option>
+                        <option value="REAGEN" {{ request('jenis_barang') == 'REAGEN' ? 'selected' : '' }}>REAGEN</option>
+                        <option value="ALKES" {{ request('jenis_barang') == 'ALKES' ? 'selected' : '' }}>ALKES</option>
+                    </optgroup>
+                    <optgroup label="Persediaan">
+                        <option value="ATK" {{ request('jenis_barang') == 'ATK' ? 'selected' : '' }}>ATK</option>
+                        <option value="ART" {{ request('jenis_barang') == 'ART' ? 'selected' : '' }}>ART</option>
+                        <option value="CETAKAN UMUM" {{ request('jenis_barang') == 'CETAKAN UMUM' ? 'selected' : '' }}>CETAKAN UMUM</option>
+                        <option value="CETAK KHUSUS" {{ request('jenis_barang') == 'CETAK KHUSUS' ? 'selected' : '' }}>CETAK KHUSUS</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div>
+                <label for="no_batch" class="mb-1 block text-sm font-medium text-gray-700">Nomor Batch</label>
+                <input
+                    type="text"
+                    id="no_batch"
+                    name="no_batch"
+                    value="{{ request('no_batch') }}"
+                    placeholder="Cari nomor batch..."
+                    class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
             </div>
         </div>
-    </form>
-</div>
+    </x-slot:filters>
+</x-index.filter-toolbar>
 
 <!-- Success Message -->
 @if(session('success'))

@@ -10,8 +10,15 @@ class SatuanController extends Controller
 {
     public function index(Request $request)
     {
+        $search = trim((string) $request->query('search', ''));
+        $query = MasterSatuan::query();
+
+        if ($search !== '') {
+            $query->where('nama_satuan', 'like', "%{$search}%");
+        }
+
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
-        $satuans = MasterSatuan::latest()->paginate($perPage)->appends($request->query());
+        $satuans = $query->latest()->paginate($perPage)->appends($request->query());
         return view('master-data.satuan.index', compact('satuans'));
     }
 

@@ -407,11 +407,11 @@ class StrukturBarangImportController extends Controller
                             $statusValidasi = 'DRAFT';
                         }
 
-                        $hasPlaceholderSegment = in_array($kodeJenis, ['00'], true)
-                            || in_array($kodeObjek, ['00'], true)
-                            || in_array($kodeRincianObjek, ['00'], true)
-                            || in_array($kodeSubRincianObjek, ['000'], true)
-                            || in_array($kodeSubSubRincianObjek, ['000'], true);
+                        $hasPlaceholderSegment = $this->isAllZeroSegment($kodeJenis)
+                            || $this->isAllZeroSegment($kodeObjek)
+                            || $this->isAllZeroSegment($kodeRincianObjek)
+                            || $this->isAllZeroSegment($kodeSubRincianObjek)
+                            || $this->isAllZeroSegment($kodeSubSubRincianObjek);
 
                         // Guard: data dengan placeholder tidak boleh langsung status VALID.
                         if ($statusValidasi === 'VALID' && $hasPlaceholderSegment) {
@@ -540,11 +540,19 @@ class StrukturBarangImportController extends Controller
             throw new \RuntimeException("Sheet {$sheetName}: kolom '{$fieldName}' harus angka.");
         }
 
-        if (strlen($digits) > $length) {
-            throw new \RuntimeException("Sheet {$sheetName}: kolom '{$fieldName}' maksimal {$length} digit.");
+        // Tetap dukung format input bertitik (contoh: 1.3.20 atau 001.002),
+        // lalu normalisasi jadi angka tanpa titik. Jika lebih panjang dari standar
+        // tidak ditolak agar import tetap fleksibel.
+        if (strlen($digits) < $length) {
+            return str_pad($digits, $length, '0', STR_PAD_LEFT);
         }
 
-        return str_pad($digits, $length, '0', STR_PAD_LEFT);
+        return $digits;
+    }
+
+    private function isAllZeroSegment(string $value): bool
+    {
+        return preg_match('/^0+$/', $value) === 1;
     }
 }
 

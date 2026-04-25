@@ -15,11 +15,56 @@
 
     <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{-- Garis sel tabel daftar (index) di konten utama --}}
+    <style>
+        main table {
+            border-collapse: collapse;
+            border: 1px solid #e5e7eb;
+        }
+        main table > thead > tr > th,
+        main table > thead > tr > td,
+        main table > tbody > tr > th,
+        main table > tbody > tr > td,
+        main table > tfoot > tr > th,
+        main table > tfoot > tr > td {
+            border: 1px solid #e5e7eb;
+        }
+    </style>
     
     <!-- Choices.js for searchable select dropdowns -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 </head>
-<body class="font-sans antialiased bg-gray-100">
+<body
+    class="font-sans antialiased bg-gray-100"
+    data-app-debug="{{ config('app.debug') ? '1' : '0' }}"
+    data-features="@yield('layout_features', 'global-loading form-confirm choices-init action-icons')"
+    data-table-mode="@yield('layout_table_mode', 'all')"
+>
+    <script>
+        (function () {
+            window.__layoutEnabled = function (name) {
+                var raw = (document.body && document.body.dataset.features) || '';
+                var parts = raw.split(/\s+/).filter(Boolean);
+                if (!parts.length) {
+                    return true;
+                }
+                return parts.indexOf(name) !== -1;
+            };
+            window.__appDebug = (document.body && document.body.dataset.appDebug) === '1';
+            window.__gLog = function () {
+                if (window.__appDebug && typeof console !== 'undefined' && console.log) {
+                    console.log.apply(console, arguments);
+                }
+            };
+            window.__gWarn = function () {
+                if (typeof console !== 'undefined' && console.warn) {
+                    console.warn.apply(console, arguments);
+                }
+            };
+            window.__tableMode = (document.body && document.body.dataset.tableMode) || 'all';
+        })();
+    </script>
     <div id="global-loading-overlay" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-gray-900/35">
         <div class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-5 py-4 shadow-xl">
             <svg class="h-5 w-5 animate-spin text-blue-600" viewBox="0 0 24 24" fill="none">
@@ -104,8 +149,7 @@
                                     <svg id="approval-arrow" class="w-4 h-4 ml-auto transition-transform {{ $approvalOpen ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </div>
                                 <ul id="approval-submenu" class="{{ $groupClass($approvalOpen) }}">
-                                    <li><a href="{{ route('transaction.approval.index') }}" class="{{ $linkClass($isRoute(['transaction.approval.index','transaction.approval.show'])) }}">Daftar Approval</a></li>
-                                    <li><a href="{{ route('transaction.approval.diagram') }}" class="{{ $linkClass($isRoute(['transaction.approval.diagram'])) }}">Diagram Approval</a></li>
+                                    <li><a href="{{ route('transaction.approval.index') }}" class="{{ $linkClass($isRoute(['transaction.approval.index','transaction.approval.show'])) }}">Riwayat / Status Approval</a></li>
                                 </ul>
                             </li>
                         @endif
@@ -319,7 +363,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <h1 class="text-xl font-bold text-gray-900">{{ config('app.name') }}</h1>
-                            <p class="text-xs text-gray-500 mt-0.5">Sistem Manajemen Aset &amp; Inventory · single dashboard berbasis peran</p>
+                            <p class="text-xs text-gray-500 mt-0.5">SISTEM MANAJEMEN &amp; INVENTORY TERINTEGRASI</p>
                         </div>
                         <div class="flex items-center space-x-4">
                             <!-- Notifications -->
@@ -416,716 +460,6 @@
     
     <!-- Choices.js JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
-    <script>
-        // Verifikasi Choices.js ter-load
-        if (typeof Choices !== 'undefined') {
-            console.log('Choices.js loaded successfully');
-            window.choicesLoaded = true;
-        } else {
-            console.warn('Choices.js not loaded, trying fallback...');
-            // Fallback ke CDN alternatif
-            var fallbackScript = document.createElement('script');
-            fallbackScript.src = 'https://unpkg.com/choices.js@10.2.0/public/assets/scripts/choices.min.js';
-            fallbackScript.onload = function() {
-                window.choicesLoaded = true;
-                console.log('Choices.js loaded from fallback CDN');
-            };
-            fallbackScript.onerror = function() {
-                console.error('Choices.js failed to load from both CDNs');
-            };
-            document.head.appendChild(fallbackScript);
-        }
-    </script>
-    
-    <script>
-        (function () {
-            const overlay = document.getElementById('global-loading-overlay');
-            const bar = document.getElementById('global-loading-bar');
-            let pendingProcess = 0;
-
-            function showLoading() {
-                if (overlay) {
-                    overlay.classList.remove('hidden');
-                    overlay.classList.add('flex');
-                }
-                if (bar) {
-                    bar.style.width = '35%';
-                    setTimeout(function () {
-                        if (pendingProcess > 0) bar.style.width = '75%';
-                    }, 180);
-                }
-            }
-
-            function hideLoading() {
-                if (bar) {
-                    bar.style.width = '100%';
-                    setTimeout(function () {
-                        bar.style.width = '0';
-                    }, 180);
-                }
-                if (overlay) {
-                    overlay.classList.add('hidden');
-                    overlay.classList.remove('flex');
-                }
-            }
-
-            function setSubmitButtonLoading(button) {
-                if (!button || button.dataset.loadingActive === '1') return;
-                button.dataset.loadingActive = '1';
-                button.dataset.originalHtml = button.innerHTML;
-                button.disabled = true;
-                button.classList.add('opacity-70', 'cursor-not-allowed');
-                button.innerHTML = '<span class="inline-flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" class="opacity-20" stroke="currentColor" stroke-width="4"></circle><path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path></svg>Memproses...</span>';
-            }
-
-            // Semua submit form (input/edit/hapus/simpan)
-            document.addEventListener('submit', function (event) {
-                const form = event.target;
-                if (!(form instanceof HTMLFormElement)) return;
-                const submitter = event.submitter || form.querySelector('button[type="submit"], input[type="submit"]');
-                setSubmitButtonLoading(submitter);
-                pendingProcess++;
-                showLoading();
-            }, true);
-
-            // Semua request fetch (loading data dinamis)
-            const nativeFetch = window.fetch;
-            window.fetch = function (...args) {
-                pendingProcess++;
-                showLoading();
-                return nativeFetch(...args).finally(function () {
-                    pendingProcess = Math.max(0, pendingProcess - 1);
-                    if (pendingProcess === 0) hideLoading();
-                });
-            };
-
-            window.addEventListener('pageshow', function () {
-                pendingProcess = 0;
-                hideLoading();
-            });
-        })();
-
-    </script>
-    <script>
-        function toggleSubmenu(id) {
-            const submenu = document.getElementById(id + '-submenu');
-            const arrow = document.getElementById(id + '-arrow');
-            submenu.classList.toggle('hidden');
-            arrow.classList.toggle('rotate-90');
-        }
-
-        // Toggle user dropdown menu
-        function toggleUserMenu() {
-            const menu = document.getElementById('user-dropdown-menu');
-            const arrow = document.getElementById('user-menu-arrow');
-            menu.classList.toggle('hidden');
-            if (arrow) {
-                arrow.classList.toggle('rotate-180');
-            }
-        }
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const userMenu = document.getElementById('user-dropdown-menu');
-            const userButton = document.getElementById('user-menu-button');
-            
-            if (userMenu && userButton && !userMenu.contains(event.target) && !userButton.contains(event.target)) {
-                userMenu.classList.add('hidden');
-                const arrow = document.getElementById('user-menu-arrow');
-                if (arrow) {
-                    arrow.classList.remove('rotate-180');
-                }
-            }
-        });
-
-        // Helper function untuk menginisialisasi Choices.js pada select element
-        function initChoicesForSelect(selectElement, minOptions = 2) {
-            if (!selectElement || selectElement.tagName !== 'SELECT') {
-                return null;
-            }
-
-            // Cek apakah Choices.js sudah ter-load
-            if (typeof Choices === 'undefined') {
-                console.warn('Choices.js belum ter-load. Pastikan script Choices.js sudah di-include.');
-                return null;
-            }
-
-            // Jika sudah diinisialisasi, gunakan instance yang ada
-            // untuk mencegah selected value ter-reset pada form edit.
-            if (selectElement.choicesInstance) {
-                return selectElement.choicesInstance;
-            }
-
-            // Hitung jumlah opsi yang terlihat (exclude empty option)
-            // Setelah filter, opsi yang tidak terlihat sudah dihapus dari DOM
-            // Jadi semua opsi yang masih ada di DOM adalah opsi yang terlihat
-            const visibleOptions = Array.from(selectElement.options).filter(opt => {
-                return opt.value !== ''; // Exclude placeholder
-            });
-            const optionCount = visibleOptions.length;
-            
-            // Log untuk debugging
-            if (selectElement.classList.contains('select-data-barang') || selectElement.classList.contains('select-satuan')) {
-                console.log('Counting options for', selectElement.className, '- Total in DOM:', selectElement.options.length, 'Visible (non-empty):', optionCount);
-            }
-            
-            // Untuk select-data-barang dan select-satuan, selalu inisialisasi jika ada minimal 1 opsi
-            const isDataBarangOrSatuan = selectElement.classList.contains('select-data-barang') || 
-                                         selectElement.classList.contains('select-satuan') ||
-                                         selectElement.id === 'id_data_barang' ||
-                                         selectElement.id === 'id_satuan';
-            
-            // Jika memiliki lebih dari minOptions opsi, atau jika select-data-barang/select-satuan dengan minimal 1 opsi
-            if (optionCount > minOptions || (isDataBarangOrSatuan && optionCount > 0)) {
-                try {
-                    console.log('Initializing Choices.js for:', selectElement.id || selectElement.className || 'unnamed select', 'with', optionCount, 'visible options');
-                    
-                    // Untuk select-data-barang, pastikan hanya opsi yang terlihat yang digunakan
-                    // Setelah filter, opsi yang tidak terlihat sudah dihapus dari DOM
-                    // Jadi Choices.js akan membaca semua opsi yang masih ada di DOM (yang sudah ter-filter)
-                    if (selectElement.classList.contains('select-data-barang')) {
-                        console.log('Before Choices.js init for select-data-barang:', {
-                            totalOptions: selectElement.options.length,
-                            optionsInDOM: Array.from(selectElement.options).map(opt => ({
-                                value: opt.value,
-                                text: opt.textContent.substring(0, 30)
-                            })).slice(0, 5)
-                        });
-                    }
-                    
-                    // Pastikan select element masih valid dan memiliki opsi sebelum initialize Choices.js
-                    if (!selectElement || selectElement.tagName !== 'SELECT' || selectElement.options.length === 0) {
-                        console.warn('Skipping Choices.js initialization: invalid select element or no options');
-                        return;
-                    }
-                    
-                    const choicesInstance = new Choices(selectElement, {
-                        searchEnabled: true,
-                        searchChoices: true,
-                        itemSelectText: '',
-                        placeholder: true,
-                        placeholderValue: selectElement.querySelector('option[value=""]')?.textContent || 'Pilih...',
-                        searchPlaceholderValue: 'Ketik minimal 2 karakter untuk mencari...',
-                        shouldSort: true,
-                        fuseOptions: {
-                            threshold: 0.3,
-                            distance: 100
-                        },
-                        shouldSortItems: true,
-                        removeItemButton: false,
-                        allowHTML: false // Suppress deprecation warning
-                    });
-                    
-                    // Simpan instance ke select element untuk referensi
-                    selectElement.choicesInstance = choicesInstance;
-                    
-                    // Setelah filter, opsi yang tidak terlihat sudah dihapus dari DOM
-                    // Jadi Choices.js akan membaca semua opsi yang masih ada di DOM (yang sudah ter-filter)
-                    // Tidak perlu filter lagi karena opsi yang tidak terlihat sudah dihapus
-                    console.log('Choices.js initialized successfully with', optionCount, 'options');
-                    
-                    // Custom search filter: hanya tampilkan hasil jika input >= 2 karakter
-                    setTimeout(function() {
-                        const searchInput = choicesInstance.input.element;
-                        const containerOuter = choicesInstance.containerOuter.element;
-                        
-                        if (searchInput && containerOuter) {
-                            let lastSearchValue = '';
-                            
-                            // Flag untuk track apakah user sudah mulai mengetik
-                            let hasUserTyped = false;
-                            
-                            // Intercept input events - hanya aktif setelah user mulai mengetik
-                            searchInput.addEventListener('input', function(e) {
-                                const searchValue = e.target.value.trim();
-                                lastSearchValue = searchValue;
-                                hasUserTyped = true; // Set flag bahwa user sudah mulai mengetik
-                                
-                                // Delay untuk memungkinkan Choices.js memproses dulu
-                                setTimeout(function() {
-                                    const dropdown = containerOuter.querySelector('.choices__list--dropdown');
-                                    if (!dropdown) return;
-                                    
-                                    // Jika kurang dari 2 karakter DAN user sudah mulai mengetik
-                                    if (searchValue.length > 0 && searchValue.length < 2) {
-                                        // Sembunyikan semua item hasil pencarian
-                                        const items = dropdown.querySelectorAll('.choices__item:not(.choices__item--no-results)');
-                                        items.forEach(item => {
-                                            item.style.display = 'none';
-                                        });
-                                        
-                                        // Tampilkan atau buat pesan "ketik minimal 2 karakter"
-                                        let noResults = dropdown.querySelector('.choices__item--no-results');
-                                        if (!noResults || !noResults.textContent.includes('Ketik minimal 2 karakter')) {
-                                            // Hapus no-results yang lama jika ada
-                                            if (noResults) {
-                                                noResults.remove();
-                                            }
-                                            
-                                            // Buat pesan baru
-                                            noResults = document.createElement('div');
-                                            noResults.className = 'choices__item choices__item--no-results';
-                                            noResults.setAttribute('data-select-text', 'Tekan untuk memilih');
-                                            noResults.setAttribute('data-choice', '');
-                                            noResults.setAttribute('data-choice-selectable', '');
-                                            noResults.textContent = 'Ketik minimal 2 karakter untuk mencari...';
-                                            dropdown.appendChild(noResults);
-                                        }
-                                        
-                                        // Pastikan dropdown terlihat
-                                        dropdown.classList.remove('is-hidden');
-                                    } else if (searchValue.length >= 2) {
-                                        // Jika >= 2 karakter, sembunyikan pesan "ketik minimal 2 karakter"
-                                        const noResults = dropdown.querySelector('.choices__item--no-results');
-                                        if (noResults && noResults.textContent.includes('Ketik minimal 2 karakter')) {
-                                            noResults.remove();
-                                        }
-                                        
-                                        // Tampilkan semua item hasil pencarian
-                                        const items = dropdown.querySelectorAll('.choices__item:not(.choices__item--no-results)');
-                                        items.forEach(item => {
-                                            item.style.display = '';
-                                        });
-                                    } else if (searchValue.length === 0) {
-                                        // Jika input dikosongkan, reset flag dan tampilkan semua opsi
-                                        hasUserTyped = false;
-                                        const items = dropdown.querySelectorAll('.choices__item:not(.choices__item--no-results)');
-                                        items.forEach(item => {
-                                            item.style.display = '';
-                                        });
-                                        
-                                        // Hapus pesan jika ada
-                                        const noResults = dropdown.querySelector('.choices__item--no-results');
-                                        if (noResults && noResults.textContent.includes('Ketik minimal 2 karakter')) {
-                                            noResults.remove();
-                                        }
-                                    }
-                                }, 10);
-                            });
-                            
-                            // Reset flag saat input dikosongkan atau blur
-                            searchInput.addEventListener('blur', function() {
-                                setTimeout(function() {
-                                    if (this.value.trim().length === 0) {
-                                        hasUserTyped = false;
-                                    }
-                                }.bind(this), 100);
-                            });
-                            
-                            // Update placeholder
-                            searchInput.placeholder = 'Ketik minimal 2 karakter untuk mencari...';
-                            
-                            // Handle saat dropdown dibuka pertama kali - pastikan semua opsi ditampilkan
-                            const containerInner = containerOuter.querySelector('.choices__inner');
-                            
-                            if (containerInner) {
-                                containerInner.addEventListener('click', function() {
-                                    setTimeout(function() {
-                                        const dropdown = containerOuter.querySelector('.choices__list--dropdown');
-                                        if (!dropdown) return;
-                                        
-                                        const searchValue = searchInput.value.trim();
-                                        
-                                        // Jika belum ada input atau input kosong, tampilkan semua opsi
-                                        if (searchValue.length === 0) {
-                                            const items = dropdown.querySelectorAll('.choices__item:not(.choices__item--no-results)');
-                                            items.forEach(item => {
-                                                item.style.display = '';
-                                            });
-                                            
-                                            // Hapus pesan "ketik minimal 2 karakter" jika ada
-                                            const noResults = dropdown.querySelector('.choices__item--no-results');
-                                            if (noResults && noResults.textContent.includes('Ketik minimal 2 karakter')) {
-                                                noResults.remove();
-                                            }
-                                        }
-                                    }, 100);
-                                });
-                            }
-                            
-                            // Juga handle saat search input di-focus - tampilkan semua opsi jika kosong
-                            searchInput.addEventListener('focus', function() {
-                                setTimeout(function() {
-                                    const dropdown = containerOuter.querySelector('.choices__list--dropdown');
-                                    if (!dropdown) return;
-                                    
-                                    const searchValue = this.value.trim();
-                                    
-                                    // Jika belum ada input, tampilkan semua opsi
-                                    if (searchValue.length === 0) {
-                                        const items = dropdown.querySelectorAll('.choices__item:not(.choices__item--no-results)');
-                                        items.forEach(item => {
-                                            item.style.display = '';
-                                        });
-                                        
-                                        // Hapus pesan "ketik minimal 2 karakter" jika ada
-                                        const noResults = dropdown.querySelector('.choices__item--no-results');
-                                        if (noResults && noResults.textContent.includes('Ketik minimal 2 karakter')) {
-                                            noResults.remove();
-                                        }
-                                    }
-                                }.bind(this), 100);
-                            });
-                        }
-                    }, 150);
-                    
-                    // Simpan instance untuk referensi
-                    selectElement.choicesInstance = choicesInstance;
-                    console.log('Choices.js initialized successfully for:', selectElement.id || 'unnamed select');
-                    return choicesInstance;
-                } catch (error) {
-                    console.error('Error initializing Choices.js for select:', selectElement.id || 'unnamed select', error);
-                    return null;
-                }
-            } else {
-                console.log('Skipping Choices.js for:', selectElement.id || 'unnamed select', '- only', optionCount, 'options (min:', minOptions + 1, ')');
-            }
-            return null;
-        }
-
-        // Expose function globally untuk digunakan di halaman lain
-        window.initChoicesForSelect = initChoicesForSelect;
-
-        // Function untuk initialize semua searchable selects
-        function initializeSearchableSelects() {
-            // Cek apakah Choices.js sudah ter-load
-            if (typeof Choices === 'undefined') {
-                console.warn('Choices.js belum ter-load. Menunggu...');
-                // Coba lagi setelah 100ms, maksimal 10 kali (1 detik)
-                if (!window.choicesRetryCount) window.choicesRetryCount = 0;
-                if (window.choicesRetryCount < 10) {
-                    window.choicesRetryCount++;
-                    setTimeout(initializeSearchableSelects, 100);
-                } else {
-                    console.error('Choices.js gagal ter-load setelah beberapa kali percobaan.');
-                }
-                return;
-            }
-
-            // Reset retry counter jika berhasil
-            window.choicesRetryCount = 0;
-
-            // Field-field yang biasanya memiliki banyak data dan perlu searchable
-            const searchableFieldIds = [
-                // Inventory & Transaction
-                'id_data_barang',           // Data Barang
-                'id_item',                  // Inventory Item
-                
-                // Master Data - Form dropdowns
-                'id_subjenis_barang',       // Subjenis Barang (Data Barang create/edit)
-                'id_satuan',                // Satuan (Data Barang create/edit)
-                'id_kategori_barang',       // Kategori Barang (Jenis Barang create/edit)
-                'id_jenis_barang',          // Jenis Barang (Subjenis Barang create/edit)
-                'id_kode_barang',           // Kode Barang (Kategori Barang create/edit)
-                'id_aset',                  // Aset (Kode Barang create/edit)
-                
-                // Master Manajemen
-                'id_ruangan',               // Ruangan
-                'id_pegawai',               // Pegawai
-                'id_penanggung_jawab',      // Penanggung Jawab
-                // id_gudang dihapus - tidak perlu searchable
-                
-                // Planning & Budget
-                // id_anggaran dihapus - tidak perlu searchable
-                'id_sub_kegiatan',          // Sub Kegiatan
-                'id_program',               // Program
-                'id_kegiatan',              // Kegiatan
-            ];
-
-            let initializedCount = 0;
-
-            // Initialize Choices.js untuk field-field yang memiliki banyak opsi
-            searchableFieldIds.forEach(function(fieldId) {
-                const selectElement = document.getElementById(fieldId);
-                if (selectElement) {
-                    if (selectElement.choicesInstance) {
-                        return;
-                    }
-                    // Tentukan threshold berdasarkan field
-                    let minOpts = 2; // Default minimal 3 opsi
-                    
-                    // Field-field yang biasanya memiliki banyak data, gunakan threshold lebih rendah
-                    const lowThresholdFields = [
-                        'id_data_barang',      // Data Barang
-                        'id_subjenis_barang',  // Subjenis Barang
-                        'id_satuan',           // Satuan
-                        'id_kategori_barang',  // Kategori Barang
-                        'id_jenis_barang',     // Jenis Barang
-                        'id_kode_barang',      // Kode Barang
-                        'id_aset',             // Aset
-                        'id_ruangan',          // Ruangan
-                        // id_gudang dihapus - tidak perlu searchable
-                    ];
-                    
-                    if (lowThresholdFields.includes(fieldId)) {
-                        minOpts = 1; // Minimal 2 opsi untuk field-field ini
-                    }
-                    
-                    const result = initChoicesForSelect(selectElement, minOpts);
-                    if (result) {
-                        initializedCount++;
-                        console.log('Choices.js initialized for:', fieldId);
-                    }
-                } else {
-                    console.log('Select element not found:', fieldId);
-                }
-            });
-
-            // Juga inisialisasi untuk select dengan class tertentu atau data attribute
-            document.querySelectorAll('select[data-searchable="true"], select.select-searchable, select.select-data-barang, select.select-satuan').forEach(function(select) {
-                // Skip jika sudah diinisialisasi
-                if (select.choicesInstance) {
-                    console.log('Skipping already initialized select:', select.className);
-                    return;
-                }
-                
-                // Pastikan semua option memiliki textContent yang benar (khusus untuk select-satuan)
-                if (select.classList.contains('select-satuan')) {
-                    Array.from(select.options).forEach(function(option) {
-                        if (!option.textContent || option.textContent.trim() === '') {
-                            option.textContent = option.innerText || option.getAttribute('label') || option.value;
-                        }
-                        const text = option.textContent.trim();
-                        if (text && text.length > 0) {
-                            option.textContent = text;
-                        }
-                    });
-                }
-                
-                // Untuk select-data-barang dan select-satuan, selalu inisialisasi (threshold 0)
-                let minOpts = 2;
-                if (select.classList.contains('select-data-barang') || select.classList.contains('select-satuan')) {
-                    minOpts = 0; // Selalu inisialisasi jika ada opsi
-                }
-                
-                const optionCount = Array.from(select.options).filter(opt => opt.value !== '').length;
-                console.log('Found select with class:', select.className, 'options:', optionCount, 'minOpts:', minOpts);
-                
-                const result = initChoicesForSelect(select, minOpts);
-                if (result) {
-                    initializedCount++;
-                    console.log('Choices.js initialized for select with class:', select.className, 'options:', optionCount);
-                } else {
-                    console.log('Choices.js NOT initialized for select with class:', select.className, 'options:', optionCount, 'minOpts:', minOpts);
-                }
-            });
-
-            if (initializedCount > 0) {
-                console.log('Choices.js: Total', initializedCount, 'select(s) initialized');
-            }
-        }
-
-        // Initialize Choices.js for searchable select dropdowns
-        // Tunggu sampai Choices.js benar-benar ter-load dan DOM ready
-        function waitForChoicesAndInit() {
-            console.log('waitForChoicesAndInit called. Choices available:', typeof Choices !== 'undefined', 'choicesLoaded:', window.choicesLoaded);
-            
-            // Cek apakah Choices.js sudah ter-load
-            if (typeof Choices !== 'undefined') {
-                console.log('Choices.js is available, initializing...');
-                // Tunggu DOM ready jika belum
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', function() {
-                        console.log('DOMContentLoaded fired, initializing Choices.js...');
-                        setTimeout(initializeSearchableSelects, 100);
-                    });
-                } else {
-                    // DOM sudah ready, langsung initialize
-                    console.log('DOM already ready, initializing Choices.js...');
-                    setTimeout(initializeSearchableSelects, 100);
-                }
-            } else {
-                // Choices.js belum ter-load, coba lagi setelah 100ms (maksimal 5 detik)
-                if (!window.choicesRetryCount) window.choicesRetryCount = 0;
-                if (window.choicesRetryCount < 50) {
-                    window.choicesRetryCount++;
-                    setTimeout(waitForChoicesAndInit, 100);
-                } else {
-                    console.error('Choices.js gagal ter-load setelah 5 detik');
-                }
-            }
-        }
-        
-        // Mulai proses setelah semua script selesai
-        console.log('Setting up Choices.js initialization...');
-        if (document.readyState === 'complete') {
-            console.log('Document already complete, starting initialization...');
-            waitForChoicesAndInit();
-        } else {
-            // Tunggu window load untuk memastikan semua resource ter-load
-            window.addEventListener('load', function() {
-                console.log('Window load event fired, starting initialization...');
-                setTimeout(function() {
-                    waitForChoicesAndInit();
-                }, 200);
-            });
-            
-            // Juga coba saat DOMContentLoaded sebagai fallback
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function() {
-                    console.log('DOMContentLoaded event fired, starting initialization...');
-                    setTimeout(waitForChoicesAndInit, 200);
-                });
-            } else {
-                // DOM sudah interactive, langsung coba
-                setTimeout(waitForChoicesAndInit, 200);
-            }
-        }
-        
-        // Final initialization setelah semua script selesai
-        // Ini akan memastikan Choices.js ter-initialize bahkan jika ada script lain yang delay
-        setTimeout(function() {
-            console.log('Final initialization attempt...');
-            if (typeof Choices !== 'undefined' && typeof initializeSearchableSelects === 'function') {
-                console.log('Choices.js available in final check, initializing...');
-                initializeSearchableSelects();
-            } else {
-                console.warn('Choices.js not available in final check. Choices:', typeof Choices, 'initializeSearchableSelects:', typeof initializeSearchableSelects);
-            }
-        }, 1000);
-    </script>
-    <script>
-        (function () {
-            function parseCellValue(value) {
-                const text = (value || '').trim();
-                if (text === '') return '';
-                const normalizedNumber = text.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
-                if (normalizedNumber !== '' && !Number.isNaN(Number(normalizedNumber))) {
-                    return Number(normalizedNumber);
-                }
-                const date = Date.parse(text);
-                if (!Number.isNaN(date)) {
-                    return date;
-                }
-                return text.toLowerCase();
-            }
-
-            function enhanceTable(table) {
-                if (table.dataset.enhanced === '1' || table.classList.contains('table-no-enhance')) return;
-                const tbody = table.tBodies && table.tBodies[0];
-                if (!tbody) return;
-                const rows = Array.from(tbody.rows);
-                if (rows.length === 0) return;
-
-                const headers = table.tHead ? Array.from(table.tHead.rows[0].cells) : [];
-                // Hanya "No" (teks penuh) — hindari "Nomor SBBK" ikut terdeteksi sebagai kolom urut.
-                const hasNumberHeader = headers.length > 0 && /^no$/i.test((headers[0].textContent || '').trim());
-
-                function syncManualRowNumbers() {
-                    if (!hasNumberHeader) return;
-                    const baseAttr = table.getAttribute('data-pagination-base');
-                    const base = baseAttr !== null && baseAttr !== '' && !Number.isNaN(parseInt(baseAttr, 10))
-                        ? parseInt(baseAttr, 10)
-                        : null;
-                    Array.from(tbody.rows).forEach(function (row, index) {
-                        if (!row.cells[0]) return;
-                        if (base !== null) {
-                            row.cells[0].textContent = String(base + index);
-                        } else {
-                            row.cells[0].textContent = String(index + 1);
-                        }
-                    });
-                }
-
-                function applyRowNumbers() {
-                    if (hasNumberHeader) {
-                        syncManualRowNumbers();
-                        return;
-                    }
-                    rows.forEach(function (row, index) {
-                        let numberCell = row.querySelector('td[data-auto-row-number="1"]');
-                        if (!numberCell) {
-                            numberCell = document.createElement('td');
-                            numberCell.setAttribute('data-auto-row-number', '1');
-                            numberCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-900';
-                            row.insertBefore(numberCell, row.firstChild);
-                        }
-                        numberCell.textContent = String(index + 1);
-                    });
-                }
-
-                if (!hasNumberHeader && table.tHead && table.tHead.rows[0]) {
-                    const th = document.createElement('th');
-                    th.textContent = 'No';
-                    th.className = 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider no-sort';
-                    table.tHead.rows[0].insertBefore(th, table.tHead.rows[0].firstChild);
-                }
-
-                // UI consistency: samakan feel tabel di semua index
-                table.classList.add('w-full', 'text-sm');
-                if (table.tHead) {
-                    table.tHead.classList.add('bg-gray-50');
-                }
-                rows.forEach(function (row) {
-                    row.classList.add('hover:bg-gray-50', 'transition-colors');
-                });
-                let sortCol = -1;
-                let sortDir = 'asc';
-
-                headers.forEach(function (th, idx) {
-                    const headerText = (th.textContent || '').trim().toLowerCase();
-                    if (headerText === 'aksi' || headerText === 'action' || headerText === 'opsi') {
-                        th.classList.add('no-sort');
-                    }
-                    if (th.classList.contains('no-sort')) return;
-                    th.style.cursor = 'pointer';
-                    if (!th.dataset.baseLabel) th.dataset.baseLabel = th.textContent.trim();
-                    th.addEventListener('click', function () {
-                        if (sortCol === idx) {
-                            sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-                        } else {
-                            sortCol = idx;
-                            sortDir = 'asc';
-                        }
-
-                        headers.forEach(function (h) {
-                            if (h.dataset.baseLabel) h.textContent = h.dataset.baseLabel;
-                        });
-                        th.textContent = th.dataset.baseLabel + (sortDir === 'asc' ? ' ↑' : ' ↓');
-
-                        rows.sort(function (a, b) {
-                            const av = parseCellValue(a.cells[idx] ? a.cells[idx].innerText : '');
-                            const bv = parseCellValue(b.cells[idx] ? b.cells[idx].innerText : '');
-                            if (av === bv) return 0;
-                            if (sortDir === 'asc') return av > bv ? 1 : -1;
-                            return av < bv ? 1 : -1;
-                        });
-                        rows.forEach(function (r) { tbody.appendChild(r); });
-                        applyRowNumbers();
-                    });
-                });
-
-                // Default sort ascending di kolom sortable pertama
-                const firstSortableIndex = headers.findIndex(function (th) {
-                    return !th.classList.contains('no-sort');
-                });
-                if (firstSortableIndex >= 0) {
-                    sortCol = firstSortableIndex;
-                    sortDir = 'asc';
-                    const activeHeader = headers[firstSortableIndex];
-                    headers.forEach(function (h) {
-                        if (h.dataset.baseLabel) h.textContent = h.dataset.baseLabel;
-                    });
-                    if (activeHeader.dataset.baseLabel) {
-                        activeHeader.textContent = activeHeader.dataset.baseLabel + ' ↑';
-                    }
-                    rows.sort(function (a, b) {
-                        const av = parseCellValue(a.cells[firstSortableIndex] ? a.cells[firstSortableIndex].innerText : '');
-                        const bv = parseCellValue(b.cells[firstSortableIndex] ? b.cells[firstSortableIndex].innerText : '');
-                        if (av === bv) return 0;
-                        return av > bv ? 1 : -1;
-                    });
-                    rows.forEach(function (r) { tbody.appendChild(r); });
-                }
-
-                applyRowNumbers();
-                table.dataset.enhanced = '1';
-            }
-
-            document.addEventListener('DOMContentLoaded', function () {
-                document.querySelectorAll('table').forEach(enhanceTable);
-            });
-        })();
-    </script>
+    {{-- Script layout dipindah ke resources/js/layout/app-layout.js --}}
 </body>
 </html>

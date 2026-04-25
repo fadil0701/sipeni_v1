@@ -37,51 +37,54 @@ class RegisterAsetController extends Controller
             }
         }
         
-        // Ambil semua gudang unit yang memiliki RegisterAset atau InventoryItem dengan jenis ASET
-        // Ambil unit kerja yang punya RegisterAset
-        $unitKerjaIdsWithRegisterAset = RegisterAset::whereHas('inventory', function($q) {
-                $q->where('jenis_inventory', 'ASET');
-            })
+        // Ambil unit kerja yang punya RegisterAset (sumber data KIR).
+        // Jangan bergantung relasi inventory di sini, karena data lama bisa tidak lengkap
+        // namun tetap valid sebagai RegisterAset/KIR.
+        $unitKerjaIdsWithRegisterAset = RegisterAset::query()
+            ->whereNotNull('id_unit_kerja')
             ->pluck('id_unit_kerja')
             ->unique()
             ->filter()
             ->toArray();
         
-        // Ambil gudang unit yang:
-        // 1. Punya InventoryItem dengan jenis ASET, ATAU
-        // 2. Unit kerjanya punya RegisterAset
-        $gudangUnits = MasterGudang::where('jenis_gudang', 'UNIT')
-            ->where(function($q) use ($unitKerjaIdsWithRegisterAset) {
-                // Gudang yang punya InventoryItem dengan jenis ASET
-                $q->whereHas('inventoryItems', function($q2) {
-                    $q2->whereHas('inventory', function($q3) {
-                        $q3->where('jenis_inventory', 'ASET');
-                    });
-                });
-                
-                // ATAU gudang yang unit kerjanya punya RegisterAset
-                if (!empty($unitKerjaIdsWithRegisterAset)) {
-                    $q->orWhereIn('id_unit_kerja', $unitKerjaIdsWithRegisterAset);
-                }
-            })
+        // Bangun kartu KIR berdasarkan UNIT KERJA yang punya register ber-ruangan.
+        // Tidak wajib ada baris master_gudang UNIT untuk unit tersebut.
+        $kirCountByUnitKerja = RegisterAset::query()
+            ->whereNotNull('id_unit_kerja')
+            ->whereNotNull('id_ruangan')
+            ->selectRaw('id_unit_kerja, COUNT(*) as total')
+            ->groupBy('id_unit_kerja')
+            ->pluck('total', 'id_unit_kerja');
+
+        $unitsWithKir = MasterUnitKerja::query()
+            ->whereIn('id_unit_kerja', $kirCountByUnitKerja->keys()->all())
             ->when($userUnitKerjaId, function($q) use ($userUnitKerjaId) {
                 $q->where('id_unit_kerja', $userUnitKerjaId);
             })
-            ->with('unitKerja')
+            ->orderBy('nama_unit_kerja')
             ->get();
-        
-        // Hitung KIR untuk setiap gudang unit (hanya KIR, tidak perlu KIB)
-        foreach ($gudangUnits as $gudang) {
-            // KIR: Hanya RegisterAset yang SUDAH ter-register dan memiliki ruangan di unit kerja ini
-            // Tidak menghitung aset yang belum ter-register
-            $kirCount = RegisterAset::where('id_unit_kerja', $gudang->id_unit_kerja)
-                ->whereNotNull('id_ruangan')
-                ->count();
-            
-            $gudang->kir_count = $kirCount;
-            $gudang->kib_count = 0; // Tidak perlu KIB untuk gudang unit
-            $gudang->total_aset = $kirCount; // Total = KIR untuk gudang unit
-        }
+
+        $unitGudangMap = MasterGudang::query()
+            ->where('jenis_gudang', 'UNIT')
+            ->whereIn('id_unit_kerja', $unitsWithKir->pluck('id_unit_kerja')->all())
+            ->get()
+            ->keyBy('id_unit_kerja');
+
+        $gudangUnits = $unitsWithKir->map(function ($unit) use ($unitGudangMap, $kirCountByUnitKerja) {
+            $gudang = $unitGudangMap->get($unit->id_unit_kerja);
+            $kirCount = (int) ($kirCountByUnitKerja[$unit->id_unit_kerja] ?? 0);
+
+            return (object) [
+                // Jika belum ada gudang UNIT, tetap bisa dibuka via mode virtual by unit kerja.
+                'id_gudang' => $gudang?->id_gudang ?? ('unit-'.$unit->id_unit_kerja),
+                'nama_gudang' => $gudang?->nama_gudang ?? $unit->nama_unit_kerja,
+                'id_unit_kerja' => (int) $unit->id_unit_kerja,
+                'unitKerja' => $unit,
+                'kir_count' => $kirCount,
+                'kib_count' => 0,
+                'total_aset' => $kirCount,
+            ];
+        })->values();
         
         // Ambil data gudang pusat (KIB saja) - HANYA untuk admin, admin_gudang, pengurus_barang, bukan untuk pegawai
         $gudangPusatData = null;
@@ -218,15 +221,42 @@ class RegisterAsetController extends Controller
             $isPusat = true;
             $filter = 'kib'; // Untuk gudang pusat selalu KIB
         } else {
-            // Ambil data gudang unit
-            $gudangUnit = MasterGudang::where('id_gudang', $unitKerjaId)
-                ->where('jenis_gudang', 'UNIT')
-                ->with('unitKerja')
-                ->firstOrFail();
+            // Dukung 2 mode:
+            // 1) unit_kerja = id_gudang UNIT (mode lama)
+            // 2) unit_kerja = "unit-{id_unit_kerja}" (mode virtual ketika belum ada gudang UNIT)
+            $isVirtualUnitMode = is_string($unitKerjaId) && str_starts_with($unitKerjaId, 'unit-');
+            $requestedUnitKerjaId = $isVirtualUnitMode
+                ? (int) str_replace('unit-', '', $unitKerjaId)
+                : null;
+
+            $gudangUnit = null;
+            if (!$isVirtualUnitMode) {
+                $gudangUnit = MasterGudang::where('id_gudang', $unitKerjaId)
+                    ->where('jenis_gudang', 'UNIT')
+                    ->with('unitKerja')
+                    ->first();
+                if ($gudangUnit) {
+                    $requestedUnitKerjaId = (int) $gudangUnit->id_unit_kerja;
+                }
+            }
+
+            if (!$requestedUnitKerjaId) {
+                abort(404);
+            }
+
+            if (!$gudangUnit) {
+                $unitKerja = MasterUnitKerja::findOrFail($requestedUnitKerjaId);
+                $gudangUnit = (object) [
+                    'id_gudang' => 'unit-'.$unitKerja->id_unit_kerja,
+                    'id_unit_kerja' => $unitKerja->id_unit_kerja,
+                    'nama_gudang' => $unitKerja->nama_unit_kerja,
+                    'unitKerja' => $unitKerja,
+                ];
+            }
             
             // Untuk gudang unit, ambil data dari RegisterAset yang id_unit_kerja = unit kerja gudang ini
             // Hanya ambil yang sudah memiliki ruangan (KIR)
-            $registerAsetQuery = RegisterAset::where('id_unit_kerja', $gudangUnit->id_unit_kerja)
+            $registerAsetQuery = RegisterAset::where('id_unit_kerja', $requestedUnitKerjaId)
                 ->whereNotNull('id_ruangan'); // Hanya KIR yang ditampilkan
             
             // Filter berdasarkan Ruangan (jika dipilih)
@@ -238,7 +268,7 @@ class RegisterAsetController extends Controller
             
             // Ambil daftar Ruangan yang memiliki KIR di unit kerja ini
             // Ambil dari RegisterAset yang memiliki ruangan di unit kerja ini
-            $ruanganIds = RegisterAset::where('id_unit_kerja', $gudangUnit->id_unit_kerja)
+            $ruanganIds = RegisterAset::where('id_unit_kerja', $requestedUnitKerjaId)
                 ->whereNotNull('id_ruangan')
                 ->pluck('id_ruangan')
                 ->unique()
@@ -537,7 +567,7 @@ class RegisterAsetController extends Controller
         // Validasi input
         $validated = $request->validate([
             'id_item' => 'required|exists:inventory_item,id_item',
-            'id_inventory' => 'required|exists:data_inventory,id_inventory',
+            'id_inventory' => 'nullable|exists:data_inventory,id_inventory',
             'id_unit_kerja' => 'required|exists:master_unit_kerja,id_unit_kerja',
             'id_ruangan' => 'nullable|exists:master_ruangan,id_ruangan',
             'kondisi_aset' => 'required|in:BAIK,RUSAK_RINGAN,RUSAK_BERAT',
@@ -560,6 +590,10 @@ class RegisterAsetController extends Controller
         
         // Cek apakah inventory item sudah ter-register
         $inventoryItem = \App\Models\InventoryItem::findOrFail($validated['id_item']);
+
+        // Hardening: id_inventory tidak boleh hanya bergantung pada hidden input + JS.
+        // Selalu sinkronkan dari InventoryItem terpilih agar submit tetap valid.
+        $validated['id_inventory'] = (int) $inventoryItem->id_inventory;
         
         // Cek apakah kolom id_item sudah ada
         $hasIdItemColumn = Schema::hasColumn('register_aset', 'id_item');

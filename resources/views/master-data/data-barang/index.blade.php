@@ -29,22 +29,44 @@
     </div>
 @endif
 
-<!-- Filters -->
-<div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
-    <form method="GET" action="{{ route('master-data.data-barang.index') }}" class="flex gap-4">
-        <div class="flex-1">
-            <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                </div>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama barang atau kode..." class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-            </div>
+<x-index.filter-toolbar
+    :action="route('master-data.data-barang.index')"
+    search-placeholder="Cari nama barang, kode, subjenis, atau satuan..."
+    button-text="Terapkan"
+>
+    <x-slot:filters>
+        <div class="w-full min-w-0 lg:w-auto lg:min-w-[18rem]">
+            <label for="id_subjenis_barang" class="block text-sm font-medium text-gray-700 mb-1">Subjenis</label>
+            <select
+                id="id_subjenis_barang"
+                name="id_subjenis_barang"
+                class="block w-full rounded-md border border-gray-300 py-2 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+                <option value="">Semua Subjenis</option>
+                @foreach(($subjenisBarangs ?? collect()) as $subjenisBarang)
+                    <option value="{{ $subjenisBarang->id_subjenis_barang }}" {{ (string) request('id_subjenis_barang') === (string) $subjenisBarang->id_subjenis_barang ? 'selected' : '' }}>
+                        {{ $subjenisBarang->nama_subjenis_barang }}
+                    </option>
+                @endforeach
+            </select>
         </div>
-        <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">Cari</button>
-    </form>
-</div>
+        <div class="w-full min-w-0 lg:w-auto lg:min-w-[14rem]">
+            <label for="id_satuan" class="block text-sm font-medium text-gray-700 mb-1">Satuan</label>
+            <select
+                id="id_satuan"
+                name="id_satuan"
+                class="block w-full rounded-md border border-gray-300 py-2 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+                <option value="">Semua Satuan</option>
+                @foreach(($satuans ?? collect()) as $satuan)
+                    <option value="{{ $satuan->id_satuan }}" {{ (string) request('id_satuan') === (string) $satuan->id_satuan ? 'selected' : '' }}>
+                        {{ $satuan->nama_satuan }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+    </x-slot:filters>
+</x-index.filter-toolbar>
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">

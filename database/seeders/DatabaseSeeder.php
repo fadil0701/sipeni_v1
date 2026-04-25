@@ -20,10 +20,14 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             PermissionSeeder::class,
             ModuleSeeder::class,
+            MasterSatuanSeeder::class,
+            MasterUnitKerjaSeeder::class,
+            MasterRuanganSeeder::class,
             MasterJabatanSeeder::class,
             AdminUserSeeder::class,
+            PegawaiUserPerJabatanSeeder::class,
             ApprovalFlowDefinitionSeeder::class,
-            ComprehensiveDummySeeder::class,
+            // ComprehensiveDummySeeder::class,
         ]);
     }
 }

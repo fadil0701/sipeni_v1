@@ -11,9 +11,29 @@ class SubjenisBarangController extends Controller
 {
     public function index(Request $request)
     {
+        $search = trim((string) $request->query('search', ''));
+        $idJenisBarang = $request->query('id_jenis_barang');
+
+        $query = MasterSubjenisBarang::with('jenisBarang.kategoriBarang');
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('kode_subjenis_barang', 'like', "%{$search}%")
+                    ->orWhere('nama_subjenis_barang', 'like', "%{$search}%")
+                    ->orWhereHas('jenisBarang', function ($jenisQ) use ($search) {
+                        $jenisQ->where('nama_jenis_barang', 'like', "%{$search}%");
+                    });
+            });
+        }
+        if (!empty($idJenisBarang)) {
+            $query->where('id_jenis_barang', $idJenisBarang);
+        }
+
+        $jenisBarangs = MasterJenisBarang::query()
+            ->orderBy('nama_jenis_barang')
+            ->get(['id_jenis_barang', 'nama_jenis_barang']);
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
-        $subjenisBarangs = MasterSubjenisBarang::with('jenisBarang.kategoriBarang')->latest()->paginate($perPage)->appends($request->query());
-        return view('master-data.subjenis-barang.index', compact('subjenisBarangs'));
+        $subjenisBarangs = $query->latest()->paginate($perPage)->appends($request->query());
+        return view('master-data.subjenis-barang.index', compact('subjenisBarangs', 'jenisBarangs'));
     }
 
     public function create()

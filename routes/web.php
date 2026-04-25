@@ -139,9 +139,6 @@ Route::middleware(['auth'])->group(function () {
         // Approval - Multi-level approval
         Route::prefix('approval')->name('approval.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Transaction\ApprovalPermintaanController::class, 'index'])->name('index')->middleware(['role:admin,kepala_unit,kasubbag_tu,kepala_pusat,admin_gudang,admin_gudang_aset,admin_gudang_persediaan,admin_gudang_farmasi,perencanaan,pengadaan,keuangan']);
-            Route::get('/diagram', function () {
-                return view('transaction.approval.diagram');
-            })->name('diagram')->middleware(['role:admin,kepala_unit,kasubbag_tu,kepala_pusat,admin_gudang,admin_gudang_aset,admin_gudang_persediaan,admin_gudang_farmasi,perencanaan,pengadaan,keuangan']);
             Route::get('/{id}', [\App\Http\Controllers\Transaction\ApprovalPermintaanController::class, 'show'])->name('show')->middleware(['role:admin,kepala_unit,kasubbag_tu,kepala_pusat,admin_gudang,admin_gudang_aset,admin_gudang_persediaan,admin_gudang_farmasi,perencanaan,pengadaan,keuangan']);
             
             // Action khusus untuk Kepala Unit (mengetahui)
@@ -210,6 +207,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('register-aset/unit-kerja/{unit_kerja}', [RegisterAsetController::class, 'showUnitKerja'])->name('register-aset.unit-kerja.show');
         
         // Kartu Inventaris Ruangan (KIR)
+        Route::get('kartu-inventaris-ruangan/unit/{id_unit_kerja}/dokumen', [\App\Http\Controllers\Asset\KartuInventarisRuanganController::class, 'dokumenUnitKerja'])->name('kartu-inventaris-ruangan.dokumen-unit');
         Route::resource('kartu-inventaris-ruangan', \App\Http\Controllers\Asset\KartuInventarisRuanganController::class);
         
         // Mutasi Aset
