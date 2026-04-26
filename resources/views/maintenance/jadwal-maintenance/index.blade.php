@@ -20,7 +20,11 @@
 
 <!-- Filters -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
-    <form method="GET" action="{{ route('maintenance.jadwal-maintenance.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <form method="GET" action="{{ route('maintenance.jadwal-maintenance.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-5">
+        <div>
+            <label for="unit_kerja" class="block text-sm font-medium text-gray-700 mb-1">Unit Kerja</label>
+            <input id="unit_kerja" name="unit_kerja" type="number" value="{{ request('unit_kerja') }}" placeholder="ID Unit Kerja" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
         <div>
             <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select 
@@ -31,6 +35,7 @@
                 <option value="">Semua Status</option>
                 <option value="AKTIF" {{ request('status') == 'AKTIF' ? 'selected' : '' }}>Aktif</option>
                 <option value="NONAKTIF" {{ request('status') == 'NONAKTIF' ? 'selected' : '' }}>Nonaktif</option>
+                <option value="SELESAI" {{ request('status') == 'SELESAI' ? 'selected' : '' }}>Selesai</option>
             </select>
         </div>
 
@@ -43,8 +48,18 @@
             >
                 <option value="">Semua Jenis</option>
                 <option value="RUTIN" {{ request('jenis') == 'RUTIN' ? 'selected' : '' }}>Rutin</option>
-                <option value="PREVENTIVE" {{ request('jenis') == 'PREVENTIVE' ? 'selected' : '' }}>Preventive</option>
-                <option value="CORRECTIVE" {{ request('jenis') == 'CORRECTIVE' ? 'selected' : '' }}>Corrective</option>
+                <option value="KALIBRASI" {{ request('jenis') == 'KALIBRASI' ? 'selected' : '' }}>Kalibrasi</option>
+                <option value="PERBAIKAN" {{ request('jenis') == 'PERBAIKAN' ? 'selected' : '' }}>Perbaikan</option>
+                <option value="PENGGANTIAN_SPAREPART" {{ request('jenis') == 'PENGGANTIAN_SPAREPART' ? 'selected' : '' }}>Penggantian Sparepart</option>
+            </select>
+        </div>
+        <div>
+            <label for="jatuh_tempo" class="block text-sm font-medium text-gray-700 mb-1">Jatuh Tempo</label>
+            <select id="jatuh_tempo" name="jatuh_tempo" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="">Semua</option>
+                <option value="OVERDUE" {{ request('jatuh_tempo') == 'OVERDUE' ? 'selected' : '' }}>Overdue</option>
+                <option value="7_HARI" {{ request('jatuh_tempo') == '7_HARI' ? 'selected' : '' }}>7 Hari</option>
+                <option value="30_HARI" {{ request('jatuh_tempo') == '30_HARI' ? 'selected' : '' }}>30 Hari</option>
             </select>
         </div>
 
@@ -67,6 +82,16 @@
             </div>
         </div>
     </form>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="rounded-lg border border-red-200 bg-red-50 p-4">
+        <p class="text-xs text-red-600">Jadwal overdue</p>
+        <p class="text-2xl font-semibold text-red-700">{{ $summary['overdue'] ?? 0 }}</p>
+    </div>
+    <div class="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+        <p class="text-xs text-yellow-700">Jatuh tempo 7 hari</p>
+        <p class="text-2xl font-semibold text-yellow-800">{{ $summary['due_7_days'] ?? 0 }}</p>
+    </div>
 </div>
 
 <!-- Success/Error Messages -->
@@ -133,7 +158,7 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ $jadwal->periode }} hari
+                            {{ $jadwal->periode }}{{ $jadwal->periode === 'CUSTOM' && $jadwal->interval_hari ? ' (' . $jadwal->interval_hari . ' hari)' : '' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {{ $jadwal->tanggal_mulai->format('d/m/Y') }}
@@ -160,6 +185,12 @@
                                 >
                                     Edit
                                 </a>
+                                @if($jadwal->status === 'AKTIF')
+                                    <form method="POST" action="{{ route('maintenance.jadwal-maintenance.generate-permintaan', $jadwal->id_jadwal) }}" class="inline">
+                                        @csrf
+                                        <button type="submit" class="text-green-600 hover:text-green-900 transition-colors">Generate Rutin</button>
+                                    </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -187,7 +218,7 @@
 
 @push('scripts')
 <script>
-    document.querySelectorAll('#status, #jenis').forEach(select => {
+    document.querySelectorAll('#status, #jenis, #jatuh_tempo').forEach(select => {
         select.addEventListener('change', function() {
             this.form.submit();
         });

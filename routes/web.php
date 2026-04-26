@@ -222,6 +222,8 @@ Route::middleware(['auth'])->group(function () {
         
         // Jadwal Maintenance
         Route::resource('jadwal-maintenance', \App\Http\Controllers\Maintenance\JadwalMaintenanceController::class);
+        Route::post('jadwal-maintenance/{id}/generate-permintaan', [\App\Http\Controllers\Maintenance\JadwalMaintenanceController::class, 'generatePermintaan'])
+            ->name('jadwal-maintenance.generate-permintaan');
         
         // Kalibrasi Aset
         Route::resource('kalibrasi-aset', \App\Http\Controllers\Maintenance\KalibrasiAsetController::class);
@@ -262,5 +264,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('stock-gudang/export', [ReportController::class, 'exportStockGudang'])->name('stock-gudang.export');
         Route::get('transaksi-summary', [ReportController::class, 'transaksiSummary'])->name('transaksi-summary');
         Route::get('aset-summary', [ReportController::class, 'asetSummary'])->name('aset-summary');
+        Route::get('maintenance-summary', [ReportController::class, 'maintenanceSummary'])->name('maintenance-summary');
+        Route::get('maintenance-summary/export', [ReportController::class, 'exportMaintenanceSummary'])->name('maintenance-summary.export');
     });
 });

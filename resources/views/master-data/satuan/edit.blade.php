@@ -27,6 +27,13 @@
                 <input type="text" id="nama_satuan" name="nama_satuan" required value="{{ old('nama_satuan', $satuan->nama_satuan) }}" placeholder="Masukkan nama satuan" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('nama_satuan') border-red-500 @enderror">
                 @error('nama_satuan')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
+            <div>
+                <label for="keterangan" class="block text-sm font-medium text-gray-700 mb-2">
+                    Keterangan <span class="text-red-500">*</span>
+                </label>
+                <input type="text" id="keterangan" name="keterangan" required value="{{ old('keterangan', $satuan->keterangan) }}" placeholder="Masukkan keterangan" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('keterangan') border-red-500 @enderror">
+                @error('keterangan')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
         </div>
 
         <div class="mt-8 flex justify-end space-x-3 border-t border-gray-200 pt-6">

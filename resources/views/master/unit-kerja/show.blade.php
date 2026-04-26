@@ -36,6 +36,14 @@
                 <dt class="text-sm font-medium text-gray-500 mb-1">Nama Unit Kerja</dt>
                 <dd class="text-sm font-semibold text-gray-900">{{ $unitKerja->nama_unit_kerja }}</dd>
             </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500 mb-1">Kota/Kabupaten</dt>
+                <dd class="text-sm font-semibold text-gray-900">{{ $unitKerja->kota_kabupaten }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500 mb-1">Kecamatan</dt>
+                <dd class="text-sm font-semibold text-gray-900">{{ $unitKerja->kecamatan }}</dd>
+            </div>
         </dl>
     </div>
 </div>

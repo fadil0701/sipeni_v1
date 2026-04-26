@@ -27,7 +27,7 @@
 
                 <!-- Form -->
                 <div class="px-6 py-6">
-                    <form action="{{ route('login') }}" method="POST" class="space-y-5">
+                    <form action="{{ route('login') }}" method="POST" class="space-y-5" data-confirm="off">
                         @csrf
                         
                         <!-- Email Field -->

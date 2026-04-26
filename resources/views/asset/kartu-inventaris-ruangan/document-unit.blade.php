@@ -56,53 +56,71 @@
             border: 1px solid #d1d5db;
         }
         .kir-header {
-            display: grid;
-            grid-template-columns: 1.45fr 1fr 1fr;
-            gap: 8px;
-            align-items: start;
+            margin-bottom: 4px;
         }
         .kir-header .center {
             text-align: center;
             font-weight: 700;
             line-height: 1.2;
+            margin-bottom: 4px;
+        }
+        .kir-header .meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
         }
         .kir-header .line { margin-bottom: 2px; }
+        .kir-header .left { max-width: 70%; }
+        .kir-header .right { text-align: left; }
         .kir-table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: auto;
+            table-layout: fixed;
             margin-top: 6px;
         }
         .kir-table th,
         .kir-table td {
             border: 1px solid #000;
-            padding: 2px 4px;
+            padding: 2px 3px;
             vertical-align: top;
             white-space: normal;
             word-break: normal;
             overflow-wrap: anywhere;
-            line-height: 1.2;
+            line-height: 1.18;
         }
         .kir-table th {
             text-align: center;
             font-weight: 700;
-            font-size: 9px;
+            font-size: 8.4px;
         }
-        .kir-table td { font-size: 9px; }
+        .kir-table td {
+            font-size: 8.2px;
+            min-height: 18px;
+        }
+        .kir-table tbody tr {
+            height: 18px;
+        }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .kir-sign {
-            margin-top: 20px;
+            margin-top: 16px;
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
+            gap: 10px;
             text-align: center;
-            font-size: 10px;
+            font-size: 9px;
+        }
+        .kir-sign > div {
+            min-height: 90px;
         }
         .kir-sign .name-space {
-            margin-top: 36px;
+            margin-top: 30px;
             text-decoration: underline;
             min-height: 12px;
+        }
+        .kir-sign .nip {
+            margin-top: 2px;
         }
         @media print {
             body { background: #fff; }
@@ -116,7 +134,15 @@
             .kir-paper:last-child { page-break-after: auto; }
             .kir-table th,
             .kir-table td {
-                font-size: 8.5px;
+                font-size: 7.8px;
+                padding: 1.6px 2px;
+            }
+            .kir-sign {
+                margin-top: 12px;
+                font-size: 8px;
+            }
+            .kir-sign .name-space {
+                margin-top: 26px;
             }
         }
     </style>
@@ -126,6 +152,9 @@
     $rowsByRuangan = $rows->groupBy(function ($row) {
         return $row->ruangan?->id_ruangan ?? 0;
     });
+    $kepalaPusat = $signatories['kepala_pusat'] ?? null;
+    $pengurusBarang = $signatories['pengurus_barang'] ?? null;
+    $kepalaUnit = $signatories['kepala_unit'] ?? null;
 @endphp
 
 <div class="toolbar print-hidden">
@@ -142,41 +171,61 @@
     <div class="kir-paper">
     
         <div class="kir-header">
-            <div>
-                <div class="line"><strong>PROVINSI</strong> : PEMERINTAH PROVINSI DKI JAKARTA</div>
-                <div class="line"><strong>KABUPATEN/KOTA</strong> : Wilayah Unit Kerja</div>
-                <div class="line"><strong>UNIT KERJA</strong> : {{ $unitKerja->nama_unit_kerja }}</div>
-                <div class="line"><strong>SATUAN KERJA</strong> : PUSAT PELAYANAN KESEHATAN PEGAWAI PROV. DKI JAKARTA</div>
-            </div>
             <div class="center">
                 <div>KARTU INVENTARIS RUANGAN</div>
                 <div>TAHUN {{ $tahun }}</div>
             </div>
-            <div>
-                <div class="line" ><strong>KODE UNIT KERJA</strong> : {{ $unitKerja->id_unit_kerja }}</div>
-                <div class="line"><strong>RUANGAN</strong> : {{ $ruangan?->nama_ruangan ?? '-' }}</div>
+            <div class="meta">
+                <div class="left">
+                    <div class="line"><strong>PROVINSI</strong> : PEMERINTAH PROVINSI DKI JAKARTA</div>
+                    <div class="line"><strong>KABUPATEN/KOTA</strong> : {{ $unitKerja->kota_kabupaten ?? '-' }}</div>
+                    <div class="line"><strong>UNIT KERJA</strong> : {{ $unitKerja->nama_unit_kerja }}</div>
+                    <div class="line"><strong>SATUAN KERJA</strong> : PUSAT PELAYANAN KESEHATAN PEGAWAI PROV. DKI JAKARTA</div>
+                </div>
+                <div class="right">
+                    <div class="line" ><strong>KODE UNIT KERJA</strong> : {{ $unitKerja->kode_unit_kerja ?? $unitKerja->id_unit_kerja }}</div>
+                    <div class="line"><strong>RUANGAN</strong> : {{ $ruangan?->nama_ruangan ?? '-' }}</div>
+                </div>
             </div>
         </div>
 
         <table class="kir-table">
+            <colgroup>
+                <col style="width: 2.8%;">
+                <col style="width: 6.8%;">
+                <col style="width: 8.8%;">
+                <col style="width: 10.8%;">
+                <col style="width: 8.6%;">
+                <col style="width: 5.2%;">
+                <col style="width: 5.2%;">
+                <col style="width: 3.7%;">
+                <col style="width: 3.7%;">
+                <col style="width: 3.4%;">
+                <col style="width: 2.8%;">
+                <col style="width: 4.8%;">
+                <col style="width: 4.1%;">
+                <col style="width: 4.2%;">
+                <col style="width: 4.2%;">
+                <col style="width: 10.2%;">
+            </colgroup>
             <thead>
             <tr>
-                <th style="width:28px;">NO</th>
-                <th style="width:90px;">KODE DATA BARANG</th>
-                <th style="width:120px;">KODE REGISTER</th>
-                <th style="min-width:150px;">NAMA BARANG</th>
-                <th style="min-width:110px;">MERK / MODEL</th>
-                <th style="width:80px;">JENIS BARANG</th>
-                <th style="width:80px;">NO.SERI</th>
-                <th style="width:65px;">TAHUN PEMBUATAN</th>
-                <th style="width:65px;">TAHUN PEMBELIAN</th>
-                <th style="width:60px;">JUMLAH BARANG</th>
-                <th style="width:55px;">SATUAN</th>
-                <th style="width:80px;">HARGA SATUAN</th>
-                <th style="width:75px;">KEADAAN BARANG</th>
-                <th style="width:80px;">TANGGAL PEMELIHARAAN</th>
-                <th style="width:80px;">TANGGAL KALIBRASI</th>
-                <th style="min-width:100px;">KETERANGAN / MUTASI / DLL</th>
+                <th>NO</th>
+                <th>KODE DATA BARANG</th>
+                <th>KODE REGISTER</th>
+                <th>NAMA BARANG</th>
+                <th>MERK / MODEL</th>
+                <th>JENIS BARANG</th>
+                <th>NO.SERI</th>
+                <th>TAHUN PEMBUATAN</th>
+                <th>TAHUN PEMBELIAN</th>
+                <th>JUMLAH BARANG</th>
+                <th>SATUAN</th>
+                <th>HARGA SATUAN</th>
+                <th>KEADAAN BARANG</th>
+                <th>TANGGAL PEMELIHARAAN</th>
+                <th>TANGGAL KALIBRASI</th>
+                <th>KETERANGAN / MUTASI / DLL</th>
             </tr>
             </thead>
             <tbody>
@@ -221,22 +270,22 @@
                 <div>MENGETAHUI,</div>
                 <div>KEPALA PUSAT PELAYANAN KESEHATAN PEGAWAI</div>
                 <div>PROVINSI DKI JAKARTA</div>
-                <div class="name-space">Nama Kepala Pusat</div>
-                <div>NIP. ....................</div>
+                <div class="name-space">{{ $kepalaPusat?->nama_pegawai ?? '(Belum diatur)' }}</div>
+                <div class="nip">NIP. {{ $kepalaPusat?->nip_pegawai ?? '-' }}</div>
             </div>
             <div>
                 <div>PENGURUS BARANG</div>
                 <div>PUSAT PELAYANAN KESEHATAN PEGAWAI</div>
                 <div>PROVINSI DKI JAKARTA</div>
-                <div class="name-space">Nama Pengurus Barang</div>
-                <div>NIP. ....................</div>
+                <div class="name-space">{{ $pengurusBarang?->nama_pegawai ?? '(Belum diatur)' }}</div>
+                <div class="nip">NIP. {{ $pengurusBarang?->nip_pegawai ?? '-' }}</div>
             </div>
             <div>
                 <div>Jakarta, {{ now()->format('d F Y') }}</div>
                 <div>KEPALA RUANGAN/UNIT KERJA</div>
                 <div>&nbsp;</div>
-                <div class="name-space">Nama Kepala Unit Kerja</div>
-                <div>NIP. ....................</div>
+                <div class="name-space">{{ $kepalaUnit?->nama_pegawai ?? '(Belum diatur)' }}</div>
+                <div class="nip">NIP. {{ $kepalaUnit?->nip_pegawai ?? '-' }}</div>
             </div>
         </div>
     </div>

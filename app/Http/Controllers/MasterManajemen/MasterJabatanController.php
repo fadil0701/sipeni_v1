@@ -54,12 +54,15 @@ class MasterJabatanController extends Controller
     {
         $validated = $request->validate([
             'nama_jabatan' => 'required|string|max:255',
-            'urutan' => 'required|integer|min:1',
+            'urutan' => 'nullable|integer|min:1',
             'role_id' => 'nullable|exists:roles,id',
             'deskripsi' => 'nullable|string',
         ]);
 
         try {
+            if (empty($validated['urutan'])) {
+                $validated['urutan'] = ((int) MasterJabatan::query()->max('urutan')) + 1;
+            }
             MasterJabatan::create($validated);
             return redirect()->route('master-manajemen.master-jabatan.index')
                 ->with('success', 'Jabatan berhasil ditambahkan.');
@@ -98,12 +101,12 @@ class MasterJabatanController extends Controller
 
         $validated = $request->validate([
             'nama_jabatan' => 'required|string|max:255',
-            'urutan' => 'required|integer|min:1',
             'role_id' => 'nullable|exists:roles,id',
             'deskripsi' => 'nullable|string',
         ]);
 
         try {
+            // Urutan di-auto-generate saat create dan tidak diubah manual saat edit.
             $jabatan->update($validated);
             return redirect()->route('master-manajemen.master-jabatan.index')
                 ->with('success', 'Jabatan berhasil diperbarui.');

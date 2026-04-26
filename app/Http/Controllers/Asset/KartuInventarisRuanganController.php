@@ -120,6 +120,7 @@ class KartuInventarisRuanganController extends Controller
             'rows' => $rows,
             'printMode' => $request->boolean('print'),
             'downloadMode' => $request->boolean('download'),
+            'signatories' => $this->resolveKirSignatories($idUnitKerja),
         ];
 
         if ($request->boolean('download')) {
@@ -133,6 +134,68 @@ class KartuInventarisRuanganController extends Controller
         }
 
         return view('asset.kartu-inventaris-ruangan.document-unit', $payload);
+    }
+
+    private function resolveKirSignatories(int $idUnitKerja): array
+    {
+        $pegawaiQuery = MasterPegawai::query()->with('jabatan.role');
+
+        $kepalaPusat = (clone $pegawaiQuery)
+            ->whereHas('jabatan.role', function ($q) {
+                $q->where('name', 'kepala_pusat');
+            })
+            ->orderBy('nama_pegawai')
+            ->first();
+
+        if (!$kepalaPusat) {
+            $kepalaPusat = (clone $pegawaiQuery)
+                ->whereHas('jabatan', function ($q) {
+                    $q->where('nama_jabatan', 'like', '%kepala pusat%');
+                })
+                ->orderBy('nama_pegawai')
+                ->first();
+        }
+
+        $pengurusBarang = (clone $pegawaiQuery)
+            ->whereHas('jabatan.role', function ($q) {
+                $q->whereIn('name', ['admin_gudang', 'admin_gudang_aset', 'admin_gudang_persediaan', 'admin_gudang_farmasi', 'admin_gudang_unit']);
+            })
+            ->orderBy('nama_pegawai')
+            ->first();
+
+        if (!$pengurusBarang) {
+            $pengurusBarang = (clone $pegawaiQuery)
+                ->whereHas('jabatan', function ($q) {
+                    $q->where('nama_jabatan', 'like', '%pengurus barang%')
+                        ->orWhere('nama_jabatan', 'like', '%admin gudang%');
+                })
+                ->orderBy('nama_pegawai')
+                ->first();
+        }
+
+        $kepalaUnit = (clone $pegawaiQuery)
+            ->where('id_unit_kerja', $idUnitKerja)
+            ->whereHas('jabatan.role', function ($q) {
+                $q->where('name', 'kepala_unit');
+            })
+            ->orderBy('nama_pegawai')
+            ->first();
+
+        if (!$kepalaUnit) {
+            $kepalaUnit = (clone $pegawaiQuery)
+                ->where('id_unit_kerja', $idUnitKerja)
+                ->whereHas('jabatan', function ($q) {
+                    $q->where('nama_jabatan', 'like', '%kepala unit%');
+                })
+                ->orderBy('nama_pegawai')
+                ->first();
+        }
+
+        return [
+            'kepala_pusat' => $kepalaPusat,
+            'pengurus_barang' => $pengurusBarang,
+            'kepala_unit' => $kepalaUnit,
+        ];
     }
 
     /**

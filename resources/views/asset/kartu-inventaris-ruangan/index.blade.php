@@ -4,24 +4,9 @@
 <!-- Page Header -->
 <div class="mb-6 flex justify-between items-center">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">Dokumen KIR per Unit Kerja</h1>
-        <p class="mt-1 text-sm text-gray-600">Daftar dokumen KIR yang siap cetak berdasarkan unit kerja</p>
+        <h1 class="text-2xl font-bold text-gray-900">Dokumen KIR (Cetak/Download)</h1>
+        <p class="mt-1 text-sm text-gray-600">Daftar dokumen KIR per unit kerja untuk kebutuhan cetak dan unduh.</p>
     </div>
-    @php
-        use App\Helpers\PermissionHelper;
-        $user = auth()->user();
-    @endphp
-    @if(PermissionHelper::canAccess($user, 'asset.kartu-inventaris-ruangan.create'))
-    <a 
-        href="{{ route('asset.kartu-inventaris-ruangan.create') }}" 
-        class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-    >
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Tambah KIR
-    </a>
-    @endif
 </div>
 
 <!-- Filters -->

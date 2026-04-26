@@ -1,19 +1,22 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $selectedRegisterAsetId = old('id_register_aset', request('id_register_aset'));
+@endphp
 <div class="mb-4">
     <a href="{{ route('asset.kartu-inventaris-ruangan.index') }}" class="text-blue-600 hover:text-blue-900 inline-flex items-center">
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
-        Kembali ke Daftar KIR
+        Kembali ke Dokumen KIR
     </a>
 </div>
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200">
     <div class="px-6 py-5 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">Tambah Kartu Inventaris Ruangan</h2>
-        <p class="mt-1 text-sm text-gray-600">Tempatkan aset ke ruangan tertentu</p>
+        <h2 class="text-xl font-semibold text-gray-900">Input Penempatan KIR</h2>
+        <p class="mt-1 text-sm text-gray-600">Isi ruangan dan penanggung jawab untuk register aset yang dipilih.</p>
     </div>
     
     <form action="{{ route('asset.kartu-inventaris-ruangan.store') }}" method="POST" class="p-6">
@@ -38,7 +41,7 @@
                             <option
                                 value="{{ $registerAset->id_register_aset }}"
                                 data-id-unit-kerja="{{ $registerAset->id_unit_kerja }}"
-                                {{ old('id_register_aset') == $registerAset->id_register_aset ? 'selected' : '' }}
+                                {{ (string) $selectedRegisterAsetId === (string) $registerAset->id_register_aset ? 'selected' : '' }}
                             >
                                 {{ $registerAset->nomor_register }} - {{ $registerAset->inventory->dataBarang->nama_barang ?? '-' }}
                                 @if($registerAset->unitKerja)

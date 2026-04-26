@@ -10,8 +10,8 @@
 <div class="mb-8">
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Register Aset (KIB & KIR)</h1>
-            <p class="mt-1 text-sm text-gray-600">Ringkasan aset per lokasi. KIB (Gudang Pusat) = semua aset yang belum maupun sudah ter-register. KIR (Gudang Unit) = hanya aset yang sudah ter-register dan ditempatkan di ruangan.</p>
+            <h1 class="text-2xl font-bold text-gray-900">Register Aset & Rincian KIR</h1>
+            <p class="mt-1 text-sm text-gray-600">Halaman ini untuk melihat data aset per lokasi (KIB/KIR) dan mengelola detail register aset.</p>
         </div>
         @if(PermissionHelper::canAccess($user, 'asset.register-aset.create'))
         <a 

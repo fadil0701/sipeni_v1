@@ -116,6 +116,19 @@ class PermintaanPemeliharaanController extends Controller
 
         DB::beginTransaction();
         try {
+            $register = RegisterAset::with('kartuInventarisRuangan')->findOrFail($request->id_register_aset);
+            $pemohon = MasterPegawai::findOrFail($request->id_pemohon);
+
+            if ((int) $register->id_unit_kerja !== (int) $request->id_unit_kerja) {
+                throw new \RuntimeException('Unit kerja register aset tidak sesuai dengan unit kerja permintaan.');
+            }
+            if ((int) $pemohon->id_unit_kerja !== (int) $request->id_unit_kerja) {
+                throw new \RuntimeException('Pemohon harus berasal dari unit kerja yang sama.');
+            }
+            if ($register->kartuInventarisRuangan()->count() === 0) {
+                throw new \RuntimeException('Aset belum ditempatkan di KIR, silakan lengkapi penempatan terlebih dahulu.');
+            }
+
             // Generate nomor permintaan
             $tahun = date('Y');
             $lastPermintaan = PermintaanPemeliharaan::whereYear('created_at', $tahun)
@@ -228,6 +241,19 @@ class PermintaanPemeliharaanController extends Controller
 
         DB::beginTransaction();
         try {
+            $register = RegisterAset::with('kartuInventarisRuangan')->findOrFail($request->id_register_aset);
+            $pemohon = MasterPegawai::findOrFail($request->id_pemohon);
+
+            if ((int) $register->id_unit_kerja !== (int) $request->id_unit_kerja) {
+                throw new \RuntimeException('Unit kerja register aset tidak sesuai dengan unit kerja permintaan.');
+            }
+            if ((int) $pemohon->id_unit_kerja !== (int) $request->id_unit_kerja) {
+                throw new \RuntimeException('Pemohon harus berasal dari unit kerja yang sama.');
+            }
+            if ($register->kartuInventarisRuangan()->count() === 0) {
+                throw new \RuntimeException('Aset belum ditempatkan di KIR, silakan lengkapi penempatan terlebih dahulu.');
+            }
+
             $oldStatus = $permintaan->status_permintaan;
             
             $permintaan->update([

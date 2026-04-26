@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\KalibrasiAset;
 use App\Models\RegisterAset;
 use App\Models\PermintaanPemeliharaan;
+use App\Models\RiwayatPemeliharaan;
+use App\Models\JadwalMaintenance;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -67,7 +69,8 @@ class KalibrasiAsetController extends Controller
             'lembaga_kalibrasi' => 'nullable|string|max:255',
             'no_sertifikat' => 'nullable|string|max:100',
             'biaya_kalibrasi' => 'nullable|numeric|min:0',
-            'file_sertifikat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'file_sertifikat' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:4096',
+            'file_sertifikat_kamera' => 'nullable|file|mimes:jpg,jpeg,png|max:4096',
             'keterangan' => 'nullable|string',
         ]);
 
@@ -83,7 +86,9 @@ class KalibrasiAsetController extends Controller
             $noKalibrasi = 'KAL/' . $tahun . '/' . str_pad($urutan, 4, '0', STR_PAD_LEFT);
 
             $filePath = null;
-            if ($request->hasFile('file_sertifikat')) {
+            if ($request->hasFile('file_sertifikat_kamera')) {
+                $filePath = $request->file('file_sertifikat_kamera')->store('kalibrasi', 'public');
+            } elseif ($request->hasFile('file_sertifikat')) {
                 $filePath = $request->file('file_sertifikat')->store('kalibrasi', 'public');
             }
 
@@ -102,6 +107,30 @@ class KalibrasiAsetController extends Controller
                 'keterangan' => $request->keterangan,
                 'created_by' => Auth::id(),
             ]);
+
+            if ($kalibrasi->id_permintaan_pemeliharaan) {
+                PermintaanPemeliharaan::query()
+                    ->where('id_permintaan_pemeliharaan', $kalibrasi->id_permintaan_pemeliharaan)
+                    ->update(['status_permintaan' => 'SELESAI']);
+            }
+
+            if ($kalibrasi->status_kalibrasi === 'VALID') {
+                RiwayatPemeliharaan::updateOrCreate(
+                    ['id_kalibrasi' => $kalibrasi->id_kalibrasi],
+                    [
+                        'id_register_aset' => $kalibrasi->id_register_aset,
+                        'id_permintaan_pemeliharaan' => $kalibrasi->id_permintaan_pemeliharaan,
+                        'tanggal_pemeliharaan' => $kalibrasi->tanggal_kalibrasi,
+                        'jenis_pemeliharaan' => 'KALIBRASI',
+                        'status' => 'SELESAI',
+                        'keterangan' => $kalibrasi->keterangan,
+                    ]
+                );
+                $this->rollForwardKalibrasiSchedule(
+                    (int) $kalibrasi->id_register_aset,
+                    $kalibrasi->tanggal_kalibrasi->format('Y-m-d')
+                );
+            }
 
             DB::commit();
             return redirect()->route('maintenance.kalibrasi-aset.index')
@@ -150,7 +179,8 @@ class KalibrasiAsetController extends Controller
             'no_sertifikat' => 'nullable|string|max:100',
             'status_kalibrasi' => 'required|in:VALID,KADALUARSA,MENUNGGU,DITOLAK',
             'biaya_kalibrasi' => 'nullable|numeric|min:0',
-            'file_sertifikat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'file_sertifikat' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:4096',
+            'file_sertifikat_kamera' => 'nullable|file|mimes:jpg,jpeg,png|max:4096',
             'keterangan' => 'nullable|string',
         ]);
 
@@ -159,12 +189,16 @@ class KalibrasiAsetController extends Controller
         DB::beginTransaction();
         try {
             $filePath = $kalibrasi->file_sertifikat;
-            if ($request->hasFile('file_sertifikat')) {
+            if ($request->hasFile('file_sertifikat') || $request->hasFile('file_sertifikat_kamera')) {
                 // Hapus file lama jika ada
                 if ($filePath && Storage::disk('public')->exists($filePath)) {
                     Storage::disk('public')->delete($filePath);
                 }
-                $filePath = $request->file('file_sertifikat')->store('kalibrasi', 'public');
+                if ($request->hasFile('file_sertifikat_kamera')) {
+                    $filePath = $request->file('file_sertifikat_kamera')->store('kalibrasi', 'public');
+                } else {
+                    $filePath = $request->file('file_sertifikat')->store('kalibrasi', 'public');
+                }
             }
 
             $kalibrasi->update([
@@ -180,6 +214,30 @@ class KalibrasiAsetController extends Controller
                 'file_sertifikat' => $filePath,
                 'keterangan' => $request->keterangan,
             ]);
+
+            if ($kalibrasi->id_permintaan_pemeliharaan && $kalibrasi->status_kalibrasi === 'VALID') {
+                PermintaanPemeliharaan::query()
+                    ->where('id_permintaan_pemeliharaan', $kalibrasi->id_permintaan_pemeliharaan)
+                    ->update(['status_permintaan' => 'SELESAI']);
+            }
+
+            if ($kalibrasi->status_kalibrasi === 'VALID') {
+                RiwayatPemeliharaan::updateOrCreate(
+                    ['id_kalibrasi' => $kalibrasi->id_kalibrasi],
+                    [
+                        'id_register_aset' => $kalibrasi->id_register_aset,
+                        'id_permintaan_pemeliharaan' => $kalibrasi->id_permintaan_pemeliharaan,
+                        'tanggal_pemeliharaan' => $kalibrasi->tanggal_kalibrasi,
+                        'jenis_pemeliharaan' => 'KALIBRASI',
+                        'status' => 'SELESAI',
+                        'keterangan' => $kalibrasi->keterangan,
+                    ]
+                );
+                $this->rollForwardKalibrasiSchedule(
+                    (int) $kalibrasi->id_register_aset,
+                    $kalibrasi->tanggal_kalibrasi->format('Y-m-d')
+                );
+            }
 
             DB::commit();
             return redirect()->route('maintenance.kalibrasi-aset.index')
@@ -203,6 +261,37 @@ class KalibrasiAsetController extends Controller
 
         return redirect()->route('maintenance.kalibrasi-aset.index')
             ->with('success', 'Data kalibrasi berhasil dihapus.');
+    }
+
+    private function rollForwardKalibrasiSchedule(int $registerAsetId, string $tanggalAcuan): void
+    {
+        $jadwal = JadwalMaintenance::query()
+            ->where('id_register_aset', $registerAsetId)
+            ->where('jenis_maintenance', 'KALIBRASI')
+            ->where('status', 'AKTIF')
+            ->orderBy('tanggal_selanjutnya')
+            ->first();
+
+        if (!$jadwal) {
+            return;
+        }
+
+        $date = \Carbon\Carbon::parse($tanggalAcuan);
+        $nextDate = match ($jadwal->periode) {
+            'HARIAN' => $date->addDay()->format('Y-m-d'),
+            'MINGGUAN' => $date->addWeek()->format('Y-m-d'),
+            'BULANAN' => $date->addMonth()->format('Y-m-d'),
+            '3_BULAN' => $date->addMonths(3)->format('Y-m-d'),
+            '6_BULAN' => $date->addMonths(6)->format('Y-m-d'),
+            'TAHUNAN' => $date->addYear()->format('Y-m-d'),
+            'CUSTOM' => $date->addDays($jadwal->interval_hari ?? 30)->format('Y-m-d'),
+            default => $date->addMonth()->format('Y-m-d'),
+        };
+
+        $jadwal->update([
+            'tanggal_terakhir' => $tanggalAcuan,
+            'tanggal_selanjutnya' => $nextDate,
+        ]);
     }
 }
 

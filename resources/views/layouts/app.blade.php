@@ -254,9 +254,9 @@
 
                                     <li class="px-4 pt-3 text-[11px] uppercase tracking-wide text-blue-300">Ringkasan</li>
                                         <li><a href="{{ route('inventory.data-inventory.index') }}" class="{{ $linkClass($isRoute(['inventory.data-inventory.*'])) }}">Ringkasan Inventory</a></li>
+                                        <li><a href="{{ route('inventory.scan-qr') }}" class="{{ $linkClass($isRoute(['inventory.scan-qr'])) }}">Scan QR Code</a></li>
 
                                     <li class="px-4 pt-3 text-[11px] uppercase tracking-wide text-blue-300">Stok &amp; Transaksi</li>
-                                        <li><a href="{{ route('inventory.scan-qr') }}" class="{{ $linkClass($isRoute(['inventory.scan-qr'])) }}">Scan QR Code</a></li>
                                         <li><a href="{{ route('inventory.data-stock.index') }}" class="{{ $linkClass($isRoute(['inventory.data-stock.*'])) }}">Data Stock</a></li>
                                         <li><a href="{{ route('reports.kartu-stok') }}" class="{{ $linkClass($isRoute(['reports.kartu-stok'])) }}">Kartu Stok</a></li>
                                         <li><a href="{{ route('inventory.stock-adjustment.index') }}" class="{{ $linkClass($isRoute(['inventory.stock-adjustment.*'])) }}">Stock Adjustment / Opname</a></li>
@@ -272,8 +272,8 @@
                                     <svg id="aset-kir-arrow" class="w-4 h-4 ml-auto transition-transform {{ $assetOpen ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </div>
                                 <ul id="aset-kir-submenu" class="{{ $groupClass($assetOpen) }}">
-                                    <li><a href="{{ route('asset.register-aset.index') }}" class="{{ $linkClass($isRoute(['asset.register-aset.*'])) }}">Register Aset</a></li>
-                                    <li><a href="{{ route('asset.kartu-inventaris-ruangan.index') }}" class="{{ $linkClass($isRoute(['asset.kartu-inventaris-ruangan.*'])) }}">KIR Aset</a></li>
+                                    <li><a href="{{ route('asset.register-aset.index') }}" class="{{ $linkClass($isRoute(['asset.register-aset.*'])) }}">Register Aset & Rincian</a></li>
+                                    <li><a href="{{ route('asset.kartu-inventaris-ruangan.index') }}" class="{{ $linkClass($isRoute(['asset.kartu-inventaris-ruangan.*'])) }}">Dokumen KIR (Cetak)</a></li>
                                     <li><a href="{{ route('asset.mutasi-aset.index') }}" class="{{ $linkClass($isRoute(['asset.mutasi-aset.*'])) }}">Mutasi Aset</a></li>
                                 </ul>
                             </li>

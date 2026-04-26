@@ -27,6 +27,10 @@
                 <dt class="text-sm font-medium text-gray-500 mb-1">Nama Satuan</dt>
                 <dd class="text-sm font-semibold text-gray-900">{{ $satuan->nama_satuan }}</dd>
             </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500 mb-1">Keterangan</dt>
+                <dd class="text-sm font-semibold text-gray-900">{{ $satuan->keterangan }}</dd>
+            </div>
         </dl>
     </div>
 </div>

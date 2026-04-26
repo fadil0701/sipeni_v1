@@ -5,30 +5,45 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 ## 1) Pekerjaan Yang Sudah Diselesaikan
 
 ### A. Stabilitas Data Inventory & Master Referensi
+- **Status: Selesai**
 - Perbaikan error input `Data Inventory` saat `id_sub_kegiatan` kosong.
 - Penambahan fallback agar proses simpan inventory tetap berjalan saat field sub kegiatan tidak dikirim dari form.
 - Perbaikan alur validasi agar error lebih ramah pengguna dibanding crash runtime.
 
 ### B. Register Aset & KIR (Alur Data)
+- **Status: Selesai**
 - Perbaikan simpan `Register Aset` agar `id_inventory` tidak lagi tergantung hidden field JavaScript.
 - Sinkronisasi backend dari `id_item -> id_inventory` sehingga submit tetap valid walau hidden input tidak terisi.
 - Perbaikan sinkronisasi ruangan KIR agar update tidak lagi mass update semua item dalam 1 inventory.
 - Sinkronisasi kini diarahkan ke item yang tepat (berbasis `id_item`, dengan fallback untuk data lama).
+- Penyelarasan alur input agar tidak double input:
+  - create register aset tidak lagi mengisi ruangan,
+  - ruangan + penanggung jawab diisi pada tahap Input Penempatan KIR.
+- Setelah simpan register aset, alur diarahkan langsung ke form Input Penempatan KIR dengan register terpilih otomatis.
+- Pemisahan `nomor_register` vs `kode_register`:
+  - `kode_register` tetap identitas item,
+  - `nomor_register` menjadi nomor administrasi register aset (unik, generated).
+- Penambahan command normalisasi data lama:
+  - `register-aset:normalize-nomor` (`--dry-run` tersedia).
 
 ### C. KIR & Ringkasan Register Aset
+- **Status: Selesai**
 - Perbaikan query ringkasan `Register Aset (KIB & KIR)` agar unit kerja yang memiliki KIR tetap muncul walau data gudang unit belum lengkap.
 - Penanganan mode unit virtual (`unit-{id_unit_kerja}`) agar tetap bisa membuka detail.
 - Perbaikan crash view akibat pemanggilan method Eloquent pada object non-Eloquent (`stdClass`).
 
 ### D. Transformasi Menu KIR Menjadi Dokumen
+- **Status: Selesai**
 - Menu `Kartu Inventaris Ruangan (KIR)` diubah ke model **daftar dokumen per unit kerja**.
 - Penambahan aksi dokumen:
   - `Download Dokumen`
   - `Cetak`
 - Penambahan route dokumen unit kerja.
 - Penambahan halaman dokumen KIR khusus (`document-unit`).
+- Tombol `Tambah KIR` di halaman dokumen sudah dihapus agar fokus pada output dokumen.
 
 ### E. Template Dokumen KIR
+- **Status: Parsial (mendekati final)**
 - Template dokumen dibuat meniru format resmi:
   - Header instansi
   - Tabel kolom inventaris lengkap
@@ -37,31 +52,49 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Mode output dipisah:
   - **Cetak**: layout dinamis mengikuti pengaturan printer.
   - **Download**: ukuran tetap Officio/F4.
+- Metadata pejabat/NIP sudah ditarik dari data master (tidak lagi placeholder).
+- Penyesuaian pixel layout sudah dilakukan (header center, kepadatan tabel, blok tanda tangan), tinggal final fine-tuning 1:1 dengan template institusi.
 
 ### F. Searchable Select & UI Form
+- **Status: Selesai**
 - Tuning `Choices.js` agar hasil search lebih lengkap dan tidak mudah hilang.
 - Normalisasi label option agar data lebih konsisten saat pencarian.
 - Perbaikan tampilan selected value (clipping, alignment vertikal, spacing).
 - Penyempurnaan styling dropdown agar jarak antar item lebih rapih.
 
 ### G. QR Code & Storage
+- **Status: Selesai**
 - Perbaikan alur QR agar lebih aman pada server tanpa `imagick`.
 - Penyesuaian fallback format QR (`svg`) saat `png` tidak memungkinkan.
 - Pemastian storage link dan direktori QR siap tulis.
+
+### H. Master Data Tambahan (Sesi Lanjutan)
+- **Status: Selesai**
+- Unit Kerja:
+  - penambahan field wilayah kerja (`kota_kabupaten`, `kecamatan`) khusus cakupan DKI Jakarta,
+  - validasi backend + dropdown dinamis create/edit.
+- Sumber Anggaran:
+  - sinkronisasi field `keterangan` via migration guard untuk environment yang belum memiliki kolom.
+- Satuan:
+  - penambahan field `keterangan` end-to-end (migration, model, controller, create/edit/index/show).
+- Gudang:
+  - penambahan `MasterGudangSeeder` untuk membentuk gudang sesuai unit kerja secara otomatis.
 
 ---
 
 ## 2) Pekerjaan Yang Belum Diselesaikan
 
 ### A. Finalisasi Dokumen KIR (Pixel-Perfect)
+- **Status: Parsial**
 - Penyetelan detail layout agar 100% sesuai format institusi:
   - ukuran font per kolom
   - tinggi baris
   - posisi header dan blok tanda tangan
   - kepadatan tabel saat banyak data
-- Pengisian metadata pejabat/NIP dari data master (bukan placeholder).
+- Pengisian metadata pejabat/NIP dari data master (bukan placeholder). ✅
 
 ### B. Penegasan Domain Alur KIR vs Register Aset
+- **Status: Selesai**
 - Penyelarasan istilah UI agar user tidak bingung:
   - Dokumen KIR (ringkasan/cetak)
   - Rincian KIR (item-level)
@@ -69,6 +102,7 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Konsolidasi naming menu/sidebar.
 
 ### C. Audit Konsistensi Data Lama
+- **Status: Selesai**
 - Pemeriksaan dan backfill data historis untuk relasi:
   - `register_aset.id_item`
   - `register_aset.id_unit_kerja`
@@ -76,15 +110,98 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Validasi 1:1 antara Register Aset, Inventory Item, dan KIR.
 
 ### D. Hardening Pengujian
+- **Status: Parsial Tinggi**
 - Penambahan test fitur untuk:
-  - simpan register aset + KIR
-  - ringkasan KIB/KIR per unit
+  - simpan register aset + redirect ke input KIR + validasi pemisahan nomor register
   - mode download/cetak dokumen KIR
-- UAT per role (admin, admin gudang, kepala unit, pegawai).
+- Penambahan test otomatis maintenance (`MaintenanceFlowTest`) untuk:
+  - generate maintenance rutin dari jadwal aktif,
+  - service report selesai (close request + update kondisi aset + create riwayat),
+  - proteksi auth/role untuk route maintenance,
+  - akses report maintenance summary,
+  - export CSV maintenance summary,
+  - kalibrasi valid (close request + create riwayat),
+  - kalibrasi non-valid (tidak menambah riwayat baru).
+- UAT per role (admin, admin gudang, kepala unit, pegawai) masih perlu penutupan checklist manual lintas modul.
 
 ### E. Penyempurnaan Searchable Select (Regresi Menyeluruh)
+- **Status: Parsial**
 - Pengujian lintas modul untuk memastikan tuning Choices.js tidak menimbulkan regresi di halaman lain.
 - Penyesuaian selector yang benar-benar perlu searchable agar performa UI tetap optimal.
+
+### F. Integrasi TTE untuk Dokumen (Cetak/Download)
+- **Status: Backlog (belum mulai implementasi)**
+- Menambahkan jejak tanda tangan elektronik (TTE) pada dokumen yang dicetak/diunduh (awal fokus: Dokumen KIR).
+- Tahap 1 (internal): kode verifikasi + QR verifikasi + hash dokumen + log metadata penandatangan/waktu.
+- Menyediakan halaman verifikasi dokumen berdasarkan token/kode verifikasi.
+- Menyiapkan opsi tahap lanjut integrasi PSrE resmi (untuk kebutuhan legal formal lintas instansi).
+
+### G. Fitur Pemeliharaan (Permintaan -> Jadwal -> Service -> Riwayat)
+- **Status: Parsial Tinggi (alur inti sudah berjalan)**
+- **Tujuan:**
+  - Menjadikan modul pemeliharaan sebagai alur end-to-end yang konsisten dari pengajuan sampai histori aset.
+- **Ruang Lingkup Fungsional:**
+  - Maintenance Rutin (Preventive) oleh Admin:
+    - jadwal rutin dapat dibuat langsung oleh admin tanpa menunggu permintaan unit,
+    - dukungan frekuensi berkala (mingguan/bulanan/triwulan/tahunan) per aset/kelompok aset,
+    - reminder dan daftar kerja periodik untuk tim pelaksana.
+  - Permintaan Pemeliharaan:
+    - pengajuan oleh unit kerja/penanggung jawab aset,
+    - validasi aset aktif dan keterkaitan dengan `register_aset`,
+    - status lifecycle yang jelas (draft, diajukan, diproses, selesai, ditolak).
+  - Jadwal Maintenance:
+    - pembuatan jadwal dari permintaan yang disetujui,
+    - support preventive/corrective,
+    - reminder jatuh tempo.
+  - Service Report:
+    - pencatatan teknisi, tindakan, hasil, komponen/biaya, dan rekomendasi lanjutan,
+    - update kondisi aset pasca service.
+  - Kalibrasi Aset:
+    - pencatatan jadwal dan pelaksanaan kalibrasi per aset,
+    - penyimpanan hasil/status kalibrasi dan masa berlaku,
+    - integrasi histori kalibrasi ke riwayat pemeliharaan aset.
+  - Riwayat Pemeliharaan:
+    - histori kronologis per aset,
+    - keterkaitan 1 aset ke banyak aktivitas maintenance.
+- **Integritas Data yang Wajib Dijaga:**
+  - relasi wajib ke `register_aset.id_register_aset`,
+  - konsistensi dengan `kartu_inventaris_ruangan` (ruangan dan penanggung jawab saat proses berjalan),
+  - tidak boleh ada service report tanpa sumber jadwal/permintaan yang valid.
+- **Output & Laporan:**
+  - daftar aset jatuh tempo maintenance,
+  - rekap pemeliharaan per unit kerja/periode,
+  - histori detail pemeliharaan per aset untuk audit.
+- **Pengujian (target):**
+  - test pembuatan jadwal maintenance rutin oleh admin (tanpa permintaan),
+  - test eksekusi maintenance rutin menjadi service report/riwayat,
+  - test fitur alur penuh permintaan -> jadwal -> service -> riwayat,
+  - test validasi role (admin, admin gudang, kepala unit, pegawai),
+  - test regresi relasi terhadap modul register aset dan KIR.
+- **Catatan Implementasi:**
+  - utamakan status flow tunggal yang konsisten antar tabel,
+  - gunakan event/log untuk jejak perubahan status agar mudah diaudit.
+- **Progress Implementasi Saat Ini (sudah dikerjakan):**
+  - modul `service-report` dan `kalibrasi-aset` sudah punya halaman index/create/edit/show (sebelumnya belum lengkap),
+  - jadwal maintenance sudah mendukung indikator jatuh tempo (overdue dan 7 hari),
+  - admin bisa generate permintaan rutin langsung dari jadwal aktif (tanpa input permintaan manual dari unit),
+  - saat service selesai: status permintaan ditutup, kondisi aset diperbarui, dan riwayat pemeliharaan otomatis terbentuk,
+  - saat kalibrasi valid: status permintaan ditutup (jika ada), riwayat kalibrasi masuk ke histori pemeliharaan,
+  - validasi integritas permintaan diperketat (konsistensi unit kerja pemohon/aset + aset harus sudah terpasang di KIR).
+  - test fitur terarah `MaintenanceFlowTest` sudah dibuat dan lulus:
+    - generate permintaan rutin dari jadwal aktif,
+    - service report selesai -> update kondisi aset + create riwayat,
+    - proteksi akses auth/role pada route maintenance,
+    - alur kalibrasi valid -> permintaan selesai + riwayat terbentuk,
+    - alur kalibrasi non-valid -> tidak menambah riwayat selesai.
+  - laporan baru `Rekap Pemeliharaan per Unit/Periode` sudah ditambahkan pada menu Reports:
+    - filter unit kerja + rentang tanggal,
+    - ringkasan status (total/selesai/gagal/dibatalkan),
+    - tabel agregasi per unit termasuk total biaya service + kalibrasi.
+  - export CSV untuk rekap pemeliharaan sudah tersedia (mengikuti filter aktif).
+- **Sisa Penyelesaian Menuju Status Selesai:**
+  - hardening pengujian otomatis tambahan (skenario data ekstrem & concurrency),
+  - penyempurnaan format output rekap (opsi export dokumen selain CSV bila diperlukan),
+  - final review UX minor pada form dan filter maintenance.
 
 ---
 
@@ -94,12 +211,68 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 1. Finalisasi format dokumen KIR (layout final institusi).
 2. Audit data relasi KIR/Register Aset untuk memastikan akurasi laporan.
 3. Validasi end-to-end alur dokumen (download/cetak) per unit kerja.
+4. Penguatan fitur pemeliharaan:
+   - finalisasi alur permintaan pemeliharaan -> jadwal -> service report -> riwayat,
+   - validasi relasi ke register aset/KIR,
+   - verifikasi output laporan pemeliharaan per unit kerja.
+5. Hardening pengujian fitur pemeliharaan end-to-end + role-based access.
 
 ### Prioritas Menengah
 1. Rapikan istilah menu dan deskripsi halaman (mengurangi ambiguitas user).
 2. Tambahkan test coverage untuk alur utama KIR dan register aset.
+3. Implementasi TTE tahap 1 pada dokumen cetak/download (kode verifikasi + QR + verifikasi).
 
 ### Prioritas Rendah
 1. Penyempurnaan visual minor pada selectable/search fields.
 2. Optimasi UX tambahan (mis. auto-close tab print mode, badge status dokumen).
 
+---
+
+## 4) Update Perubahan Terbaru (Patch Terkini)
+
+### A. Backend
+- Penambahan flow generate permintaan maintenance rutin dari jadwal aktif.
+- Penguatan validasi integritas permintaan maintenance:
+  - unit pemohon = unit aset,
+  - aset wajib sudah punya penempatan KIR.
+- Otomasi sinkron status:
+  - service selesai -> request selesai + kondisi aset update + riwayat upsert,
+  - kalibrasi valid -> request selesai + riwayat upsert.
+- Penambahan laporan `reports.maintenance-summary` + export `reports.maintenance-summary.export` (CSV).
+- Penyesuaian validasi file maintenance:
+  - `service-report` dan `kalibrasi-aset` menerima `pdf/doc/docx/jpg/jpeg/png`,
+  - file dari mode kamera diprioritaskan saat tersimpan jika tersedia.
+- Master Jabatan:
+  - field `urutan` pada create diubah auto-generate (`max + 1`),
+  - edit jabatan tidak lagi mengubah `urutan` secara manual.
+
+### B. Frontend (Blade/UI)
+- Halaman maintenance dilengkapi menjadi end-to-end:
+  - `jadwal-maintenance` (index/create/edit/show),
+  - `service-report` (index/create/edit/show),
+  - `kalibrasi-aset` (index/create/edit/show).
+- Dashboard laporan (`report/index`) ditambah kartu `Rekap Pemeliharaan`.
+- Halaman `report/maintenance-summary`:
+  - filter unit kerja + periode,
+  - kartu ringkasan status,
+  - tabel agregasi per unit + total biaya,
+  - tombol export CSV.
+- Form `service-report`:
+  - field `teknisi` menjadi dropdown dari master pegawai dengan jabatan yang mengandung kata "teknisi",
+  - upload file dibedakan dengan tombol + badge (`UPLOAD`/`KAMERA`).
+- Form `kalibrasi-aset`:
+  - upload file sertifikat dibedakan dengan tombol + badge (`UPLOAD`/`KAMERA`).
+- Preview file maintenance:
+  - di form create/edit: foto ditampilkan langsung, PDF/DOC/DOCX ditampilkan sebagai link,
+  - di halaman detail (`show`): foto ditampilkan langsung, PDF/DOC/DOCX ditampilkan sebagai link.
+
+### C. Pengujian Otomatis
+- File test yang aktif dipakai hardening: `tests/Feature/MaintenanceFlowTest.php`.
+- Cakupan saat ini sudah meliputi alur rutin, service, kalibrasi, akses role/auth, report summary, dan export.
+- Status terakhir eksekusi test terarah: lulus.
+
+### D. Ringkasan Yang Belum
+- Finalisasi visual KIR 1:1 template institusi.
+- Skenario test ekstrem/concurrency untuk maintenance.
+- Opsi export non-CSV (jika dibutuhkan pemangku kepentingan).
+- Integrasi TTE (masih backlog, sengaja ditunda sesuai arahan).

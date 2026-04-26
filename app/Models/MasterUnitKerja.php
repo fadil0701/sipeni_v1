@@ -15,6 +15,8 @@ class MasterUnitKerja extends Model
     protected $fillable = [
         'kode_unit_kerja',
         'nama_unit_kerja',
+        'kota_kabupaten',
+        'kecamatan',
     ];
 
     // Relationships

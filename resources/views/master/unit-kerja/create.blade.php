@@ -58,6 +58,45 @@
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
+
+            <!-- Kota/Kabupaten -->
+            <div>
+                <label for="kota_kabupaten" class="block text-sm font-medium text-gray-700 mb-2">
+                    Kota/Kabupaten<span class="text-red-500">*</span>
+                </label>
+                <select
+                    id="kota_kabupaten"
+                    name="kota_kabupaten"
+                    required
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('kota_kabupaten') border-red-500 @enderror"
+                >
+                    <option value="">Pilih Kota/Kabupaten</option>
+                    @foreach($wilayahDki as $kotaKabupaten => $kecamatans)
+                        <option value="{{ $kotaKabupaten }}" @selected(old('kota_kabupaten') === $kotaKabupaten)>{{ $kotaKabupaten }}</option>
+                    @endforeach
+                </select>
+                @error('kota_kabupaten')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <!-- Kecamatan -->
+            <div>
+                <label for="kecamatan" class="block text-sm font-medium text-gray-700 mb-2">
+                    Kecamatan <span class="text-red-500">*</span>
+                </label>
+                <select
+                    id="kecamatan"
+                    name="kecamatan"
+                    required
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('kecamatan') border-red-500 @enderror"
+                >
+                    <option value="">Pilih Kecamatan</option>
+                </select>
+                @error('kecamatan')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
         </div>
 
         <!-- Action Buttons -->
@@ -77,5 +116,37 @@
         </div>
     </form>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const wilayahDki = @json($wilayahDki);
+        const kotaSelect = document.getElementById('kota_kabupaten');
+        const kecamatanSelect = document.getElementById('kecamatan');
+        const oldKecamatan = @json(old('kecamatan'));
+
+        function renderKecamatanOptions(selectedKota, selectedKecamatan) {
+            kecamatanSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
+            const list = wilayahDki[selectedKota] || [];
+
+            list.forEach(function (kecamatan) {
+                const option = document.createElement('option');
+                option.value = kecamatan;
+                option.textContent = kecamatan;
+                if (selectedKecamatan && selectedKecamatan === kecamatan) {
+                    option.selected = true;
+                }
+                kecamatanSelect.appendChild(option);
+            });
+        }
+
+        kotaSelect.addEventListener('change', function () {
+            renderKecamatanOptions(this.value, null);
+        });
+
+        if (kotaSelect.value) {
+            renderKecamatanOptions(kotaSelect.value, oldKecamatan);
+        }
+    });
+</script>
 @endsection
 

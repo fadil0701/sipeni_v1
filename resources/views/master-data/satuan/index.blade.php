@@ -31,7 +31,7 @@
 
 <x-index.filter-toolbar
     :action="route('master-data.satuan.index')"
-    search-placeholder="Cari nama satuan..."
+    search-placeholder="Cari nama satuan atau keterangan..."
     button-text="Terapkan"
 />
 
@@ -45,6 +45,7 @@
                 <tr>
                     <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Satuan</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
             </thead>
@@ -54,6 +55,9 @@
                         <x-table.num-td :paginator="$satuans" />
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $satuan->nama_satuan }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ $satuan->keterangan }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex items-center justify-end space-x-3">

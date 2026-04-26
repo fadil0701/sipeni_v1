@@ -569,24 +569,10 @@ class RegisterAsetController extends Controller
             'id_item' => 'required|exists:inventory_item,id_item',
             'id_inventory' => 'nullable|exists:data_inventory,id_inventory',
             'id_unit_kerja' => 'required|exists:master_unit_kerja,id_unit_kerja',
-            'id_ruangan' => 'nullable|exists:master_ruangan,id_ruangan',
             'kondisi_aset' => 'required|in:BAIK,RUSAK_RINGAN,RUSAK_BERAT',
             'status_aset' => 'required|in:AKTIF,NONAKTIF',
             'tanggal_perolehan' => 'required|date',
         ]);
-
-        // Pastikan ruangan yang dipilih memang milik unit kerja yang dipilih
-        if (!empty($validated['id_ruangan'])) {
-            $ruangan = MasterRuangan::query()
-                ->select(['id_ruangan', 'id_unit_kerja'])
-                ->find($validated['id_ruangan']);
-
-            if (!$ruangan || (int) $ruangan->id_unit_kerja !== (int) $validated['id_unit_kerja']) {
-                return back()
-                    ->withErrors(['id_ruangan' => 'Ruangan harus sesuai dengan Unit Kerja yang dipilih.'])
-                    ->withInput();
-            }
-        }
         
         // Cek apakah inventory item sudah ter-register
         $inventoryItem = \App\Models\InventoryItem::findOrFail($validated['id_item']);
@@ -627,35 +613,22 @@ class RegisterAsetController extends Controller
             unset($validated['id_item']);
         }
         
-        // Single source: nomor_register selalu mengikuti InventoryItem.kode_register.
-        $validated['nomor_register'] = $inventoryItem->kode_register;
+        // Nomor register adalah nomor administrasi register (berbeda dari kode_register item).
+        $validated['nomor_register'] = $this->generateNomorRegister(
+            $validated['id_unit_kerja'],
+            null,
+            $validated['tanggal_perolehan'] ?? null
+        );
+        // Ruangan & penanggung jawab diisi pada alur KIR (single source), bukan saat create register.
+        $validated['id_ruangan'] = null;
         
         // Buat register aset
         $registerAset = RegisterAset::create($validated);
         
-        // Jika RegisterAset dibuat dengan ruangan, buat KartuInventarisRuangan otomatis
-        if (!empty($validated['id_ruangan'])) {
-            // Cek apakah sudah ada KIR untuk RegisterAset dan ruangan ini
-            $existingKir = \App\Models\KartuInventarisRuangan::where('id_register_aset', $registerAset->id_register_aset)
-                ->where('id_ruangan', $validated['id_ruangan'])
-                ->first();
-            
-            if (!$existingKir) {
-                // Buat KIR baru
-                \App\Models\KartuInventarisRuangan::create([
-                    'id_register_aset' => $registerAset->id_register_aset,
-                    'id_ruangan' => $validated['id_ruangan'],
-                    'id_penanggung_jawab' => null, // Bisa diisi nanti
-                    'tanggal_penempatan' => $validated['tanggal_perolehan'] ?? now(),
-                ]);
-            }
-            
-            // Update InventoryItem spesifik yang ter-register untuk set id_ruangan
-            $inventoryItem->update(['id_ruangan' => $validated['id_ruangan']]);
-        }
-        
-        return redirect()->route('asset.register-aset.show', $registerAset->id_register_aset)
-            ->with('success', 'Register aset berhasil dibuat.');
+        return redirect()->route('asset.kartu-inventaris-ruangan.create', [
+                'id_register_aset' => $registerAset->id_register_aset,
+            ])
+            ->with('success', 'Register aset berhasil dibuat. Silakan lengkapi penempatan KIR dan penanggung jawab.');
     }
 
     /**

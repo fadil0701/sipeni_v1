@@ -14,7 +14,10 @@ class SatuanController extends Controller
         $query = MasterSatuan::query();
 
         if ($search !== '') {
-            $query->where('nama_satuan', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_satuan', 'like', "%{$search}%")
+                    ->orWhere('keterangan', 'like', "%{$search}%");
+            });
         }
 
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
@@ -31,6 +34,7 @@ class SatuanController extends Controller
     {
         $validated = $request->validate([
             'nama_satuan' => 'required|string|max:255|unique:master_satuan,nama_satuan',
+            'keterangan' => 'required|string|max:255',
         ]);
 
         MasterSatuan::create($validated);
@@ -57,6 +61,7 @@ class SatuanController extends Controller
 
         $validated = $request->validate([
             'nama_satuan' => 'required|string|max:255|unique:master_satuan,nama_satuan,' . $id . ',id_satuan',
+            'keterangan' => 'required|string|max:255',
         ]);
 
         $satuan->update($validated);

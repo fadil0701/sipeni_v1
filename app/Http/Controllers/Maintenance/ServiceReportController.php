@@ -8,6 +8,8 @@ use App\Models\ServiceReport;
 use App\Models\PermintaanPemeliharaan;
 use App\Models\RegisterAset;
 use App\Models\RiwayatPemeliharaan;
+use App\Models\JadwalMaintenance;
+use App\Models\MasterPegawai;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -44,7 +46,7 @@ class ServiceReportController extends Controller
 
     public function create(Request $request)
     {
-        $permintaans = PermintaanPemeliharaan::where('status_permintaan', 'DISETUJUI')
+        $permintaans = PermintaanPemeliharaan::whereIn('status_permintaan', ['DISETUJUI', 'DIPROSES'])
             ->whereDoesntHave('serviceReport')
             ->with(['registerAset.inventory.dataBarang'])
             ->get();
@@ -53,7 +55,14 @@ class ServiceReportController extends Controller
             ? PermintaanPemeliharaan::with(['registerAset.inventory.dataBarang'])->find($request->get('permintaan_id'))
             : null;
 
-        return view('maintenance.service-report.create', compact('permintaans', 'selectedPermintaan'));
+        $teknisiPegawais = MasterPegawai::query()
+            ->whereHas('jabatan', function ($q) {
+                $q->whereRaw('LOWER(nama_jabatan) LIKE ?', ['%teknisi%']);
+            })
+            ->orderBy('nama_pegawai')
+            ->get(['id', 'nama_pegawai', 'id_unit_kerja']);
+
+        return view('maintenance.service-report.create', compact('permintaans', 'selectedPermintaan', 'teknisiPegawais'));
     }
 
     public function store(Request $request)
@@ -71,7 +80,8 @@ class ServiceReportController extends Controller
             'biaya_service' => 'nullable|numeric|min:0',
             'biaya_sparepart' => 'nullable|numeric|min:0',
             'kondisi_setelah_service' => 'nullable|in:BAIK,RUSAK_RINGAN,RUSAK_BERAT,TIDAK_BISA_DIPERBAIKI',
-            'file_laporan' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'file_laporan' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:4096',
+            'file_laporan_kamera' => 'nullable|file|mimes:jpg,jpeg,png|max:4096',
             'keterangan' => 'nullable|string',
         ]);
 
@@ -79,6 +89,9 @@ class ServiceReportController extends Controller
         try {
             // Ambil permintaan untuk mendapatkan register aset
             $permintaan = PermintaanPemeliharaan::findOrFail($request->id_permintaan_pemeliharaan);
+            if ((int) $permintaan->id_register_aset <= 0) {
+                throw new \RuntimeException('Permintaan tidak memiliki referensi register aset yang valid.');
+            }
             
             // Generate nomor service report
             $tahun = date('Y');
@@ -90,7 +103,9 @@ class ServiceReportController extends Controller
             $noServiceReport = 'SRV/' . $tahun . '/' . str_pad($urutan, 4, '0', STR_PAD_LEFT);
 
             $filePath = null;
-            if ($request->hasFile('file_laporan')) {
+            if ($request->hasFile('file_laporan_kamera')) {
+                $filePath = $request->file('file_laporan_kamera')->store('service-report', 'public');
+            } elseif ($request->hasFile('file_laporan')) {
                 $filePath = $request->file('file_laporan')->store('service-report', 'public');
             }
 
@@ -147,8 +162,14 @@ class ServiceReportController extends Controller
         $permintaans = PermintaanPemeliharaan::where('status_permintaan', 'DISETUJUI')
             ->with(['registerAset.inventory.dataBarang'])
             ->get();
+        $teknisiPegawais = MasterPegawai::query()
+            ->whereHas('jabatan', function ($q) {
+                $q->whereRaw('LOWER(nama_jabatan) LIKE ?', ['%teknisi%']);
+            })
+            ->orderBy('nama_pegawai')
+            ->get(['id', 'nama_pegawai', 'id_unit_kerja']);
 
-        return view('maintenance.service-report.edit', compact('serviceReport', 'permintaans'));
+        return view('maintenance.service-report.edit', compact('serviceReport', 'permintaans', 'teknisiPegawais'));
     }
 
     public function update(Request $request, $id)
@@ -166,7 +187,8 @@ class ServiceReportController extends Controller
             'biaya_service' => 'nullable|numeric|min:0',
             'biaya_sparepart' => 'nullable|numeric|min:0',
             'kondisi_setelah_service' => 'nullable|in:BAIK,RUSAK_RINGAN,RUSAK_BERAT,TIDAK_BISA_DIPERBAIKI',
-            'file_laporan' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'file_laporan' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:4096',
+            'file_laporan_kamera' => 'nullable|file|mimes:jpg,jpeg,png|max:4096',
             'keterangan' => 'nullable|string',
         ]);
 
@@ -175,11 +197,15 @@ class ServiceReportController extends Controller
         DB::beginTransaction();
         try {
             $filePath = $serviceReport->file_laporan;
-            if ($request->hasFile('file_laporan')) {
+            if ($request->hasFile('file_laporan') || $request->hasFile('file_laporan_kamera')) {
                 if ($filePath && Storage::disk('public')->exists($filePath)) {
                     Storage::disk('public')->delete($filePath);
                 }
-                $filePath = $request->file('file_laporan')->store('service-report', 'public');
+                if ($request->hasFile('file_laporan_kamera')) {
+                    $filePath = $request->file('file_laporan_kamera')->store('service-report', 'public');
+                } else {
+                    $filePath = $request->file('file_laporan')->store('service-report', 'public');
+                }
             }
 
             $totalBiaya = ($request->biaya_service ?? 0) + ($request->biaya_sparepart ?? 0);
@@ -205,9 +231,17 @@ class ServiceReportController extends Controller
             // Jika status SELESAI, update permintaan dan buat riwayat
             if ($request->status_service === 'SELESAI') {
                 $serviceReport->permintaanPemeliharaan->update(['status_permintaan' => 'SELESAI']);
-                
-                // Buat riwayat pemeliharaan
-                RiwayatPemeliharaan::create([
+
+                // Sinkronkan kondisi aset sesuai hasil service.
+                if (!empty($request->kondisi_setelah_service)) {
+                    $serviceReport->registerAset->update([
+                        'kondisi_aset' => $request->kondisi_setelah_service,
+                    ]);
+                }
+
+                RiwayatPemeliharaan::updateOrCreate(
+                    ['id_service_report' => $serviceReport->id_service_report],
+                    [
                     'id_register_aset' => $serviceReport->id_register_aset,
                     'id_permintaan_pemeliharaan' => $serviceReport->id_permintaan_pemeliharaan,
                     'id_service_report' => $serviceReport->id_service_report,
@@ -215,7 +249,15 @@ class ServiceReportController extends Controller
                     'jenis_pemeliharaan' => $request->jenis_service,
                     'status' => 'SELESAI',
                     'keterangan' => $request->keterangan,
-                ]);
+                    ]
+                );
+
+                // Geser jadwal aktif untuk jenis maintenance terkait aset ini.
+                $this->rollForwardActiveSchedule(
+                    (int) $serviceReport->id_register_aset,
+                    (string) $request->jenis_service,
+                    $request->tanggal_selesai ?? $request->tanggal_service
+                );
             }
 
             DB::commit();
@@ -239,6 +281,42 @@ class ServiceReportController extends Controller
 
         return redirect()->route('maintenance.service-report.index')
             ->with('success', 'Service report berhasil dihapus.');
+    }
+
+    private function rollForwardActiveSchedule(int $registerAsetId, string $jenis, string $tanggalAcuan): void
+    {
+        $jadwal = JadwalMaintenance::query()
+            ->where('id_register_aset', $registerAsetId)
+            ->where('jenis_maintenance', $jenis)
+            ->where('status', 'AKTIF')
+            ->orderBy('tanggal_selanjutnya')
+            ->first();
+
+        if (!$jadwal) {
+            return;
+        }
+
+        $nextDate = $this->calculateNextDate($tanggalAcuan, $jadwal->periode, $jadwal->interval_hari);
+
+        $jadwal->update([
+            'tanggal_terakhir' => $tanggalAcuan,
+            'tanggal_selanjutnya' => $nextDate,
+        ]);
+    }
+
+    private function calculateNextDate(string $tanggalMulai, string $periode, ?int $intervalHari = null): string
+    {
+        $date = \Carbon\Carbon::parse($tanggalMulai);
+        return match ($periode) {
+            'HARIAN' => $date->addDay()->format('Y-m-d'),
+            'MINGGUAN' => $date->addWeek()->format('Y-m-d'),
+            'BULANAN' => $date->addMonth()->format('Y-m-d'),
+            '3_BULAN' => $date->addMonths(3)->format('Y-m-d'),
+            '6_BULAN' => $date->addMonths(6)->format('Y-m-d'),
+            'TAHUNAN' => $date->addYear()->format('Y-m-d'),
+            'CUSTOM' => $date->addDays($intervalHari ?? 30)->format('Y-m-d'),
+            default => $date->addMonth()->format('Y-m-d'),
+        };
     }
 }
 

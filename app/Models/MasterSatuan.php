@@ -13,6 +13,7 @@ class MasterSatuan extends Model
 
     protected $fillable = [
         'nama_satuan',
+        'keterangan',
     ];
 
     // Relationships

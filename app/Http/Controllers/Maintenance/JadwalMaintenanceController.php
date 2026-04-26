@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Maintenance;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\JadwalMaintenance;
+use App\Models\MasterPegawai;
+use App\Models\PermintaanPemeliharaan;
 use App\Models\RegisterAset;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -13,7 +16,7 @@ class JadwalMaintenanceController extends Controller
 {
     public function index(Request $request)
     {
-        $query = JadwalMaintenance::with(['registerAset.inventory.dataBarang', 'creator']);
+        $query = JadwalMaintenance::with(['registerAset.inventory.dataBarang', 'registerAset.unitKerja', 'creator']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -30,10 +33,41 @@ class JadwalMaintenanceController extends Controller
             });
         }
 
+        if ($request->filled('unit_kerja')) {
+            $query->whereHas('registerAset', function ($q) use ($request) {
+                $q->where('id_unit_kerja', $request->integer('unit_kerja'));
+            });
+        }
+
+        if ($request->filled('jatuh_tempo')) {
+            $today = now()->toDateString();
+            $query->whereNotNull('tanggal_selanjutnya');
+            if ($request->jatuh_tempo === 'OVERDUE') {
+                $query->whereDate('tanggal_selanjutnya', '<', $today);
+            } elseif ($request->jatuh_tempo === '7_HARI') {
+                $query->whereBetween('tanggal_selanjutnya', [$today, now()->addDays(7)->toDateString()]);
+            } elseif ($request->jatuh_tempo === '30_HARI') {
+                $query->whereBetween('tanggal_selanjutnya', [$today, now()->addDays(30)->toDateString()]);
+            }
+        }
+
+        $summary = [
+            'overdue' => JadwalMaintenance::query()
+                ->where('status', 'AKTIF')
+                ->whereNotNull('tanggal_selanjutnya')
+                ->whereDate('tanggal_selanjutnya', '<', now()->toDateString())
+                ->count(),
+            'due_7_days' => JadwalMaintenance::query()
+                ->where('status', 'AKTIF')
+                ->whereNotNull('tanggal_selanjutnya')
+                ->whereBetween('tanggal_selanjutnya', [now()->toDateString(), now()->addDays(7)->toDateString()])
+                ->count(),
+        ];
+
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
         $jadwals = $query->latest('tanggal_mulai')->paginate($perPage)->appends($request->query());
 
-        return view('maintenance.jadwal-maintenance.index', compact('jadwals'));
+        return view('maintenance.jadwal-maintenance.index', compact('jadwals', 'summary'));
     }
 
     public function create()
@@ -127,6 +161,72 @@ class JadwalMaintenanceController extends Controller
 
         return redirect()->route('maintenance.jadwal-maintenance.index')
             ->with('success', 'Jadwal maintenance berhasil dihapus.');
+    }
+
+    /**
+     * Generate permintaan pemeliharaan rutin dari jadwal aktif.
+     * Ini memungkinkan preventive maintenance berjalan tanpa menunggu user membuat permintaan manual.
+     */
+    public function generatePermintaan($id)
+    {
+        $jadwal = JadwalMaintenance::with(['registerAset'])->findOrFail($id);
+
+        if ($jadwal->status !== 'AKTIF') {
+            return back()->with('error', 'Hanya jadwal aktif yang bisa digenerate menjadi permintaan.');
+        }
+
+        if (!$jadwal->registerAset || (string) $jadwal->registerAset->status_aset !== 'AKTIF') {
+            return back()->with('error', 'Register aset tidak valid atau tidak aktif.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $register = $jadwal->registerAset;
+            $pemohon = MasterPegawai::query()
+                ->where('id_unit_kerja', $register->id_unit_kerja)
+                ->orderBy('id')
+                ->first();
+
+            if (!$pemohon) {
+                throw new \RuntimeException('Tidak ditemukan pegawai pada unit kerja aset untuk dijadikan pemohon rutin.');
+            }
+
+            $tahun = date('Y');
+            $lastPermintaan = PermintaanPemeliharaan::whereYear('created_at', $tahun)
+                ->orderBy('id_permintaan_pemeliharaan', 'desc')
+                ->first();
+            $urutan = $lastPermintaan ? (int) substr($lastPermintaan->no_permintaan_pemeliharaan, -4) + 1 : 1;
+
+            $permintaan = PermintaanPemeliharaan::create([
+                'no_permintaan_pemeliharaan' => 'PMH/' . $tahun . '/' . str_pad($urutan, 4, '0', STR_PAD_LEFT),
+                'id_register_aset' => $register->id_register_aset,
+                'id_unit_kerja' => $register->id_unit_kerja,
+                'id_pemohon' => $pemohon->id,
+                'tanggal_permintaan' => now()->toDateString(),
+                'jenis_pemeliharaan' => $jadwal->jenis_maintenance,
+                'prioritas' => 'SEDANG',
+                'status_permintaan' => 'DISETUJUI',
+                'deskripsi_kerusakan' => 'Permintaan otomatis dari jadwal maintenance rutin.',
+                'keterangan' => trim(($jadwal->keterangan ?? '') . ' [AUTO-RUTIN]'),
+            ]);
+
+            $baseDate = $jadwal->tanggal_selanjutnya ?: Carbon::parse($jadwal->tanggal_mulai);
+            $next = $this->calculateNextDate($baseDate->format('Y-m-d'), $jadwal->periode, $jadwal->interval_hari);
+
+            $jadwal->update([
+                'tanggal_terakhir' => now()->toDateString(),
+                'tanggal_selanjutnya' => $next,
+            ]);
+
+            DB::commit();
+
+            return redirect()
+                ->route('maintenance.service-report.create', ['permintaan_id' => $permintaan->id_permintaan_pemeliharaan])
+                ->with('success', 'Permintaan rutin berhasil digenerate. Lanjutkan isi Service Report.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal generate permintaan rutin: ' . $e->getMessage());
+        }
     }
 
     private function calculateNextDate($tanggalMulai, $periode, $intervalHari = null)

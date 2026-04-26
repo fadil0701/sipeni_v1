@@ -24,6 +24,7 @@ class ComprehensiveDummySeeder extends Seeder
             $anggaranId = DB::table('master_sumber_anggaran')->where('nama_anggaran', 'APBD Dummy')->value('id_anggaran')
                 ?? DB::table('master_sumber_anggaran')->insertGetId([
                     'nama_anggaran' => 'APBD Dummy',
+                    'keterangan' => 'Anggaran dummy untuk kebutuhan pengujian otomatis',
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);

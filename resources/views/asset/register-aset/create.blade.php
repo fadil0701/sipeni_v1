@@ -73,10 +73,10 @@
                 </div>
             </div>
 
-            <!-- Informasi Unit Kerja & Ruangan -->
+            <!-- Informasi Unit Kerja -->
             <div class="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Unit Kerja & Ruangan</h3>
-                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Unit Kerja</h3>
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-1">
                     <div>
                         {{-- id BUKAN "id_unit_kerja": hindari Choices.js global di layout agar nilai & change event konsisten --}}
                         <label for="id_unit_kerja_register_aset" class="block text-sm font-medium text-gray-700 mb-2">
@@ -99,34 +99,8 @@
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
-                    
-                    <div>
-                        {{-- id BUKAN "id_ruangan": layout mem-init Choices.js untuk #id_ruangan sehingga filter opsi tidak pernah konsisten --}}
-                        <label for="id_ruangan_register_aset" class="block text-sm font-medium text-gray-700 mb-2">
-                            Ruangan <span class="text-gray-500">(Opsional)</span>
-                        </label>
-                        <select 
-                            id="id_ruangan_register_aset" 
-                            name="id_ruangan" 
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_ruangan') border-red-500 @enderror"
-                        >
-                            <option value="">Pilih Ruangan</option>
-                            @foreach($ruangans as $ruangan)
-                                <option 
-                                    value="{{ $ruangan->id_ruangan }}" 
-                                    data-unit-kerja="{{ $ruangan->id_unit_kerja }}"
-                                    {{ old('id_ruangan') == $ruangan->id_ruangan ? 'selected' : '' }}
-                                >
-                                    {{ $ruangan->nama_ruangan }} ({{ $ruangan->unitKerja->nama_unit_kerja ?? '-' }})
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('id_ruangan')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                        <p class="mt-1 text-xs text-gray-500">Pilih ruangan jika aset akan ditempatkan di ruangan tertentu</p>
-                    </div>
                 </div>
+                <p class="mt-2 text-xs text-gray-500">Ruangan dan penanggung jawab diisi pada langkah berikutnya di form KIR.</p>
             </div>
 
             <!-- Form Fields -->
@@ -134,20 +108,20 @@
                 <div>
                     <label for="nomor_register" class="block text-sm font-medium text-gray-700 mb-2">
                         Nomor Register <span class="text-red-500">*</span>
-                        <span class="text-xs text-gray-500 font-normal">(Otomatis di-generate)</span>
+                        <span class="text-xs text-gray-500 font-normal">(Otomatis di-generate saat simpan)</span>
                     </label>
                     <input 
                         type="text" 
                         id="nomor_register" 
                         value="{{ old('nomor_register') }}"
                         readonly
-                        placeholder="Akan mengikuti Kode Register dari Inventory Item"
+                        placeholder="Akan di-generate sistem (berbeda dari kode register)"
                         class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('nomor_register') border-red-500 @enderror"
                     >
                     @error('nomor_register')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
-                    <p class="mt-1 text-xs text-gray-500">Nilai ini otomatis diambil dari kode register Inventory Item (single source).</p>
+                    <p class="mt-1 text-xs text-gray-500">Nomor administrasi register aset. Kode register item tetap tersimpan terpisah di data item.</p>
                 </div>
 
                 <div>
@@ -262,7 +236,6 @@ function generateNomorRegister() {
     const itemSelect = document.getElementById('id_item');
     const inventoryHidden = document.getElementById('id_inventory');
     const unitKerjaSelect = document.getElementById(REGISTER_ASET_SELECT_UNIT_KERJA);
-    const ruanganSelect = document.getElementById(REGISTER_ASET_SELECT_RUANGAN);
     const nomorRegisterInput = document.getElementById('nomor_register');
     
     if (!itemSelect || !unitKerjaSelect || !nomorRegisterInput) return;
@@ -277,20 +250,16 @@ function generateNomorRegister() {
     }
     
     const unitKerjaId = unitKerjaSelect.value;
-    const ruanganId = ruanganSelect ? ruanganSelect.value : '';
     
     // Jika belum pilih inventory item atau unit kerja, kosongkan
     if (!itemValue || !unitKerjaId) {
         nomorRegisterInput.value = '';
-        nomorRegisterInput.placeholder = 'Akan di-generate otomatis setelah memilih Inventory Item, Unit Kerja dan Ruangan';
+        nomorRegisterInput.placeholder = 'Akan di-generate otomatis setelah memilih Inventory Item dan Unit Kerja';
         return;
     }
-    
-    const kodeRegister = selectedOption ? selectedOption.dataset.kodeRegister : '';
-    nomorRegisterInput.value = kodeRegister || '';
-    nomorRegisterInput.placeholder = kodeRegister
-        ? 'Mengikuti kode register Inventory Item'
-        : 'Akan mengikuti Kode Register dari Inventory Item';
+
+    nomorRegisterInput.value = '';
+    nomorRegisterInput.placeholder = 'Akan di-generate saat simpan';
 }
 
 function filterRuangan(unitKerjaId) {

@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             ModuleSeeder::class,
             MasterSatuanSeeder::class,
             MasterUnitKerjaSeeder::class,
+            MasterGudangSeeder::class,
             MasterRuanganSeeder::class,
             MasterJabatanSeeder::class,
             AdminUserSeeder::class,

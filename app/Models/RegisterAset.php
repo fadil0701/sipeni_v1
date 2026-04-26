@@ -33,14 +33,13 @@ class RegisterAset extends Model
     protected static function booted(): void
     {
         static::saving(function (RegisterAset $registerAset) {
-            // Guard anti dual source:
-            // 1) usahakan id_item selalu terisi (fallback dari id_inventory/data lama),
-            // 2) nomor_register selalu mengikuti inventory_item.kode_register.
-            $registerAset->syncWithInventoryItemSingleSource();
+            // Guard sinkronisasi referensi item:
+            // pastikan id_item dan id_inventory tetap konsisten.
+            $registerAset->syncInventoryReferences();
         });
     }
 
-    public function syncWithInventoryItemSingleSource(): void
+    public function syncInventoryReferences(): void
     {
         $hasIdItemColumn = Schema::hasColumn($this->getTable(), 'id_item');
         if (! $hasIdItemColumn) {
@@ -76,7 +75,6 @@ class RegisterAset extends Model
 
         $this->id_item = $inventoryItem->id_item;
         $this->id_inventory = $inventoryItem->id_inventory;
-        $this->nomor_register = $inventoryItem->kode_register;
     }
 
     // Relationships
