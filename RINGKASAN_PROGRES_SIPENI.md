@@ -56,11 +56,16 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Penyesuaian pixel layout sudah dilakukan (header center, kepadatan tabel, blok tanda tangan), tinggal final fine-tuning 1:1 dengan template institusi.
 
 ### F. Searchable Select & UI Form
-- **Status: Selesai**
-- Tuning `Choices.js` agar hasil search lebih lengkap dan tidak mudah hilang.
-- Normalisasi label option agar data lebih konsisten saat pencarian.
-- Perbaikan tampilan selected value (clipping, alignment vertikal, spacing).
-- Penyempurnaan styling dropdown agar jarak antar item lebih rapih.
+- **Status: Selesai (transisi ke Select2 + hardening event)**
+- Migrasi pendekatan field select ter-enhance dari `Choices.js` ke `Select2` agar perilaku placeholder, clear, dan event change lebih stabil lintas form.
+- Standardisasi inisialisasi global select dengan placeholder + search + allow clear.
+- Perbaikan tampilan selected value (clipping, alignment vertikal, spacing) pada field yang sebelumnya terpotong/terdorong.
+- Hardening kompatibilitas script lama:
+  - helper lama `initChoicesForSelect` tetap dipertahankan sebagai facade agar halaman existing tidak langsung regress,
+  - event tambahan `select2:select` / `select2:clear` dipasang di form yang memiliki toggle field dinamis.
+- Perbaikan kasus dinamis yang sempat terdampak:
+  - `Master Gudang`: `Kategori Gudang` langsung tampil saat memilih `PUSAT` (tanpa submit),
+  - `Data Inventory`: pemilihan `FARMASI/PERSEDIAAN` langsung menampilkan field `No Batch` dan `Tanggal Kedaluwarsa`.
 
 ### G. QR Code & Storage
 - **Status: Selesai**
@@ -79,6 +84,8 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
   - penambahan field `keterangan` end-to-end (migration, model, controller, create/edit/index/show).
 - Gudang:
   - penambahan `MasterGudangSeeder` untuk membentuk gudang sesuai unit kerja secara otomatis.
+- Struktur referensi barang:
+  - penggabungan data `bmd_aset_lancar_lengkap.xlsx` ke workbook import `kemendagri_import_sheet6_objek_filtered.xlsx` sesuai format sheet target (`aset` s.d `permendagri_108`) untuk memperkaya referensi aset lancar.
 
 ---
 
@@ -125,9 +132,13 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - UAT per role (admin, admin gudang, kepala unit, pegawai) masih perlu penutupan checklist manual lintas modul.
 
 ### E. Penyempurnaan Searchable Select (Regresi Menyeluruh)
-- **Status: Parsial**
-- Pengujian lintas modul untuk memastikan tuning Choices.js tidak menimbulkan regresi di halaman lain.
-- Penyesuaian selector yang benar-benar perlu searchable agar performa UI tetap optimal.
+- **Status: Parsial Tinggi**
+- Audit lintas modul setelah transisi ke Select2 sedang berjalan untuk memastikan seluruh event interaktif form tetap normal.
+- Titik kritis yang sudah ditutup:
+  - toggle field dinamis pada `Master Gudang`,
+  - toggle field dinamis pada `Data Inventory`,
+  - pencegahan retry loop tidak perlu pada halaman `Permintaan Barang` yang sebelumnya menunggu `Choices` terus-menerus.
+- Sisa: pembersihan penuh blok fallback legacy `new Choices(...)` yang sudah tidak diperlukan agar codebase lebih bersih dan risiko konflik jangka panjang makin kecil.
 
 ### F. Integrasi TTE untuk Dokumen (Cetak/Download)
 - **Status: Backlog (belum mulai implementasi)**
@@ -202,6 +213,40 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
   - hardening pengujian otomatis tambahan (skenario data ekstrem & concurrency),
   - penyempurnaan format output rekap (opsi export dokumen selain CSV bila diperlukan),
   - final review UX minor pada form dan filter maintenance.
+
+### H. Fitur Peminjaman Alat/Barang Antar Unit
+- **Status: Backlog Prioritas Tinggi (belum mulai implementasi)**
+- **Tujuan:**
+  - Menyediakan alur resmi peminjaman alat/barang antar unit dengan jejak approval berjenjang dan histori serah-terima/pengembalian.
+- **Alur Proses (target implementasi):**
+  - `Unit A (Peminjam)` -> Ajukan Permintaan
+  - Verifikasi `Kepala Unit A`
+  - **Cabang Tujuan Peminjaman:**
+    - Jika tujuan ke `Unit Kerja lain (Unit B/Pemilik)`:
+      - Persetujuan/Penolakan oleh `Unit B (Pemilik)`
+      - Dilanjutkan Approval oleh `Pengurus Barang`
+    - Jika tujuan langsung ke `Gudang Pusat`:
+      - Langsung ke tahap Approval oleh `Pengurus Barang` (tanpa approval Unit B)
+  - Mengetahui oleh `Kasubag TU`
+  - Serah Terima Antar Unit
+  - Pengembalian
+  - Selesai
+- **Ruang Lingkup Fungsional:**
+  - Form permintaan peminjaman dengan data barang, unit peminjam, **tujuan peminjaman** (`Unit Kerja lain` atau `Gudang Pusat`), unit pemilik (jika lintas unit), tanggal pinjam-rencana kembali, dan alasan.
+  - Workflow status berjenjang sesuai alur di atas (dengan catatan persetujuan/penolakan di tiap tahap).
+  - Pencatatan serah terima antar unit (waktu, petugas, kondisi barang saat serah).
+  - Pencatatan pengembalian (waktu, kondisi akhir, catatan kerusakan/selisih bila ada).
+  - Histori peminjaman per barang/aset dan per unit untuk audit.
+- **Integritas Data yang Wajib Dijaga:**
+  - Barang yang dipinjam harus valid dan terdaftar pada unit pemilik.
+  - Selama status dipinjam, barang tidak boleh diproses pada transaksi yang bentrok (guard status).
+  - Wajib ada jejak status dan user actor di setiap tahap approval/serah-terima/pengembalian.
+- **Pengujian (target):**
+  - Test alur penuh peminjaman dari pengajuan sampai selesai.
+  - Test skenario penolakan di Unit B (untuk mode lintas unit).
+  - Test skenario peminjaman langsung ke Gudang Pusat (tanpa tahap Unit B).
+  - Test validasi role per tahap (Ka Unit A, Unit B, Pengurus Barang, Kasubag TU).
+  - Test guard bentrok transaksi saat barang berstatus dipinjam.
 
 ---
 

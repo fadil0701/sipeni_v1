@@ -126,6 +126,9 @@
                 // Clear value jika bukan PUSAT
                 if (jenisGudangSelect.value !== 'PUSAT') {
                     kategoriGudangSelect.value = '';
+                    if (window.jQuery) {
+                        window.jQuery(kategoriGudangSelect).trigger('change');
+                    }
                 }
             }
         }
@@ -133,8 +136,13 @@
         // Set initial state
         toggleKategoriField();
         
-        // Listen for changes
+        // Listen for native select changes
         jenisGudangSelect.addEventListener('change', toggleKategoriField);
+
+        // Select2 sometimes emits custom events; handle those as well.
+        if (window.jQuery) {
+            window.jQuery(jenisGudangSelect).on('select2:select select2:clear', toggleKategoriField);
+        }
     });
 </script>
 @endsection

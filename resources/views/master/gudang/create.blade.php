@@ -123,16 +123,22 @@
                 kategoriGudangField.style.display = 'none';
                 kategoriGudangSelect.removeAttribute('required');
                 kategoriGudangSelect.value = '';
+                if (window.jQuery) {
+                    window.jQuery(kategoriGudangSelect).trigger('change');
+                }
             }
         }
         
-        // Set initial state based on old value or default
-        if (jenisGudangSelect.value === 'PUSAT') {
-            toggleKategoriField();
-        }
-        
-        // Listen for changes
+        // Set initial state
+        toggleKategoriField();
+
+        // Listen for native select changes
         jenisGudangSelect.addEventListener('change', toggleKategoriField);
+
+        // Select2 sometimes emits custom events; handle those as well.
+        if (window.jQuery) {
+            window.jQuery(jenisGudangSelect).on('select2:select select2:clear', toggleKategoriField);
+        }
     });
 </script>
 @endsection

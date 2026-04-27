@@ -1147,8 +1147,8 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Choices available:', typeof Choices !== 'undefined');
         console.log('initChoicesForSelect available:', typeof window.initChoicesForSelect === 'function');
         
-        if (typeof Choices === 'undefined') {
-            console.log('Choices.js not loaded yet, retrying...');
+        if (typeof window.initChoicesForSelect !== 'function') {
+            console.log('initChoicesForSelect not ready yet, retrying...');
             setTimeout(initializeExistingFields, 100);
             return;
         }
@@ -1158,7 +1158,7 @@ document.addEventListener('DOMContentLoaded', function() {
             filterDataBarangByJenisPermintaan();
         }
         
-        if (typeof Choices !== 'undefined') {
+        if (typeof window.initChoicesForSelect === 'function') {
             // Inisialisasi untuk semua select-data-barang yang sudah ada
             document.querySelectorAll('.select-data-barang').forEach(function(selectBarang) {
                 if (selectBarang.tagName === 'SELECT' && !selectBarang.choicesInstance) {
@@ -1305,7 +1305,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Force initialize setelah semua script selesai
     setTimeout(function() {
         console.log('Force initialization check...');
-        if (typeof Choices !== 'undefined') {
+        if (typeof window.initChoicesForSelect === 'function') {
             // Force initialize untuk select-data-barang
             document.querySelectorAll('.select-data-barang').forEach(function(select) {
                 if (select.tagName === 'SELECT' && !select.choicesInstance) {

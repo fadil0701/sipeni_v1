@@ -40,7 +40,8 @@
             <select
                 id="id_subjenis_barang"
                 name="id_subjenis_barang"
-                class="block w-full rounded-md border border-gray-300 py-2 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-searchable="true"
+                class="select-searchable block w-full rounded-md border border-gray-300 py-2 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
                 <option value="">Semua Subjenis</option>
                 @foreach(($subjenisBarangs ?? collect()) as $subjenisBarang)
@@ -55,7 +56,8 @@
             <select
                 id="id_satuan"
                 name="id_satuan"
-                class="block w-full rounded-md border border-gray-300 py-2 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-searchable="true"
+                class="select-searchable block w-full rounded-md border border-gray-300 py-2 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
                 <option value="">Semua Satuan</option>
                 @foreach(($satuans ?? collect()) as $satuan)
@@ -134,4 +136,45 @@
     @endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    (function () {
+        function initFilterSearchableSelects() {
+            if (typeof window.initChoicesForSelect !== 'function') {
+                return false;
+            }
+
+            var initializedAny = false;
+            ['id_subjenis_barang', 'id_satuan'].forEach(function (fieldId) {
+                var el = document.getElementById(fieldId);
+                if (!el || el.choicesInstance) return;
+                window.initChoicesForSelect(el, 0);
+                initializedAny = initializedAny || !!el.choicesInstance;
+            });
+
+            return initializedAny;
+        }
+
+        function bootstrapWithRetry() {
+            if (initFilterSearchableSelects()) return;
+            var retries = 0;
+            var maxRetries = 20;
+            var timer = setInterval(function () {
+                retries++;
+                if (initFilterSearchableSelects() || retries >= maxRetries) {
+                    clearInterval(timer);
+                }
+            }, 150);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bootstrapWithRetry, { once: true });
+        } else {
+            bootstrapWithRetry();
+        }
+        window.addEventListener('load', bootstrapWithRetry, { once: true });
+    })();
+</script>
+@endpush
 

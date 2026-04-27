@@ -230,29 +230,47 @@ function initNavigationHelpers() {
 
 function ensureChoicesLoaded() {
     if (typeof window.__layoutEnabled === 'function' && !window.__layoutEnabled('choices-init')) return;
-    if (typeof Choices !== 'undefined') {
-        window.__gLog && window.__gLog('Choices.js loaded successfully');
+    if (window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function') {
+        window.__gLog && window.__gLog('Select2 loaded successfully');
         window.choicesLoaded = true;
         return;
     }
-    window.__gWarn && window.__gWarn('Choices.js not loaded, trying fallback...');
-    var fallbackScript = document.createElement('script');
-    fallbackScript.src = 'https://unpkg.com/choices.js@10.2.0/public/assets/scripts/choices.min.js';
-    fallbackScript.onload = function () {
-        window.choicesLoaded = true;
-        window.__gLog && window.__gLog('Choices.js loaded from fallback CDN');
+    window.__gWarn && window.__gWarn('Select2 not loaded, trying fallback...');
+
+    function loadSelect2Script() {
+        var select2Script = document.createElement('script');
+        select2Script.src = 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js';
+        select2Script.onload = function () {
+            window.choicesLoaded = true;
+            window.__gLog && window.__gLog('Select2 loaded from fallback CDN');
+        };
+        select2Script.onerror = function () {
+            console.error('Select2 failed to load from CDN');
+        };
+        document.head.appendChild(select2Script);
+    }
+
+    if (window.jQuery) {
+        loadSelect2Script();
+        return;
+    }
+
+    var jqueryScript = document.createElement('script');
+    jqueryScript.src = 'https://code.jquery.com/jquery-3.7.1.min.js';
+    jqueryScript.onload = function () {
+        loadSelect2Script();
     };
-    fallbackScript.onerror = function () {
-        console.error('Choices.js failed to load from both CDNs');
+    jqueryScript.onerror = function () {
+        console.error('jQuery failed to load from CDN');
     };
-    document.head.appendChild(fallbackScript);
+    document.head.appendChild(jqueryScript);
 }
 
 function initChoicesHelpers() {
     window.initChoicesForSelect = function (selectElement, minOptions) {
         var minOpts = typeof minOptions === 'number' ? minOptions : 2;
         if (!selectElement || selectElement.tagName !== 'SELECT') return null;
-        if (typeof Choices === 'undefined') return null;
+        if (!(window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function')) return null;
         if (selectElement.choicesInstance) return selectElement.choicesInstance;
 
         var optionCount = Array.from(selectElement.options).filter(function (opt) { return opt.value !== ''; }).length;
@@ -264,68 +282,45 @@ function initChoicesHelpers() {
         if (!(optionCount > minOpts || (isDataBarangOrSatuan && optionCount > 0))) return null;
 
         try {
-            var choicesConfig = {
-                searchEnabled: true,
-                searchChoices: true,
-                itemSelectText: '',
-                placeholder: true,
-                placeholderValue: (selectElement.querySelector('option[value=""]') || {}).textContent || 'Pilih...',
-                searchPlaceholderValue: 'Ketik untuk mencari...',
-                searchFields: ['label', 'value'],
-                searchFloor: 0,
-                renderSelectedChoices: 'always',
-                searchResultLimit: 1000,
-                shouldSort: false,
-                fuseOptions: {
-                    threshold: 0.45,
-                    distance: 10000,
-                    ignoreLocation: true,
-                    minMatchCharLength: 1
+            var $ = window.jQuery;
+            var placeholderOption = selectElement.querySelector('option[value=""]');
+            var placeholderText = ((placeholderOption && placeholderOption.textContent) || 'Pilih...').trim();
+            var allowClear = !!placeholderOption;
+
+            // Pattern requested user: class marker for single placeholder select2.
+            selectElement.classList.add('js-example-placeholder-single');
+
+            $(selectElement).select2({
+                placeholder: placeholderText || 'Pilih...',
+                allowClear: allowClear,
+                width: '100%',
+                minimumResultsForSearch: 0
+            });
+
+            var choicesInstance = {
+                destroy: function () {
+                    try {
+                        $(selectElement).select2('destroy');
+                    } catch (e) {
+                        // noop
+                    }
                 },
-                shouldSortItems: true,
-                removeItemButton: false,
-                allowHTML: false
+                setChoiceByValue: function (value) {
+                    $(selectElement).val(value).trigger('change');
+                }
             };
 
-            // Khusus data barang: volume opsi sangat besar + kode numerik panjang.
-            // Gunakan konfigurasi search yang lebih permisif agar hasil tidak "hilang".
-            if (selectElement.classList.contains('select-data-barang') || selectElement.id === 'id_data_barang') {
-                choicesConfig.searchFloor = 0;
-                choicesConfig.searchResultLimit = 2000;
-                choicesConfig.shouldSort = false;
-                choicesConfig.fuseOptions = {
-                    threshold: 0.75,
-                    distance: 10000,
-                    ignoreLocation: true,
-                    minMatchCharLength: 1
-                };
-            }
-
-            // Khusus satuan: pencarian harus sederhana (contains) dan tidak terlalu ketat.
-            if (selectElement.classList.contains('select-satuan') || selectElement.id === 'id_satuan') {
-                choicesConfig.searchFloor = 0;
-                choicesConfig.searchResultLimit = 1000;
-                choicesConfig.shouldSort = false;
-                choicesConfig.fuseOptions = {
-                    threshold: 0.9,
-                    distance: 10000,
-                    ignoreLocation: true,
-                    minMatchCharLength: 1
-                };
-            }
-
-            var choicesInstance = new Choices(selectElement, choicesConfig);
             selectElement.choicesInstance = choicesInstance;
             return choicesInstance;
         } catch (error) {
-            console.error('Error initializing Choices.js for select:', selectElement.id || 'unnamed select', error);
+            console.error('Error initializing Select2 for select:', selectElement.id || 'unnamed select', error);
             return null;
         }
     };
 
     function initializeSearchableSelects() {
         if (typeof window.__layoutEnabled === 'function' && !window.__layoutEnabled('choices-init')) return;
-        if (typeof Choices === 'undefined') {
+        if (!(window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function')) {
             if (!window.choicesRetryCount) window.choicesRetryCount = 0;
             if (window.choicesRetryCount < 10) {
                 window.choicesRetryCount++;
@@ -350,6 +345,22 @@ function initChoicesHelpers() {
             window.initChoicesForSelect(selectElement, minOpts);
         });
 
+        // Global searchable: terapkan ke semua select dalam form, kecuali yang opt-out.
+        // Opt-out: tambahkan data-searchable="false" pada select tertentu.
+        document.querySelectorAll('form select:not([multiple]):not([data-searchable="false"])').forEach(function (select) {
+            if (select.choicesInstance) return;
+            Array.from(select.options).forEach(function (option) {
+                var rawText = option.textContent || option.innerText || option.getAttribute('label') || option.value || '';
+                option.textContent = String(rawText).replace(/\s+/g, ' ').trim();
+            });
+
+            var optionCount = Array.from(select.options).filter(function (opt) { return opt.value !== ''; }).length;
+            var hasSelectedValue = !!select.value;
+            if (optionCount === 0 && !hasSelectedValue) return;
+
+            window.initChoicesForSelect(select, 0);
+        });
+
         document.querySelectorAll('select[data-searchable="true"], select.select-searchable, select.select-data-barang, select.select-satuan').forEach(function (select) {
             if (select.choicesInstance) return;
             Array.from(select.options).forEach(function (option) {
@@ -364,7 +375,7 @@ function initChoicesHelpers() {
 
     function waitForChoicesAndInit() {
         if (typeof window.__layoutEnabled === 'function' && !window.__layoutEnabled('choices-init')) return;
-        if (typeof Choices !== 'undefined') {
+        if (window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function') {
             setTimeout(initializeSearchableSelects, 100);
             return;
         }
@@ -373,7 +384,7 @@ function initChoicesHelpers() {
             window.choicesRetryCount++;
             setTimeout(waitForChoicesAndInit, 100);
         } else {
-            console.error('Choices.js gagal ter-load setelah 5 detik');
+            console.error('Select2 gagal ter-load setelah 5 detik');
         }
     }
 
@@ -389,7 +400,7 @@ function initChoicesHelpers() {
             }
         }
         setTimeout(function () {
-            if (typeof Choices !== 'undefined') initializeSearchableSelects();
+            if (window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function') initializeSearchableSelects();
         }, 1000);
     }
 }

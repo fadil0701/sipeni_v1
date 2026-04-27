@@ -32,8 +32,8 @@
         }
     </style>
     
-    <!-- Choices.js for searchable select dropdowns -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <!-- Select2 placeholder dropdown -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 </head>
 <body
     class="font-sans antialiased bg-gray-100"
@@ -252,8 +252,8 @@
                                         <li><a href="{{ route('master-data.data-barang.index') }}" class="{{ $linkClass($isRoute(['master-data.data-barang.*'])) }}">Data Barang</a></li>
                                         <li><a href="{{ route('master-data.import-struktur-barang.index') }}" class="{{ $linkClass($isRoute(['master-data.import-struktur-barang.*'])) }}">Import Struktur Barang</a></li>
 
-                                    <li class="px-4 pt-3 text-[11px] uppercase tracking-wide text-blue-300">Ringkasan</li>
-                                        <li><a href="{{ route('inventory.data-inventory.index') }}" class="{{ $linkClass($isRoute(['inventory.data-inventory.*'])) }}">Ringkasan Inventory</a></li>
+                                    <li class="px-4 pt-3 text-[11px] uppercase tracking-wide text-blue-300">Data Inventory</li>
+                                        <li><a href="{{ route('inventory.data-inventory.index') }}" class="{{ $linkClass($isRoute(['inventory.data-inventory.*'])) }}">Data Inventory</a></li>
                                         <li><a href="{{ route('inventory.scan-qr') }}" class="{{ $linkClass($isRoute(['inventory.scan-qr'])) }}">Scan QR Code</a></li>
 
                                     <li class="px-4 pt-3 text-[11px] uppercase tracking-wide text-blue-300">Stok &amp; Transaksi</li>
@@ -458,8 +458,9 @@
 
     @stack('scripts')
     
-    <!-- Choices.js JavaScript -->
-    <script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
+    <!-- jQuery + Select2 -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     {{-- Script layout dipindah ke resources/js/layout/app-layout.js --}}
 </body>
 </html>

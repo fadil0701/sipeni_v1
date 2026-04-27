@@ -157,18 +157,21 @@
                         @error('qty_input')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
 
-                    <div>
-                        <label for="id_satuan" class="block text-sm font-medium text-gray-700 mb-2">
-                            Satuan <span class="text-red-500">*</span>
-                        </label>
-                        <select id="id_satuan" name="id_satuan" required class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_satuan') border-red-500 @enderror">
-                            <option value="">Pilih Satuan</option>
-                            @foreach($satuans as $satuan)
-                                <option value="{{ $satuan->id_satuan }}" {{ old('id_satuan', $dataInventory->id_satuan) == $satuan->id_satuan ? 'selected' : '' }}>{{ $satuan->nama_satuan }}</option>
-                            @endforeach
-                        </select>
-                        @error('id_satuan')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                    </div>
+                    <x-form.searchable-select
+                        id="id_satuan"
+                        name="id_satuan"
+                        label="Satuan"
+                        :required="true"
+                        placeholder="Pilih Satuan"
+                        error="id_satuan"
+                        class="select-satuan"
+                    >
+                        @foreach($satuans as $satuan)
+                            <option value="{{ $satuan->id_satuan }}" {{ old('id_satuan', $dataInventory->id_satuan) == $satuan->id_satuan ? 'selected' : '' }}>
+                                {{ $satuan->nama_satuan }}
+                            </option>
+                        @endforeach
+                    </x-form.searchable-select>
 
                     <div>
                         <label for="harga_satuan" class="block text-sm font-medium text-gray-700 mb-2">
@@ -414,6 +417,11 @@
 
         // Event listener untuk perubahan jenis inventory
         jenisInventorySelect.addEventListener('change', toggleFields);
+
+        // Saat select di-enhance Select2, event custom ini lebih andal.
+        if (window.jQuery) {
+            window.jQuery(jenisInventorySelect).on('select2:select select2:clear', toggleFields);
+        }
         
         // Jalankan saat halaman dimuat untuk set initial state
         toggleFields();
