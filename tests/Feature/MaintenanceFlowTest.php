@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\JadwalMaintenance;
+use App\Models\KartuInventarisRuangan;
 use App\Models\KalibrasiAset;
 use App\Models\MasterPegawai;
 use App\Models\PermintaanPemeliharaan;
@@ -122,6 +123,37 @@ class MaintenanceFlowTest extends TestCase
             'id_register_aset' => $register->id_register_aset,
             'status' => 'SELESAI',
         ]);
+    }
+
+    public function test_admin_cannot_generate_routine_request_if_asset_not_placed_in_kir(): void
+    {
+        $admin = User::query()->where('email', 'pusdatinppkp@gmail.com')->firstOrFail();
+        $register = $this->findRegisterWithKirAndPemohon();
+
+        KartuInventarisRuangan::query()
+            ->where('id_register_aset', $register->id_register_aset)
+            ->delete();
+
+        $jadwal = JadwalMaintenance::query()->create([
+            'id_register_aset' => $register->id_register_aset,
+            'jenis_maintenance' => 'RUTIN',
+            'periode' => 'BULANAN',
+            'tanggal_mulai' => now()->subMonth()->toDateString(),
+            'tanggal_selanjutnya' => now()->subDay()->toDateString(),
+            'status' => 'AKTIF',
+            'keterangan' => 'Jadwal rutin tanpa KIR',
+            'created_by' => $admin->id,
+        ]);
+
+        $beforeCount = PermintaanPemeliharaan::query()->count();
+
+        $response = $this->actingAs($admin)
+            ->from(route('maintenance.jadwal-maintenance.index'))
+            ->post(route('maintenance.jadwal-maintenance.generate-permintaan', ['id' => $jadwal->id_jadwal]));
+
+        $response->assertRedirect(route('maintenance.jadwal-maintenance.index'));
+        $response->assertSessionHas('error');
+        $this->assertSame($beforeCount, PermintaanPemeliharaan::query()->count());
     }
 
     public function test_maintenance_routes_require_authentication_and_reject_user_without_role(): void

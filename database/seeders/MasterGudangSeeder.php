@@ -25,19 +25,25 @@ class MasterGudangSeeder extends Seeder
 
         foreach ($units as $unit) {
             $isPusat = (int) $unit->id_unit_kerja === (int) $pusatUnit->id_unit_kerja;
+            $jenisGudang = $isPusat ? 'PUSAT' : 'UNIT';
+            $kategoriGudangList = ['ASET', 'FARMASI', 'PERSEDIAAN'];
 
-            MasterGudang::updateOrCreate(
-                [
-                    'id_unit_kerja' => $unit->id_unit_kerja,
-                    'jenis_gudang' => $isPusat ? 'PUSAT' : 'UNIT',
-                    'kategori_gudang' => 'ASET',
-                ],
-                [
-                    'nama_gudang' => $isPusat
-                        ? 'GUDANG ASET'
-                        : $unit->nama_unit_kerja,
-                ]
-            );
+            foreach ($kategoriGudangList as $kategoriGudang) {
+                $namaGudang = $isPusat
+                    ? 'GUDANG ' . $kategoriGudang
+                    : 'GUDANG ' . $kategoriGudang . ' - ' . $unit->nama_unit_kerja;
+
+                MasterGudang::updateOrCreate(
+                    [
+                        'id_unit_kerja' => $unit->id_unit_kerja,
+                        'jenis_gudang' => $jenisGudang,
+                        'kategori_gudang' => $kategoriGudang,
+                    ],
+                    [
+                        'nama_gudang' => $namaGudang,
+                    ]
+                );
+            }
         }
     }
 }

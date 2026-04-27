@@ -7,8 +7,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\ReturBarang;
 use App\Models\DetailReturBarang;
-use App\Models\PenerimaanBarang;
-use App\Models\TransaksiDistribusi;
 use App\Models\MasterUnitKerja;
 use App\Models\MasterPegawai;
 use App\Models\User;
@@ -31,7 +29,7 @@ class ReturBarangController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
-        $query = ReturBarang::with(['penerimaan', 'distribusi', 'unitKerja', 'gudangAsal', 'gudangTujuan', 'pegawaiPengirim']);
+        $query = ReturBarang::with(['unitKerja', 'gudangAsal', 'gudangTujuan', 'pegawaiPengirim']);
 
         // Filter berdasarkan unit kerja user yang login untuk pegawai/kepala_unit
         if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
@@ -57,24 +55,24 @@ class ReturBarangController extends Controller
         if ($request->filled('status')) {
             $query->where('status_retur', $request->status);
         }
+        if ($request->filled('jenis_retur')) {
+            $jenis = $request->string('jenis_retur')->toString();
+            $query->where('alasan_retur', 'like', '[' . $jenis . ']%');
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('no_retur', 'like', "%{$search}%")
-                  ->orWhereHas('penerimaan', function($q) use ($search) {
-                      $q->where('no_penerimaan', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('distribusi', function($q) use ($search) {
-                      $q->where('no_sbbk', 'like', "%{$search}%");
-                  });
+                $q->where('no_retur', 'like', "%{$search}%");
             });
         }
 
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
         $returs = $query->latest('tanggal_retur')->paginate($perPage)->appends($request->query());
 
-        return view('transaction.retur-barang.index', compact('returs', 'unitKerjas'));
+        $jenisReturOptions = ReturBarang::jenisReturOptions();
+
+        return view('transaction.retur-barang.index', compact('returs', 'unitKerjas', 'jenisReturOptions'));
     }
 
     public function create(Request $request)
@@ -82,16 +80,10 @@ class ReturBarangController extends Controller
         /** @var User $user */
         $user = Auth::user();
         
-        // Filter penerimaan yang sudah diterima dan belum diretur semua
-        $penerimaanQuery = PenerimaanBarang::where('status_penerimaan', 'DITERIMA')
-            ->with(['distribusi', 'unitKerja', 'detailPenerimaan.inventory.dataBarang']);
-
         // Filter berdasarkan unit kerja user yang login untuk pegawai/kepala_unit
         if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
-                $penerimaanQuery->where('id_unit_kerja', $pegawai->id_unit_kerja);
-                
                 $unitKerjas = MasterUnitKerja::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
                 
                 // Get gudang unit kerja user
@@ -103,7 +95,6 @@ class ReturBarangController extends Controller
                 $gudangs = collect([$gudangUnit, $gudangPusat])->filter();
                 $pegawais = MasterPegawai::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
             } else {
-                $penerimaanQuery->whereRaw('1 = 0');
                 $unitKerjas = collect([]);
                 $gudangs = collect([]);
                 $pegawais = collect([]);
@@ -114,42 +105,28 @@ class ReturBarangController extends Controller
             $pegawais = MasterPegawai::all();
         }
 
-        $penerimaans = $penerimaanQuery->get();
         $satuans = MasterSatuan::all();
-
-        // Jika ada penerimaan_id di request, load detail penerimaan
-        $selectedPenerimaan = null;
-        if ($request->filled('penerimaan_id')) {
-            $selectedPenerimaan = PenerimaanBarang::with([
-                'detailPenerimaan.inventory.dataBarang',
-                'detailPenerimaan.satuan',
-                'distribusi.gudangTujuan',
-                'unitKerja'
-            ])->find($request->penerimaan_id);
-        }
-
-        return view('transaction.retur-barang.create', compact('penerimaans', 'unitKerjas', 'gudangs', 'pegawais', 'satuans', 'selectedPenerimaan'));
+        $jenisReturOptions = ReturBarang::jenisReturOptions();
+        $penerimaans = collect();
+        return view('transaction.retur-barang.create', compact('penerimaans', 'unitKerjas', 'gudangs', 'pegawais', 'satuans', 'jenisReturOptions'));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'id_penerimaan' => 'nullable|exists:penerimaan_barang,id_penerimaan',
-            'id_distribusi' => 'nullable|exists:transaksi_distribusi,id_distribusi',
             'tanggal_retur' => 'required|date',
             'id_unit_kerja' => 'required|exists:master_unit_kerja,id_unit_kerja',
             'id_gudang_asal' => 'required|exists:master_gudang,id_gudang',
             'id_gudang_tujuan' => 'required|exists:master_gudang,id_gudang',
             'id_pegawai_pengirim' => 'required|exists:master_pegawai,id',
             'status_retur' => 'required|in:DRAFT,DIAJUKAN',
+            'jenis_retur' => 'required|in:RUSAK,SISA,LAINNYA',
             'alasan_retur' => 'nullable|string',
-            'keterangan' => 'nullable|string',
             'detail' => 'required|array|min:1',
             'detail.*.id_inventory' => 'required|exists:data_inventory,id_inventory',
             'detail.*.qty_retur' => 'required|numeric|min:0',
             'detail.*.id_satuan' => 'required|exists:master_satuan,id_satuan',
             'detail.*.alasan_retur_item' => 'nullable|string',
-            'detail.*.keterangan' => 'nullable|string',
         ]);
 
         if (! $this->isPegawaiInUnit((int) $validated['id_pegawai_pengirim'], (int) $validated['id_unit_kerja'])) {
@@ -179,18 +156,17 @@ class ReturBarangController extends Controller
             $noRetur = sprintf('RETUR/%s/%04d', $tahun, $urut);
 
             // Create retur
+            $alasanText = trim((string) ($validated['alasan_retur'] ?? ''));
+            $alasanWithJenis = '[' . $validated['jenis_retur'] . '] ' . ($alasanText !== '' ? $alasanText : '-');
             $retur = ReturBarang::create([
                 'no_retur' => $noRetur,
-                'id_penerimaan' => $validated['id_penerimaan'] ?? null,
-                'id_distribusi' => $validated['id_distribusi'] ?? null,
                 'id_unit_kerja' => $validated['id_unit_kerja'],
                 'id_gudang_asal' => $validated['id_gudang_asal'],
                 'id_gudang_tujuan' => $validated['id_gudang_tujuan'],
                 'id_pegawai_pengirim' => $validated['id_pegawai_pengirim'],
                 'tanggal_retur' => $validated['tanggal_retur'],
                 'status_retur' => $validated['status_retur'],
-                'alasan_retur' => $validated['alasan_retur'] ?? null,
-                'keterangan' => $validated['keterangan'] ?? null,
+                'alasan_retur' => $alasanWithJenis,
             ]);
 
             // Create detail retur
@@ -201,7 +177,6 @@ class ReturBarangController extends Controller
                     'qty_retur' => $detail['qty_retur'],
                     'id_satuan' => $detail['id_satuan'],
                     'alasan_retur_item' => $detail['alasan_retur_item'] ?? null,
-                    'keterangan' => $detail['keterangan'] ?? null,
                 ]);
             }
 
@@ -219,9 +194,6 @@ class ReturBarangController extends Controller
     public function show($id)
     {
         $retur = ReturBarang::with([
-            'penerimaan.distribusi',
-            'distribusi.gudangAsal',
-            'distribusi.gudangTujuan',
             'unitKerja',
             'gudangAsal',
             'gudangTujuan',
@@ -245,12 +217,9 @@ class ReturBarangController extends Controller
                 ->with('error', 'Retur yang sudah DITERIMA atau DITOLAK tidak dapat diedit.');
         }
 
-        $penerimaanQuery = PenerimaanBarang::where('status_penerimaan', 'DITERIMA');
-        
         if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
-                $penerimaanQuery->where('id_unit_kerja', $pegawai->id_unit_kerja);
                 $unitKerjas = MasterUnitKerja::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
                 
                 $gudangUnit = MasterGudang::where('jenis_gudang', 'UNIT')
@@ -260,7 +229,6 @@ class ReturBarangController extends Controller
                 $gudangs = collect([$gudangUnit, $gudangPusat])->filter();
                 $pegawais = MasterPegawai::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
             } else {
-                $penerimaanQuery->whereRaw('1 = 0');
                 $unitKerjas = collect([]);
                 $gudangs = collect([]);
                 $pegawais = collect([]);
@@ -271,10 +239,10 @@ class ReturBarangController extends Controller
             $pegawais = MasterPegawai::all();
         }
 
-        $penerimaans = $penerimaanQuery->get();
         $satuans = MasterSatuan::all();
-
-        return view('transaction.retur-barang.edit', compact('retur', 'penerimaans', 'unitKerjas', 'gudangs', 'pegawais', 'satuans'));
+        $jenisReturOptions = ReturBarang::jenisReturOptions();
+        $penerimaans = collect();
+        return view('transaction.retur-barang.edit', compact('retur', 'penerimaans', 'unitKerjas', 'gudangs', 'pegawais', 'satuans', 'jenisReturOptions'));
     }
 
     public function update(Request $request, $id)
@@ -288,22 +256,19 @@ class ReturBarangController extends Controller
         }
 
         $validated = $request->validate([
-            'id_penerimaan' => 'nullable|exists:penerimaan_barang,id_penerimaan',
-            'id_distribusi' => 'nullable|exists:transaksi_distribusi,id_distribusi',
             'tanggal_retur' => 'required|date',
             'id_unit_kerja' => 'required|exists:master_unit_kerja,id_unit_kerja',
             'id_gudang_asal' => 'required|exists:master_gudang,id_gudang',
             'id_gudang_tujuan' => 'required|exists:master_gudang,id_gudang',
             'id_pegawai_pengirim' => 'required|exists:master_pegawai,id',
             'status_retur' => 'required|in:DRAFT,DIAJUKAN',
+            'jenis_retur' => 'required|in:RUSAK,SISA,LAINNYA',
             'alasan_retur' => 'nullable|string',
-            'keterangan' => 'nullable|string',
             'detail' => 'required|array|min:1',
             'detail.*.id_inventory' => 'required|exists:data_inventory,id_inventory',
             'detail.*.qty_retur' => 'required|numeric|min:0',
             'detail.*.id_satuan' => 'required|exists:master_satuan,id_satuan',
             'detail.*.alasan_retur_item' => 'nullable|string',
-            'detail.*.keterangan' => 'nullable|string',
         ]);
 
         if (! $this->isPegawaiInUnit((int) $validated['id_pegawai_pengirim'], (int) $validated['id_unit_kerja'])) {
@@ -319,17 +284,16 @@ class ReturBarangController extends Controller
         DB::beginTransaction();
         try {
             // Update retur
+            $alasanText = trim((string) ($validated['alasan_retur'] ?? ''));
+            $alasanWithJenis = '[' . $validated['jenis_retur'] . '] ' . ($alasanText !== '' ? $alasanText : '-');
             $retur->update([
-                'id_penerimaan' => $validated['id_penerimaan'] ?? null,
-                'id_distribusi' => $validated['id_distribusi'] ?? null,
                 'tanggal_retur' => $validated['tanggal_retur'],
                 'id_unit_kerja' => $validated['id_unit_kerja'],
                 'id_gudang_asal' => $validated['id_gudang_asal'],
                 'id_gudang_tujuan' => $validated['id_gudang_tujuan'],
                 'id_pegawai_pengirim' => $validated['id_pegawai_pengirim'],
                 'status_retur' => $validated['status_retur'],
-                'alasan_retur' => $validated['alasan_retur'] ?? null,
-                'keterangan' => $validated['keterangan'] ?? null,
+                'alasan_retur' => $alasanWithJenis,
             ]);
 
             // Delete existing details
@@ -343,7 +307,6 @@ class ReturBarangController extends Controller
                     'qty_retur' => $detail['qty_retur'],
                     'id_satuan' => $detail['id_satuan'],
                     'alasan_retur_item' => $detail['alasan_retur_item'] ?? null,
-                    'keterangan' => $detail['keterangan'] ?? null,
                 ]);
             }
 
@@ -383,38 +346,6 @@ class ReturBarangController extends Controller
             return redirect()->route('transaction.retur-barang.index')
                 ->with('error', 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage());
         }
-    }
-
-    public function getPenerimaanDetail($id)
-    {
-        $penerimaan = PenerimaanBarang::with([
-            'detailPenerimaan.inventory.dataBarang',
-            'detailPenerimaan.satuan',
-            'distribusi.gudangTujuan',
-            'unitKerja'
-        ])->findOrFail($id);
-
-        $details = $penerimaan->detailPenerimaan->map(function($detail) {
-            return [
-                'id_inventory' => $detail->id_inventory,
-                'nama_barang' => $detail->inventory->dataBarang->nama_barang ?? '-',
-                'qty_diterima' => $detail->qty_diterima,
-                'id_satuan' => $detail->id_satuan,
-                'nama_satuan' => $detail->satuan->nama_satuan ?? '-',
-            ];
-        });
-
-        return response()->json([
-            'success' => true,
-            'penerimaan' => [
-                'id_penerimaan' => $penerimaan->id_penerimaan,
-                'no_penerimaan' => $penerimaan->no_penerimaan,
-                'id_distribusi' => $penerimaan->id_distribusi,
-                'unit_kerja' => $penerimaan->unitKerja->id_unit_kerja ?? null,
-                'gudang_tujuan' => $penerimaan->distribusi->gudangTujuan->id_gudang ?? null,
-            ],
-            'details' => $details,
-        ]);
     }
 
     /**
@@ -583,10 +514,11 @@ class ReturBarangController extends Controller
         $validated = $request->validate([
             'keterangan' => 'nullable|string|max:1000',
         ]);
-        
+        $catatanTolak = trim((string) ($validated['keterangan'] ?? 'Tidak ada keterangan'));
+        $existingAlasan = trim((string) ($retur->alasan_retur ?? ''));
         $retur->update([
             'status_retur' => 'DITOLAK',
-            'keterangan' => ($retur->keterangan ? $retur->keterangan . "\n\n" : '') . 'Ditolak: ' . ($validated['keterangan'] ?? 'Tidak ada keterangan'),
+            'alasan_retur' => trim($existingAlasan . "\n[DITOLAK] " . $catatanTolak),
         ]);
         
         return redirect()->route('transaction.retur-barang.show', $retur->id_retur)

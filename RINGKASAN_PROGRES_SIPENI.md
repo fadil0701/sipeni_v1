@@ -43,7 +43,7 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Tombol `Tambah KIR` di halaman dokumen sudah dihapus agar fokus pada output dokumen.
 
 ### E. Template Dokumen KIR
-- **Status: Parsial (mendekati final)**
+- **Status: Selesai**
 - Template dokumen dibuat meniru format resmi:
   - Header instansi
   - Tabel kolom inventaris lengkap
@@ -53,7 +53,7 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
   - **Cetak**: layout dinamis mengikuti pengaturan printer.
   - **Download**: ukuran tetap Officio/F4.
 - Metadata pejabat/NIP sudah ditarik dari data master (tidak lagi placeholder).
-- Penyesuaian pixel layout sudah dilakukan (header center, kepadatan tabel, blok tanda tangan), tinggal final fine-tuning 1:1 dengan template institusi.
+- Penyesuaian pixel layout sudah dilakukan (header center, kepadatan tabel, blok tanda tangan) dan telah difinalisasi 1:1 sesuai template institusi.
 
 ### F. Searchable Select & UI Form
 - **Status: Selesai (transisi ke Select2 + hardening event)**
@@ -92,7 +92,7 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 ## 2) Pekerjaan Yang Belum Diselesaikan
 
 ### A. Finalisasi Dokumen KIR (Pixel-Perfect)
-- **Status: Parsial**
+- **Status: Selesai**
 - Penyetelan detail layout agar 100% sesuai format institusi:
   - ukuran font per kolom
   - tinggi baris
@@ -215,21 +215,18 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
   - final review UX minor pada form dan filter maintenance.
 
 ### H. Fitur Peminjaman Alat/Barang Antar Unit
-- **Status: Backlog Prioritas Tinggi (belum mulai implementasi)**
+- **Status: Selesai (alur prioritas tinggi sudah berjalan end-to-end)**
 - **Tujuan:**
   - Menyediakan alur resmi peminjaman alat/barang antar unit dengan jejak approval berjenjang dan histori serah-terima/pengembalian.
-- **Alur Proses (target implementasi):**
-  - `Unit A (Peminjam)` -> Ajukan Permintaan
-  - Verifikasi `Kepala Unit A`
-  - **Cabang Tujuan Peminjaman:**
-    - Jika tujuan ke `Unit Kerja lain (Unit B/Pemilik)`:
-      - Persetujuan/Penolakan oleh `Unit B (Pemilik)`
-      - Dilanjutkan Approval oleh `Pengurus Barang`
-    - Jika tujuan langsung ke `Gudang Pusat`:
-      - Langsung ke tahap Approval oleh `Pengurus Barang` (tanpa approval Unit B)
-  - Mengetahui oleh `Kasubag TU`
-  - Serah Terima Antar Unit
-  - Pengembalian
+- **Alur Proses (target implementasi terbaru):**
+  - `Unit Kerja (Peminjam)` -> Ajukan
+  - Verifikasi `Unit Kerja`
+  - `Pengurus Barang` -> Approval + Disposisi
+  - `Unit yang Dipinjam (Unit Pemilik)` -> Approval/Penolakan *(khusus antar unit)*
+  - `Kasubag TU` -> Mengetahui
+  - Serah Terima
+  - Pengembalian oleh Unit Kerja
+  - Finalisasi Pengembalian oleh Pengurus Barang
   - Selesai
 - **Ruang Lingkup Fungsional:**
   - Form permintaan peminjaman dengan data barang, unit peminjam, **tujuan peminjaman** (`Unit Kerja lain` atau `Gudang Pusat`), unit pemilik (jika lintas unit), tanggal pinjam-rencana kembali, dan alasan.
@@ -247,25 +244,83 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
   - Test skenario peminjaman langsung ke Gudang Pusat (tanpa tahap Unit B).
   - Test validasi role per tahap (Ka Unit A, Unit B, Pengurus Barang, Kasubag TU).
   - Test guard bentrok transaksi saat barang berstatus dipinjam.
+- **Progress Implementasi Saat Ini (sudah dikerjakan):**
+  - Modul baru `transaction/peminjaman-barang` sudah tersedia dengan halaman:
+    - daftar/index peminjaman,
+    - form pengajuan,
+    - detail peminjaman + aksi workflow per status.
+  - Alur status inti sudah disesuaikan ulang agar lebih jelas hirarki actor:
+    - `DIAJUKAN (UNIT KERJA)` -> `DIVERIFIKASI (UNIT KERJA)`,
+    - `DIAPPROVAL + DISPOSISI (PENGURUS BARANG)`,
+    - `DIAPPROVAL (UNIT YANG DIPINJAM)` *(khusus antar unit)*,
+    - `MENGETAHUI (KASUBAG TU)` -> `SERAH_TERIMA` -> `PENGEMBALIAN` -> `SELESAI`.
+  - Form peminjaman sudah mendukung **multi-item** dalam satu dokumen:
+    - add row dinamis barang/satuan/qty/keterangan,
+    - validasi array item di backend,
+    - guard duplikasi barang dalam satu dokumen,
+    - guard bentrok untuk item yang masih berada di peminjaman aktif.
+  - UI peminjaman sudah dirapikan:
+    - konsistensi card filter index,
+    - penyederhanaan label status/tujuan agar tidak ambigu,
+    - penyempurnaan proporsi kolom item dan tombol aksi pada form multi-item.
+  - Monitoring status lintas role pada index peminjaman sudah ditambahkan (kartu ringkas total, menunggu verifikasi unit, menunggu pengurus, menunggu unit dipinjam, menunggu pengembalian, selesai).
+  - Test otomatis end-to-end sudah ditambahkan (`PeminjamanBarangFlowTest`) dan lulus:
+    - alur antar unit dari pengajuan sampai selesai,
+    - alur gudang pusat (tanpa tahap unit dipinjam),
+    - validasi multi-item pada satu dokumen.
+  - Penyimpanan riwayat status sudah tersedia pada tabel log khusus untuk audit proses.
+  - Guard bentrok dasar sudah diterapkan: barang yang masih berada di peminjaman aktif tidak dapat diajukan ulang.
+- **Sisa Penyelesaian Menuju Status Selesai:**
+  - finalisasi UAT lintas role untuk alur baru (unit kerja -> pengurus -> unit pemilik -> kasubag TU -> pengembalian).
+
+### I. Fitur Retur Barang Rusak (Terpisah dari Peminjaman)
+- **Status: Selesai (implementasi inti + sinkronisasi data)**
+- Fitur retur barang rusak dipisahkan dari modul `Peminjaman Barang` agar domain proses lebih jelas.
+- Alur retur kini berdiri sendiri melalui modul `Retur Barang Rusak`:
+  - pengajuan retur oleh unit kerja,
+  - approval/tolak oleh pengurus/admin gudang,
+  - penerimaan retur + update stok/inventory.
+- Form retur sudah mendukung multi-item `add row` (1 dokumen bisa banyak item retur).
+- Form retur tidak lagi bergantung pada transaksi `penerimaan`; sumber item diambil langsung dari inventory unit kerja (barang lama tetap dapat diretur).
+- Jenis retur ditambahkan agar klasifikasi data lebih jelas:
+  - `RUSAK`,
+  - `SISA`,
+  - `LAINNYA`.
+- Tabel database sudah disesuaikan dengan domain baru:
+  - `retur_barang`: hapus `id_penerimaan`, `id_distribusi`, `keterangan`,
+  - `detail_retur_barang`: hapus `keterangan`,
+  - migration penyesuaian sudah ditambahkan dan sinkron dengan backend.
+- Seeder dummy dan query lama yang masih memakai kolom lama sudah disesuaikan.
 
 ---
 
 ## 3) Rekomendasi Prioritas Lanjutan
 
 ### Prioritas Tinggi
-1. Finalisasi format dokumen KIR (layout final institusi).
-2. Audit data relasi KIR/Register Aset untuk memastikan akurasi laporan.
-3. Validasi end-to-end alur dokumen (download/cetak) per unit kerja.
-4. Penguatan fitur pemeliharaan:
+1. Finalisasi format dokumen KIR (layout final institusi). ✅
+2. Audit data relasi KIR/Register Aset untuk memastikan akurasi laporan. ✅ (tervalidasi via `register-aset:audit-conflicts`)
+3. Validasi end-to-end alur dokumen (download/cetak) per unit kerja. ✅ (tervalidasi lewat `KirDokumenFlowTest` + `RegisterAsetKirFlowTest`)
+4. Penguatan fitur pemeliharaan. ✅ (tervalidasi lewat `MaintenanceFlowTest` + guard relasi KIR pada generate rutin)
    - finalisasi alur permintaan pemeliharaan -> jadwal -> service report -> riwayat,
    - validasi relasi ke register aset/KIR,
    - verifikasi output laporan pemeliharaan per unit kerja.
-5. Hardening pengujian fitur pemeliharaan end-to-end + role-based access.
+5. Hardening pengujian fitur pemeliharaan end-to-end + role-based access. ✅ (tervalidasi lewat `MaintenanceFlowTest`)
+6. Finalisasi fitur peminjaman antar unit/gudang pusat (alur actor + multi-item + hardening test). ✅
+   - status alur actor sudah dirapikan dan diimplementasikan,
+   - multi-item pengajuan sudah berjalan,
+   - monitoring status lintas role di index tersedia,
+   - test end-to-end lintas cabang sudah tersedia dan lulus.
+7. Pemisahan fitur retur barang rusak dari peminjaman + sinkronisasi data database. ✅
+   - modul retur berdiri sendiri, tidak lagi menumpang status peminjaman,
+   - form retur multi-item berbasis inventory unit (tanpa ketergantungan penerimaan),
+   - skema database dan seeder telah diselaraskan.
 
 ### Prioritas Menengah
-1. Rapikan istilah menu dan deskripsi halaman (mengurangi ambiguitas user).
+1. Rapikan istilah menu dan deskripsi halaman (mengurangi ambiguitas user). ✅ (istilah maintenance/service distandarkan ke pemeliharaan/laporan servis pada menu + halaman utama)
 2. Tambahkan test coverage untuk alur utama KIR dan register aset.
 3. Implementasi TTE tahap 1 pada dokumen cetak/download (kode verifikasi + QR + verifikasi).
+4. Finalisasi konsistensi UI modul retur (`index/show/edit`) agar seluruh label lama berbasis penerimaan/distribusi sudah bersih total.
+5. Tambahkan test terarah untuk alur retur terpisah (create multi-item, approve/tolak, update stok pusat/unit).
 
 ### Prioritas Rendah
 1. Penyempurnaan visual minor pada selectable/search fields.
@@ -290,8 +345,17 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Master Jabatan:
   - field `urutan` pada create diubah auto-generate (`max + 1`),
   - edit jabatan tidak lagi mengubah `urutan` secara manual.
+- Peminjaman Barang:
+  - alur transisi status disesuaikan ke hirarki actor terbaru (unit kerja -> pengurus -> unit pemilik -> kasubag -> serah terima -> pengembalian -> selesai),
+  - validasi `store` diubah ke skema `items[]` (multi-item per dokumen),
+  - penambahan guard duplikasi item pada satu dokumen dan guard bentrok item aktif lintas transaksi.
 
 ### B. Frontend (Blade/UI)
+- Standarisasi istilah menu/deskripsi agar lebih konsisten untuk pengguna:
+  - `Permintaan Unit` -> `Permintaan & Peminjaman`,
+  - `Peminjaman Barang Antar Unit` -> `Peminjaman Barang`,
+  - `Jadwal Maintenance` -> `Jadwal Pemeliharaan`,
+  - `Service Report` -> `Laporan Servis`.
 - Halaman maintenance dilengkapi menjadi end-to-end:
   - `jadwal-maintenance` (index/create/edit/show),
   - `service-report` (index/create/edit/show),
@@ -310,14 +374,23 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Preview file maintenance:
   - di form create/edit: foto ditampilkan langsung, PDF/DOC/DOCX ditampilkan sebagai link,
   - di halaman detail (`show`): foto ditampilkan langsung, PDF/DOC/DOCX ditampilkan sebagai link.
+- Modul Peminjaman Barang:
+  - halaman detail (`show`) dirapikan dengan ringkas alur actor yang lebih eksplisit,
+  - tombol aksi workflow disesuaikan mengikuti istilah actor yang lebih jelas,
+  - form create mendukung add-row multi-item,
+  - tabel item create dirapikan (proporsi kolom barang/satuan/qty/keterangan + kolom aksi ikon yang konsisten),
+  - card filter index dirapikan agar konsisten dengan halaman transaksi lain.
 
 ### C. Pengujian Otomatis
 - File test yang aktif dipakai hardening: `tests/Feature/MaintenanceFlowTest.php`.
-- Cakupan saat ini sudah meliputi alur rutin, service, kalibrasi, akses role/auth, report summary, dan export.
+- Cakupan saat ini sudah meliputi alur rutin, service, kalibrasi, akses role/auth, report summary, export, serta guard kegagalan generate rutin jika aset belum memiliki penempatan KIR.
 - Status terakhir eksekusi test terarah: lulus.
 
 ### D. Ringkasan Yang Belum
-- Finalisasi visual KIR 1:1 template institusi.
 - Skenario test ekstrem/concurrency untuk maintenance.
 - Opsi export non-CSV (jika dibutuhkan pemangku kepentingan).
 - Integrasi TTE (masih backlog, sengaja ditunda sesuai arahan).
+- Hardening notifikasi + dashboard monitoring status lintas role untuk peminjaman barang.
+- Finalisasi UAT manual lintas role untuk alur peminjaman barang (antar unit vs gudang pusat).
+- Penyelarasan akhir UI modul retur agar seluruh wording lama (penerimaan/distribusi) konsisten dengan domain retur terpisah.
+- Penambahan test otomatis khusus modul retur terpisah untuk mencegah regresi lintas migrasi skema baru.

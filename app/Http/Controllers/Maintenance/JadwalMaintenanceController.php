@@ -169,7 +169,7 @@ class JadwalMaintenanceController extends Controller
      */
     public function generatePermintaan($id)
     {
-        $jadwal = JadwalMaintenance::with(['registerAset'])->findOrFail($id);
+        $jadwal = JadwalMaintenance::with(['registerAset.kartuInventarisRuangan'])->findOrFail($id);
 
         if ($jadwal->status !== 'AKTIF') {
             return back()->with('error', 'Hanya jadwal aktif yang bisa digenerate menjadi permintaan.');
@@ -177,6 +177,10 @@ class JadwalMaintenanceController extends Controller
 
         if (!$jadwal->registerAset || (string) $jadwal->registerAset->status_aset !== 'AKTIF') {
             return back()->with('error', 'Register aset tidak valid atau tidak aktif.');
+        }
+
+        if ($jadwal->registerAset->kartuInventarisRuangan()->count() === 0) {
+            return back()->with('error', 'Aset belum ditempatkan di KIR, tidak dapat generate permintaan rutin.');
         }
 
         DB::beginTransaction();
@@ -222,7 +226,7 @@ class JadwalMaintenanceController extends Controller
 
             return redirect()
                 ->route('maintenance.service-report.create', ['permintaan_id' => $permintaan->id_permintaan_pemeliharaan])
-                ->with('success', 'Permintaan rutin berhasil digenerate. Lanjutkan isi Service Report.');
+                ->with('success', 'Permintaan rutin berhasil digenerate. Lanjutkan isi Laporan Servis.');
         } catch (\Throwable $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal generate permintaan rutin: ' . $e->getMessage());

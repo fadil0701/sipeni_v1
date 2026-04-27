@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $jenisReturOptions = \App\Models\ReturBarang::jenisReturOptions();
+    $parsedAlasan = preg_replace('/^\[(RUSAK|SISA|LAINNYA)\]\s*/', '', (string) $retur->alasan_retur);
+@endphp
 <div class="mb-4">
     <a href="{{ route('transaction.retur-barang.index') }}" class="text-blue-600 hover:text-blue-900 inline-flex items-center">
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,13 +135,17 @@
                         <dd class="text-sm font-semibold text-gray-900">{{ $retur->pegawaiPengirim->nama_pegawai ?? '-' }}</dd>
                     </div>
                     <div>
+                        <dt class="text-sm font-medium text-gray-500 mb-1">Jenis Retur</dt>
+                        <dd class="text-sm font-semibold text-gray-900">{{ $jenisReturOptions[$retur->jenis_retur] ?? 'Lainnya' }}</dd>
+                    </div>
+                    <div>
                         <dt class="text-sm font-medium text-gray-500 mb-1">Tanggal Retur</dt>
                         <dd class="text-sm font-semibold text-gray-900">{{ $retur->tanggal_retur->format('d/m/Y') }}</dd>
                     </div>
                     @if($retur->alasan_retur)
                     <div class="sm:col-span-2">
                         <dt class="text-sm font-medium text-gray-500 mb-1">Alasan Retur</dt>
-                        <dd class="text-sm text-gray-900">{{ $retur->alasan_retur }}</dd>
+                        <dd class="text-sm text-gray-900">{{ $parsedAlasan !== '' ? $parsedAlasan : '-' }}</dd>
                     </div>
                     @endif
                     @if($retur->keterangan)

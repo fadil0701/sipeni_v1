@@ -11,7 +11,7 @@ class MasterUnitKerjaSeeder extends Seeder
     {
         $rows = [
             ['kode_unit_kerja' => '10000000011', 'nama_unit_kerja' => 'MANAJEMEN'],
-            ['kode_unit_kerja' => '10000000012', 'nama_unit_kerja' => 'GUDANG PUSAT'],
+            ['kode_unit_kerja' => '10000000012', 'nama_unit_kerja' => 'GUDANG'],
             ['kode_unit_kerja' => '10000000013', 'nama_unit_kerja' => 'KLINIK UTAMA BALAIKOTA'],
             ['kode_unit_kerja' => '31710300014', 'nama_unit_kerja' => 'KLINIK PRATAMA SATPELKES DPRD'],
             ['kode_unit_kerja' => '31710300002', 'nama_unit_kerja' => 'KLINIK PRATAMA SATPELKES BALAIKOTA'],

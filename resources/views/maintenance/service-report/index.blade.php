@@ -3,10 +3,10 @@
 @section('content')
 <div class="mb-6 flex justify-between items-center">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">Service Report</h1>
+        <h1 class="text-2xl font-bold text-gray-900">Laporan Servis</h1>
         <p class="text-sm text-gray-600 mt-1">Laporan hasil pengerjaan pemeliharaan aset</p>
     </div>
-    <a href="{{ route('maintenance.service-report.create') }}" class="px-4 py-2 bg-blue-600 text-white rounded-md">Tambah Service Report</a>
+    <a href="{{ route('maintenance.service-report.create') }}" class="px-4 py-2 bg-blue-600 text-white rounded-md">Tambah Laporan Servis</a>
 </div>
 <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200" @if($serviceReports instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $serviceReports->firstItem() }}" @endif>
@@ -31,7 +31,7 @@
                     <td class="px-4 py-3 text-sm text-right"><a href="{{ route('maintenance.service-report.show', $report->id_service_report) }}" class="text-blue-600">Detail</a></td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">Belum ada service report.</td></tr>
+                <tr><td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">Belum ada laporan servis.</td></tr>
             @endforelse
         </tbody>
     </table>

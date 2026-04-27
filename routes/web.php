@@ -25,6 +25,7 @@ use App\Http\Controllers\Inventory\DataStockController;
 use App\Http\Controllers\Inventory\DataInventoryController;
 use App\Http\Controllers\Transaction\DistribusiController;
 use App\Http\Controllers\Transaction\PermintaanBarangController;
+use App\Http\Controllers\Transaction\PeminjamanBarangController;
 use App\Http\Controllers\Transaction\PenerimaanBarangController;
 use App\Http\Controllers\Transaction\ReturBarangController;
 use App\Http\Controllers\Transaction\PemakaianBarangController;
@@ -61,6 +62,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('api/master/gudang-by-unit/{id_unit_kerja}', [MasterLookupController::class, 'gudangByUnit'])->name('api.master.gudang-by-unit');
     Route::get('api/master/ruangan-by-unit/{id_unit_kerja}', [MasterLookupController::class, 'ruanganByUnit'])->name('api.master.ruangan-by-unit');
     Route::get('api/master/pegawai-by-unit/{id_unit_kerja}', [MasterLookupController::class, 'pegawaiByUnit'])->name('api.master.pegawai-by-unit');
+    Route::get('api/master/inventory-by-unit/{id_unit_kerja}', [MasterLookupController::class, 'inventoryByUnit'])->name('api.master.inventory-by-unit');
     
     // Master Manajemen - Admin only
     Route::prefix('master-manajemen')->name('master-manajemen.')->middleware(['role:admin'])->group(function () {
@@ -135,6 +137,21 @@ Route::middleware(['auth'])->group(function () {
         // Permintaan Barang - Pegawai, Kepala Unit, Kasubbag TU, Kepala Pusat, Admin
         Route::resource('permintaan-barang', PermintaanBarangController::class)->middleware(['role:admin,pegawai,kepala_unit,kasubbag_tu,kepala_pusat']);
         Route::post('permintaan-barang/{id}/ajukan', [PermintaanBarangController::class, 'ajukan'])->name('permintaan-barang.ajukan')->middleware(['role:admin,pegawai']);
+
+        // Peminjaman Barang Antar Unit / Gudang Pusat
+        Route::get('peminjaman-barang', [PeminjamanBarangController::class, 'index'])->name('peminjaman-barang.index')->middleware(['role:admin,pegawai,kepala_unit,kasubbag_tu,admin_gudang,admin_gudang_unit']);
+        Route::get('peminjaman-barang/create', [PeminjamanBarangController::class, 'create'])->name('peminjaman-barang.create')->middleware(['role:admin,pegawai,kepala_unit']);
+        Route::post('peminjaman-barang', [PeminjamanBarangController::class, 'store'])->name('peminjaman-barang.store')->middleware(['role:admin,pegawai,kepala_unit']);
+        Route::get('peminjaman-barang/{id}', [PeminjamanBarangController::class, 'show'])->name('peminjaman-barang.show')->middleware(['role:admin,pegawai,kepala_unit,kasubbag_tu,admin_gudang,admin_gudang_unit']);
+        Route::post('peminjaman-barang/{id}/verifikasi-unit-a', [PeminjamanBarangController::class, 'verifikasiUnitA'])->name('peminjaman-barang.verifikasi-unit-a')->middleware(['role:admin,kepala_unit']);
+        Route::post('peminjaman-barang/{id}/approve-unit-b', [PeminjamanBarangController::class, 'approveUnitB'])->name('peminjaman-barang.approve-unit-b')->middleware(['role:admin,kepala_unit']);
+        Route::post('peminjaman-barang/{id}/reject-unit-b', [PeminjamanBarangController::class, 'rejectUnitB'])->name('peminjaman-barang.reject-unit-b')->middleware(['role:admin,kepala_unit']);
+        Route::post('peminjaman-barang/{id}/approve-pengurus', [PeminjamanBarangController::class, 'approvePengurus'])->name('peminjaman-barang.approve-pengurus')->middleware(['role:admin,admin_gudang']);
+        Route::post('peminjaman-barang/{id}/reject-pengurus', [PeminjamanBarangController::class, 'rejectPengurus'])->name('peminjaman-barang.reject-pengurus')->middleware(['role:admin,admin_gudang']);
+        Route::post('peminjaman-barang/{id}/mengetahui-kasubag-tu', [PeminjamanBarangController::class, 'mengetahuiKasubagTu'])->name('peminjaman-barang.mengetahui-kasubag-tu')->middleware(['role:admin,kasubbag_tu']);
+        Route::post('peminjaman-barang/{id}/serah-terima', [PeminjamanBarangController::class, 'serahTerima'])->name('peminjaman-barang.serah-terima')->middleware(['role:admin,admin_gudang,admin_gudang_unit']);
+        Route::post('peminjaman-barang/{id}/pengembalian', [PeminjamanBarangController::class, 'pengembalian'])->name('peminjaman-barang.pengembalian')->middleware(['role:admin,pegawai,kepala_unit']);
+        Route::post('peminjaman-barang/{id}/selesai', [PeminjamanBarangController::class, 'selesai'])->name('peminjaman-barang.selesai')->middleware(['role:admin,admin_gudang']);
         
         // Approval - Multi-level approval
         Route::prefix('approval')->name('approval.')->group(function () {
@@ -189,7 +206,6 @@ Route::middleware(['auth'])->group(function () {
         // Retur Barang - Admin Gudang (semua kategori), Pegawai, Kepala Unit, Admin
         // Route untuk return barang dari gudang unit ke gudang pusat
         Route::resource('retur-barang', ReturBarangController::class)->middleware(['role:admin,admin_gudang,admin_gudang_aset,admin_gudang_persediaan,admin_gudang_farmasi,admin_gudang_unit,pegawai,kepala_unit']);
-        Route::get('retur-barang/penerimaan/{id}/detail', [ReturBarangController::class, 'getPenerimaanDetail'])->name('retur-barang.penerimaan.detail')->middleware(['role:admin,admin_gudang,admin_gudang_aset,admin_gudang_persediaan,admin_gudang_farmasi,admin_gudang_unit,pegawai,kepala_unit']);
         Route::post('retur-barang/{id}/terima', [ReturBarangController::class, 'terima'])->name('retur-barang.terima')->middleware(['role:admin,admin_gudang']);
         Route::post('retur-barang/{id}/tolak', [ReturBarangController::class, 'tolak'])->name('retur-barang.tolak')->middleware(['role:admin,admin_gudang']);
         Route::post('retur-barang/{id}/ajukan', [ReturBarangController::class, 'ajukan'])->name('retur-barang.ajukan')->middleware(['role:admin,admin_gudang,pegawai,kepala_unit']);

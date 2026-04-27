@@ -12,13 +12,17 @@
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200">
     <div class="px-6 py-5 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">Edit Retur Barang</h2>
+        <h2 class="text-xl font-semibold text-gray-900">Edit Retur Barang (Terpisah dari Peminjaman)</h2>
         <p class="text-sm text-gray-600 mt-1">No. Retur: <span class="font-semibold">{{ $retur->no_retur }}</span></p>
     </div>
     
     <form action="{{ route('transaction.retur-barang.update', $retur->id_retur) }}" method="POST" class="p-6" id="formRetur">
         @csrf
         @method('PUT')
+        @php
+            $parsedJenis = $retur->jenis_retur;
+            $parsedAlasan = preg_replace('/^\[(RUSAK|SISA|LAINNYA)\]\s*/', '', (string) $retur->alasan_retur);
+        @endphp
         
         <div class="space-y-6">
             <!-- Informasi Retur -->
@@ -175,26 +179,35 @@
                     </div>
 
                     <div class="sm:col-span-2">
+                        <label for="jenis_retur" class="block text-sm font-medium text-gray-700 mb-2">
+                            Jenis Retur <span class="text-red-500">*</span>
+                        </label>
+                        <select
+                            id="jenis_retur"
+                            name="jenis_retur"
+                            required
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('jenis_retur') border-red-500 @enderror"
+                        >
+                            @foreach($jenisReturOptions as $value => $label)
+                                <option value="{{ $value }}" {{ old('jenis_retur', $parsedJenis) === $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('jenis_retur')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="sm:col-span-2">
                         <label for="alasan_retur" class="block text-sm font-medium text-gray-700 mb-2">Alasan Retur</label>
                         <textarea 
                             id="alasan_retur" 
                             name="alasan_retur" 
                             rows="3"
-                            placeholder="Masukkan alasan retur barang"
+                            placeholder="Masukkan alasan retur barang (contoh: rusak saat penggunaan)"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        >{{ old('alasan_retur', $retur->alasan_retur) }}</textarea>
+                        >{{ old('alasan_retur', $parsedAlasan) }}</textarea>
                     </div>
 
-                    <div class="sm:col-span-2">
-                        <label for="keterangan" class="block text-sm font-medium text-gray-700 mb-2">Keterangan</label>
-                        <textarea 
-                            id="keterangan" 
-                            name="keterangan" 
-                            rows="3"
-                            placeholder="Masukkan keterangan tambahan"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        >{{ old('keterangan', $retur->keterangan) }}</textarea>
-                    </div>
                 </div>
             </div>
 

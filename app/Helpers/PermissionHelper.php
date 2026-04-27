@@ -76,6 +76,11 @@ class PermissionHelper
                 'transaction.permintaan-barang.index',
                 'transaction.permintaan-barang.show',
                 'transaction.permintaan-barang.edit',
+                'transaction.peminjaman-barang.index',
+                'transaction.peminjaman-barang.create',
+                'transaction.peminjaman-barang.store',
+                'transaction.peminjaman-barang.show',
+                'transaction.peminjaman-barang.pengembalian',
                 'transaction.penerimaan-barang.index',
                 'transaction.penerimaan-barang.show',
                 'transaction.penerimaan-barang.create',
@@ -102,6 +107,12 @@ class PermissionHelper
             'kepala_unit' => [
                 'transaction.permintaan-barang.index',
                 'transaction.permintaan-barang.show',
+                'transaction.peminjaman-barang.index',
+                'transaction.peminjaman-barang.show',
+                'transaction.peminjaman-barang.verifikasi-unit-a',
+                'transaction.peminjaman-barang.approve-unit-b',
+                'transaction.peminjaman-barang.reject-unit-b',
+                'transaction.peminjaman-barang.pengembalian',
                 'transaction.approval.index', // Bisa melihat daftar approval
                 'transaction.approval.show', // Bisa melihat detail approval
                 'transaction.approval.mengetahui', // Action khusus untuk mengetahui
@@ -131,6 +142,9 @@ class PermissionHelper
             'kasubbag_tu' => [
                 'transaction.permintaan-barang.index',
                 'transaction.permintaan-barang.show',
+                'transaction.peminjaman-barang.index',
+                'transaction.peminjaman-barang.show',
+                'transaction.peminjaman-barang.mengetahui-kasubag-tu',
                 'transaction.approval.index', // Bisa melihat daftar approval
                 'transaction.approval.show', // Bisa melihat detail approval
                 'transaction.approval.verifikasi', // Action khusus untuk verifikasi
@@ -189,6 +203,12 @@ class PermissionHelper
                 'transaction.approval.index',
                 'transaction.approval.show',
                 'transaction.approval.disposisi', // Bisa melihat disposisi
+                'transaction.peminjaman-barang.index',
+                'transaction.peminjaman-barang.show',
+                'transaction.peminjaman-barang.approve-pengurus',
+                'transaction.peminjaman-barang.reject-pengurus',
+                'transaction.peminjaman-barang.serah-terima',
+                'transaction.peminjaman-barang.selesai',
                 'asset.register-aset.index',
                 'asset.register-aset.show',
                 'asset.register-aset.create',
@@ -243,6 +263,7 @@ class PermissionHelper
                 'transaction.penerimaan-barang.index', 'transaction.penerimaan-barang.show', 'transaction.penerimaan-barang.create', 'transaction.penerimaan-barang.store', 'transaction.penerimaan-barang.edit', 'transaction.penerimaan-barang.update',
                 'transaction.retur-barang.index', 'transaction.retur-barang.show', 'transaction.retur-barang.create', 'transaction.retur-barang.store',
                 'transaction.pemakaian-barang.index', 'transaction.pemakaian-barang.show', 'transaction.pemakaian-barang.create', 'transaction.pemakaian-barang.store',
+                'transaction.peminjaman-barang.index', 'transaction.peminjaman-barang.show', 'transaction.peminjaman-barang.serah-terima',
                 'asset.register-aset.index', 'asset.register-aset.show', 'asset.register-aset.edit', 'asset.register-aset.update',
                 'reports.stock-gudang', 'master.gudang.index', 'master.gudang.show',
             ],
@@ -457,6 +478,7 @@ class PermissionHelper
                 'permission' => null,
                 'submenus' => [
                     'permintaan-barang' => ['route' => 'transaction.permintaan-barang.index', 'permission' => 'transaction.permintaan-barang.index'],
+                    'peminjaman-barang' => ['route' => 'transaction.peminjaman-barang.index', 'permission' => 'transaction.peminjaman-barang.index'],
                     'permintaan-pemeliharaan' => ['route' => 'maintenance.permintaan-pemeliharaan.index', 'permission' => 'maintenance.permintaan-pemeliharaan.index'],
                     'permintaan-pengadaan-barang' => ['route' => 'planning.rku.index', 'permission' => 'planning.rku.index'],
                 ],

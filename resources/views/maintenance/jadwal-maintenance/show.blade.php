@@ -4,11 +4,11 @@
 <div class="mb-4">
     <a href="{{ route('maintenance.jadwal-maintenance.index') }}" class="text-blue-600 hover:text-blue-900 inline-flex items-center">
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-        Kembali ke Jadwal Maintenance
+        Kembali ke Jadwal Pemeliharaan
     </a>
 </div>
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
-    <h2 class="text-xl font-semibold text-gray-900 mb-4">Detail Jadwal Maintenance</h2>
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">Detail Jadwal Pemeliharaan</h2>
     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
         <div><dt class="text-gray-500">Nomor Register</dt><dd class="font-medium">{{ $jadwal->registerAset->nomor_register ?? '-' }}</dd></div>
         <div><dt class="text-gray-500">Aset</dt><dd class="font-medium">{{ $jadwal->registerAset->inventory->dataBarang->nama_barang ?? '-' }}</dd></div>

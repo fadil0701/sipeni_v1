@@ -4,13 +4,13 @@
 <div class="mb-4">
     <a href="{{ route('maintenance.jadwal-maintenance.index') }}" class="text-blue-600 hover:text-blue-900 inline-flex items-center">
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-        Kembali ke Jadwal Maintenance
+        Kembali ke Jadwal Pemeliharaan
     </a>
 </div>
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200">
     <div class="px-6 py-5 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">Edit Jadwal Maintenance</h2>
+        <h2 class="text-xl font-semibold text-gray-900">Edit Jadwal Pemeliharaan</h2>
     </div>
     <form action="{{ route('maintenance.jadwal-maintenance.update', $jadwal->id_jadwal) }}" method="POST" class="p-6 space-y-6">
         @csrf

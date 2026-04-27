@@ -5,7 +5,7 @@
 <div class="bg-white rounded-lg border border-gray-200 p-6">
     <div class="flex justify-between items-start">
         <div>
-            <h2 class="text-xl font-semibold">Detail Service Report</h2>
+            <h2 class="text-xl font-semibold">Detail Laporan Servis</h2>
             <p class="text-sm text-gray-600">{{ $serviceReport->no_service_report }}</p>
         </div>
         <a href="{{ route('maintenance.service-report.edit', $serviceReport->id_service_report) }}" class="px-4 py-2 bg-blue-600 text-white rounded-md">Edit</a>
@@ -13,14 +13,14 @@
     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 text-sm">
         <div><dt class="text-gray-500">Nomor Register</dt><dd class="font-medium">{{ $serviceReport->registerAset->nomor_register ?? '-' }}</dd></div>
         <div><dt class="text-gray-500">Nama Barang</dt><dd class="font-medium">{{ $serviceReport->registerAset->inventory->dataBarang->nama_barang ?? '-' }}</dd></div>
-        <div><dt class="text-gray-500">Tanggal Service</dt><dd class="font-medium">{{ optional($serviceReport->tanggal_service)->format('d/m/Y') }}</dd></div>
+        <div><dt class="text-gray-500">Tanggal Servis</dt><dd class="font-medium">{{ optional($serviceReport->tanggal_service)->format('d/m/Y') }}</dd></div>
         <div><dt class="text-gray-500">Tanggal Selesai</dt><dd class="font-medium">{{ optional($serviceReport->tanggal_selesai)->format('d/m/Y') ?? '-' }}</dd></div>
         <div><dt class="text-gray-500">Jenis</dt><dd class="font-medium">{{ $serviceReport->jenis_service }}</dd></div>
         <div><dt class="text-gray-500">Status</dt><dd class="font-medium">{{ $serviceReport->status_service }}</dd></div>
         <div><dt class="text-gray-500">Vendor</dt><dd class="font-medium">{{ $serviceReport->vendor ?: '-' }}</dd></div>
         <div><dt class="text-gray-500">Teknisi</dt><dd class="font-medium">{{ $serviceReport->teknisi ?: '-' }}</dd></div>
         <div><dt class="text-gray-500">Total Biaya</dt><dd class="font-medium">Rp {{ number_format((float) $serviceReport->total_biaya, 2, ',', '.') }}</dd></div>
-        <div><dt class="text-gray-500">Kondisi Setelah Service</dt><dd class="font-medium">{{ $serviceReport->kondisi_setelah_service ?: '-' }}</dd></div>
+        <div><dt class="text-gray-500">Kondisi Setelah Servis</dt><dd class="font-medium">{{ $serviceReport->kondisi_setelah_service ?: '-' }}</dd></div>
         <div class="sm:col-span-2"><dt class="text-gray-500">Deskripsi Kerja</dt><dd class="font-medium whitespace-pre-wrap">{{ $serviceReport->deskripsi_kerja ?: '-' }}</dd></div>
         <div class="sm:col-span-2"><dt class="text-gray-500">Tindakan</dt><dd class="font-medium whitespace-pre-wrap">{{ $serviceReport->tindakan_yang_dilakukan ?: '-' }}</dd></div>
         <div class="sm:col-span-2"><dt class="text-gray-500">Sparepart</dt><dd class="font-medium whitespace-pre-wrap">{{ $serviceReport->sparepart_yang_diganti ?: '-' }}</dd></div>

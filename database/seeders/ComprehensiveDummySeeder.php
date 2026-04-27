@@ -409,15 +409,12 @@ class ComprehensiveDummySeeder extends Seeder
             $returId = DB::table('retur_barang')->where('no_retur', 'RTR-DMY-001')->value('id_retur')
                 ?? DB::table('retur_barang')->insertGetId([
                     'no_retur' => 'RTR-DMY-001',
-                    'id_penerimaan' => $penerimaanId,
-                    'id_distribusi' => $distribusiId,
                     'id_unit_kerja' => $ukAId,
                     'id_gudang_asal' => $gudangUnitAId,
                     'id_gudang_tujuan' => $gudangPusatId,
                     'id_pegawai_pengirim' => $pegawaiAId,
                     'tanggal_retur' => Carbon::today()->subDays(7)->toDateString(),
                     'status_retur' => 'DIAJUKAN',
-                    'keterangan' => 'Retur dummy',
                     'alasan_retur' => 'Barang berlebih',
                     'created_at' => $now,
                     'updated_at' => $now,
@@ -429,7 +426,6 @@ class ComprehensiveDummySeeder extends Seeder
                     'qty_retur' => 2,
                     'id_satuan' => $satuanId,
                     'alasan_retur_item' => 'Dummy item retur',
-                    'keterangan' => 'Detail retur dummy',
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]

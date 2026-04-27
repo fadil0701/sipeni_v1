@@ -122,7 +122,7 @@
                             @php($permintaanOpen = $isRoute(['transaction.permintaan-barang.*', 'maintenance.permintaan-pemeliharaan.*', 'planning.rku.*', 'user.requests.*']))
                             <li>
                                 <div class="flex items-center px-4 py-2 rounded-lg text-blue-200 hover:bg-blue-800 cursor-pointer" onclick="toggleSubmenu('permintaan-unit')">
-                                    <span>Permintaan Unit</span>
+                                    <span>Transaksi</span>
                                     <svg id="permintaan-unit-arrow" class="w-4 h-4 ml-auto transition-transform {{ $permintaanOpen ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </div>
                                 <ul id="permintaan-unit-submenu" class="{{ $groupClass($permintaanOpen) }}">
@@ -130,12 +130,15 @@
                                         <li><a href="{{ route('transaction.permintaan-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.permintaan-barang.*'])) }}">Permintaan Barang</a></li>
                                     @elseif(PermissionHelper::canAccess($currentUser, 'user.requests.index'))
                                         <li><a href="{{ route('user.requests.index') }}" class="{{ $linkClass($isRoute(['user.requests.*'])) }}">Permintaan Barang</a></li>
-                                    @endif
+                                    @endif                                   
                                     @if(PermissionHelper::canAccess($currentUser, 'maintenance.permintaan-pemeliharaan.index'))
                                         <li><a href="{{ route('maintenance.permintaan-pemeliharaan.index') }}" class="{{ $linkClass($isRoute(['maintenance.permintaan-pemeliharaan.*'])) }}">Permintaan Pemeliharaan</a></li>
                                     @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'transaction.peminjaman-barang.index'))
+                                        <li><a href="{{ route('transaction.peminjaman-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.peminjaman-barang.*'])) }}">Peminjaman Barang</a></li>
+                                    @endif
                                     @if(PermissionHelper::canAccess($currentUser, 'planning.rku.index'))
-                                        <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass($isRoute(['planning.rku.*'])) }}">Permintaan RKU</a></li>
+                                        <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass($isRoute(['planning.rku.*'])) }}">Input RKU</a></li>
                                     @endif
                                 </ul>
                             </li>
@@ -221,7 +224,7 @@
                                         <li><a href="{{ route('transaction.penerimaan-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.penerimaan-barang.*'])) }}">Penerimaan Barang</a></li>
                                     @endif
                                     @if(PermissionHelper::canAccess($currentUser, 'transaction.retur-barang.index'))
-                                        <li><a href="{{ route('transaction.retur-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.retur-barang.*'])) }}">Retur Barang</a></li>
+                                        <li><a href="{{ route('transaction.retur-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.retur-barang.*'])) }}">Retur Barang Rusak</a></li>
                                     @endif
                                     @if(PermissionHelper::canAccess($currentUser, 'transaction.pemakaian-barang.index'))
                                         <li><a href="{{ route('transaction.pemakaian-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.pemakaian-barang.*'])) }}">Pemakaian Barang</a></li>
@@ -287,9 +290,9 @@
                                     <svg id="maintenance-arrow" class="w-4 h-4 ml-auto transition-transform {{ $maintOpen ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </div>
                                 <ul id="maintenance-submenu" class="{{ $groupClass($maintOpen) }}">
-                                    <li><a href="{{ route('maintenance.jadwal-maintenance.index') }}" class="{{ $linkClass($isRoute(['maintenance.jadwal-maintenance.*'])) }}">Jadwal Maintenance</a></li>
+                                    <li><a href="{{ route('maintenance.jadwal-maintenance.index') }}" class="{{ $linkClass($isRoute(['maintenance.jadwal-maintenance.*'])) }}">Jadwal Pemeliharaan</a></li>
                                     <li><a href="{{ route('maintenance.kalibrasi-aset.index') }}" class="{{ $linkClass($isRoute(['maintenance.kalibrasi-aset.*'])) }}">Kalibrasi</a></li>
-                                    <li><a href="{{ route('maintenance.service-report.index') }}" class="{{ $linkClass($isRoute(['maintenance.service-report.*'])) }}">Service Report</a></li>
+                                    <li><a href="{{ route('maintenance.service-report.index') }}" class="{{ $linkClass($isRoute(['maintenance.service-report.*'])) }}">Laporan Servis</a></li>
                                 </ul>
                             </li>
                         @endif

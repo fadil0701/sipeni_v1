@@ -3,7 +3,7 @@
 @section('content')
 <div class="mb-4"><a href="{{ route('maintenance.service-report.index') }}" class="text-blue-600 hover:text-blue-900">Kembali ke daftar</a></div>
 <div class="bg-white rounded-lg border border-gray-200 p-6">
-    <h2 class="text-xl font-semibold mb-4">Tambah Service Report</h2>
+    <h2 class="text-xl font-semibold mb-4">Tambah Laporan Servis</h2>
     <form method="POST" action="{{ route('maintenance.service-report.store') }}" enctype="multipart/form-data" class="space-y-4">
         @csrf
         <div>
@@ -18,9 +18,9 @@
             </select>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div><label class="block text-sm font-medium mb-2">Tanggal Service</label><input type="date" name="tanggal_service" value="{{ old('tanggal_service', now()->toDateString()) }}" required class="block w-full border border-gray-300 rounded-md px-3 py-2"></div>
+            <div><label class="block text-sm font-medium mb-2">Tanggal Servis</label><input type="date" name="tanggal_service" value="{{ old('tanggal_service', now()->toDateString()) }}" required class="block w-full border border-gray-300 rounded-md px-3 py-2"></div>
             <div><label class="block text-sm font-medium mb-2">Tanggal Selesai</label><input type="date" name="tanggal_selesai" value="{{ old('tanggal_selesai') }}" class="block w-full border border-gray-300 rounded-md px-3 py-2"></div>
-            <div><label class="block text-sm font-medium mb-2">Jenis Service</label><select name="jenis_service" required class="block w-full border border-gray-300 rounded-md px-3 py-2">@foreach(['RUTIN','KALIBRASI','PERBAIKAN','PENGGANTIAN_SPAREPART'] as $jenis)<option value="{{ $jenis }}" @selected(old('jenis_service')===$jenis)>{{ $jenis }}</option>@endforeach</select></div>
+            <div><label class="block text-sm font-medium mb-2">Jenis Servis</label><select name="jenis_service" required class="block w-full border border-gray-300 rounded-md px-3 py-2">@foreach(['RUTIN','KALIBRASI','PERBAIKAN','PENGGANTIAN_SPAREPART'] as $jenis)<option value="{{ $jenis }}" @selected(old('jenis_service')===$jenis)>{{ $jenis }}</option>@endforeach</select></div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label class="block text-sm font-medium mb-2">Vendor</label><input type="text" name="vendor" value="{{ old('vendor') }}" class="block w-full border border-gray-300 rounded-md px-3 py-2"></div>
@@ -40,9 +40,9 @@
             </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div><label class="block text-sm font-medium mb-2">Biaya Service</label><input type="number" step="0.01" min="0" name="biaya_service" value="{{ old('biaya_service', 0) }}" class="block w-full border border-gray-300 rounded-md px-3 py-2"></div>
+            <div><label class="block text-sm font-medium mb-2">Biaya Servis</label><input type="number" step="0.01" min="0" name="biaya_service" value="{{ old('biaya_service', 0) }}" class="block w-full border border-gray-300 rounded-md px-3 py-2"></div>
             <div><label class="block text-sm font-medium mb-2">Biaya Sparepart</label><input type="number" step="0.01" min="0" name="biaya_sparepart" value="{{ old('biaya_sparepart', 0) }}" class="block w-full border border-gray-300 rounded-md px-3 py-2"></div>
-            <div><label class="block text-sm font-medium mb-2">Kondisi Setelah Service</label><select name="kondisi_setelah_service" class="block w-full border border-gray-300 rounded-md px-3 py-2"><option value="">-</option>@foreach(['BAIK','RUSAK_RINGAN','RUSAK_BERAT','TIDAK_BISA_DIPERBAIKI'] as $kondisi)<option value="{{ $kondisi }}" @selected(old('kondisi_setelah_service')===$kondisi)>{{ $kondisi }}</option>@endforeach</select></div>
+            <div><label class="block text-sm font-medium mb-2">Kondisi Setelah Servis</label><select name="kondisi_setelah_service" class="block w-full border border-gray-300 rounded-md px-3 py-2"><option value="">-</option>@foreach(['BAIK','RUSAK_RINGAN','RUSAK_BERAT','TIDAK_BISA_DIPERBAIKI'] as $kondisi)<option value="{{ $kondisi }}" @selected(old('kondisi_setelah_service')===$kondisi)>{{ $kondisi }}</option>@endforeach</select></div>
         </div>
         <div><label class="block text-sm font-medium mb-2">Deskripsi Kerja</label><textarea name="deskripsi_kerja" rows="3" class="block w-full border border-gray-300 rounded-md px-3 py-2">{{ old('deskripsi_kerja') }}</textarea></div>
         <div><label class="block text-sm font-medium mb-2">Tindakan</label><textarea name="tindakan_yang_dilakukan" rows="3" class="block w-full border border-gray-300 rounded-md px-3 py-2">{{ old('tindakan_yang_dilakukan') }}</textarea></div>

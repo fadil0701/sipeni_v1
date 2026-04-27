@@ -4,8 +4,8 @@
 <!-- Page Header -->
 <div class="mb-6 flex justify-between items-center">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">Jadwal Maintenance</h1>
-        <p class="mt-1 text-sm text-gray-600">Daftar jadwal maintenance aset</p>
+        <h1 class="text-2xl font-bold text-gray-900">Jadwal Pemeliharaan</h1>
+        <p class="mt-1 text-sm text-gray-600">Daftar jadwal pemeliharaan aset</p>
     </div>
     <a 
         href="{{ route('maintenance.jadwal-maintenance.create') }}" 
@@ -201,7 +201,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                             <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data</h3>
-                            <p class="mt-1 text-sm text-gray-500">Mulai dengan membuat jadwal maintenance baru.</p>
+                            <p class="mt-1 text-sm text-gray-500">Mulai dengan membuat jadwal pemeliharaan baru.</p>
                         </td>
                     </tr>
                 @endforelse

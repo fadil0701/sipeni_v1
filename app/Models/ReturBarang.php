@@ -8,14 +8,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ReturBarang extends Model
 {
+    public const JENIS_RUSAK = 'RUSAK';
+    public const JENIS_SISA = 'SISA';
+    public const JENIS_LAINNYA = 'LAINNYA';
+
     protected $table = 'retur_barang';
     protected $primaryKey = 'id_retur';
     public $timestamps = true;
 
     protected $fillable = [
         'no_retur',
-        'id_penerimaan',
-        'id_distribusi',
         'id_unit_kerja',
         'id_gudang_asal',
         'id_gudang_tujuan',
@@ -23,7 +25,6 @@ class ReturBarang extends Model
         'tanggal_retur',
         'status_retur',
         'alasan_retur',
-        'keterangan',
     ];
 
     protected $casts = [
@@ -32,16 +33,6 @@ class ReturBarang extends Model
     ];
 
     // Relationships
-    public function penerimaan(): BelongsTo
-    {
-        return $this->belongsTo(PenerimaanBarang::class, 'id_penerimaan', 'id_penerimaan');
-    }
-
-    public function distribusi(): BelongsTo
-    {
-        return $this->belongsTo(TransaksiDistribusi::class, 'id_distribusi', 'id_distribusi');
-    }
-
     public function unitKerja(): BelongsTo
     {
         return $this->belongsTo(MasterUnitKerja::class, 'id_unit_kerja', 'id_unit_kerja');
@@ -65,6 +56,28 @@ class ReturBarang extends Model
     public function detailRetur(): HasMany
     {
         return $this->hasMany(DetailReturBarang::class, 'id_retur', 'id_retur');
+    }
+
+    public static function jenisReturOptions(): array
+    {
+        return [
+            self::JENIS_RUSAK => 'Barang Rusak',
+            self::JENIS_SISA => 'Sisa Pakai / Tidak Terpakai',
+            self::JENIS_LAINNYA => 'Lainnya',
+        ];
+    }
+
+    public function getJenisReturAttribute(): string
+    {
+        $alasan = (string) ($this->alasan_retur ?? '');
+        if (str_starts_with($alasan, '[' . self::JENIS_RUSAK . ']')) {
+            return self::JENIS_RUSAK;
+        }
+        if (str_starts_with($alasan, '[' . self::JENIS_SISA . ']')) {
+            return self::JENIS_SISA;
+        }
+
+        return self::JENIS_LAINNYA;
     }
 }
 

@@ -4,8 +4,8 @@
 <!-- Page Header -->
 <div class="mb-6 flex justify-between items-center">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">Retur Barang</h1>
-        <p class="mt-1 text-sm text-gray-600">Daftar semua retur barang dari unit kerja ke gudang pusat</p>
+        <h1 class="text-2xl font-bold text-gray-900">Retur Barang (Terpisah dari Peminjaman)</h1>
+        <p class="mt-1 text-sm text-gray-600">Daftar retur barang unit kerja ke gudang pusat/pengurus barang, termasuk retur rusak</p>
     </div>
     <a 
         href="{{ route('transaction.retur-barang.create') }}" 
@@ -20,7 +20,7 @@
 
 <!-- Filters -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
-    <form method="GET" action="{{ route('transaction.retur-barang.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+    <form method="GET" action="{{ route('transaction.retur-barang.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-5">
         <div>
             <label for="unit_kerja" class="block text-sm font-medium text-gray-700 mb-1">Unit Kerja</label>
             <select 
@@ -49,6 +49,20 @@
                 <option value="DIAJUKAN" {{ request('status') == 'DIAJUKAN' ? 'selected' : '' }}>Diajukan</option>
                 <option value="DITERIMA" {{ request('status') == 'DITERIMA' ? 'selected' : '' }}>Diterima</option>
                 <option value="DITOLAK" {{ request('status') == 'DITOLAK' ? 'selected' : '' }}>Ditolak</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="jenis_retur" class="block text-sm font-medium text-gray-700 mb-1">Jenis Retur</label>
+            <select
+                id="jenis_retur"
+                name="jenis_retur"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            >
+                <option value="">Semua Jenis</option>
+                @foreach($jenisReturOptions as $value => $label)
+                    <option value="{{ $value }}" {{ request('jenis_retur') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
             </select>
         </div>
 
@@ -120,6 +134,7 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang Asal</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang Tujuan</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Retur</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
@@ -153,6 +168,9 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {{ $retur->tanggal_retur->format('d/m/Y') }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ $jenisReturOptions[$retur->jenis_retur] ?? 'Lainnya' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
@@ -217,7 +235,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="px-6 py-12 text-center">
+                        <td colspan="10" class="px-6 py-12 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -239,7 +257,7 @@
 
 @push('scripts')
 <script>
-    document.querySelectorAll('#unit_kerja, #status').forEach(select => {
+    document.querySelectorAll('#unit_kerja, #status, #jenis_retur').forEach(select => {
         select.addEventListener('change', function() {
             this.form.submit();
         });
