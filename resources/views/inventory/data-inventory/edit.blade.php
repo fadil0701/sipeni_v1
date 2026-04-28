@@ -24,6 +24,7 @@
             <div>
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Barang</h3>
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div id="data_barang_field">
                     <x-form.searchable-select
                         id="id_data_barang"
                         name="id_data_barang"
@@ -40,6 +41,7 @@
                             </option>
                         @endforeach
                     </x-form.searchable-select>
+                    </div>
 
                     <div>
                         <label for="id_gudang" class="block text-sm font-medium text-gray-700 mb-2">
@@ -363,7 +365,23 @@
 
         function toggleFields() {
             const jenisInventory = jenisInventorySelect.value;
+            const dataBarangField = document.getElementById('data_barang_field');
+            const dataBarangInput = document.getElementById('id_data_barang');
             updateJenisBarangOptions();
+
+            if (jenisInventory === 'ASET') {
+                if (dataBarangField) dataBarangField.style.display = 'block';
+                if (dataBarangInput) dataBarangInput.setAttribute('required', 'required');
+            } else if (jenisInventory === 'PERSEDIAAN' || jenisInventory === 'FARMASI') {
+                if (dataBarangField) dataBarangField.style.display = 'none';
+                if (dataBarangInput) {
+                    dataBarangInput.removeAttribute('required');
+                    dataBarangInput.value = '';
+                }
+            } else {
+                if (dataBarangField) dataBarangField.style.display = 'block';
+                if (dataBarangInput) dataBarangInput.removeAttribute('required');
+            }
 
             if (jenisInventory === 'ASET') {
                 // ASET: tampilkan tipe dan no_seri, sembunyikan no_batch dan tanggal_kedaluwarsa

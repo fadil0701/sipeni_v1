@@ -150,7 +150,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('peminjaman-barang/{id}/reject-pengurus', [PeminjamanBarangController::class, 'rejectPengurus'])->name('peminjaman-barang.reject-pengurus')->middleware(['role:admin,admin_gudang']);
         Route::post('peminjaman-barang/{id}/mengetahui-kasubag-tu', [PeminjamanBarangController::class, 'mengetahuiKasubagTu'])->name('peminjaman-barang.mengetahui-kasubag-tu')->middleware(['role:admin,kasubbag_tu']);
         Route::post('peminjaman-barang/{id}/serah-terima', [PeminjamanBarangController::class, 'serahTerima'])->name('peminjaman-barang.serah-terima')->middleware(['role:admin,admin_gudang,admin_gudang_unit']);
-        Route::post('peminjaman-barang/{id}/pengembalian', [PeminjamanBarangController::class, 'pengembalian'])->name('peminjaman-barang.pengembalian')->middleware(['role:admin,pegawai,kepala_unit']);
+        Route::get('pengembalian-barang', [PeminjamanBarangController::class, 'indexPengembalian'])->name('pengembalian-barang.index')->middleware(['role:admin,pegawai,kepala_unit,kasubbag_tu,admin_gudang,admin_gudang_unit']);
+        Route::get('peminjaman-barang/{id}/pengembalian', [PeminjamanBarangController::class, 'createPengembalian'])->name('peminjaman-barang.pengembalian.create')->middleware(['role:admin,pegawai']);
+        Route::post('peminjaman-barang/{id}/pengembalian', [PeminjamanBarangController::class, 'pengembalian'])->name('peminjaman-barang.pengembalian')->middleware(['role:admin,pegawai']);
         Route::post('peminjaman-barang/{id}/selesai', [PeminjamanBarangController::class, 'selesai'])->name('peminjaman-barang.selesai')->middleware(['role:admin,admin_gudang']);
         
         // Approval - Multi-level approval
@@ -211,10 +213,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('retur-barang/{id}/ajukan', [ReturBarangController::class, 'ajukan'])->name('retur-barang.ajukan')->middleware(['role:admin,admin_gudang,pegawai,kepala_unit']);
         
         // Pemakaian Barang - Admin Gudang (semua kategori), Pegawai, Kepala Unit, Admin
-        Route::resource('pemakaian-barang', PemakaianBarangController::class)->middleware(['role:admin,admin_gudang,admin_gudang_aset,admin_gudang_persediaan,admin_gudang_farmasi,admin_gudang_unit,pegawai,kepala_unit']);
-        Route::post('pemakaian-barang/{id}/ajukan', [PemakaianBarangController::class, 'ajukan'])->name('pemakaian-barang.ajukan')->middleware(['role:admin,admin_gudang,admin_gudang_unit,pegawai,kepala_unit']);
-        Route::post('pemakaian-barang/{id}/approve', [PemakaianBarangController::class, 'approve'])->name('pemakaian-barang.approve')->middleware(['role:admin,kepala_unit']);
-        Route::post('pemakaian-barang/{id}/reject', [PemakaianBarangController::class, 'reject'])->name('pemakaian-barang.reject')->middleware(['role:admin,kepala_unit']);
+        // Route::resource('pemakaian-barang', PemakaianBarangController::class)->middleware(['role:admin,admin_gudang,admin_gudang_aset,admin_gudang_persediaan,admin_gudang_farmasi,admin_gudang_unit,pegawai,kepala_unit']);
+        // Route::post('pemakaian-barang/{id}/ajukan', [PemakaianBarangController::class, 'ajukan'])->name('pemakaian-barang.ajukan')->middleware(['role:admin,admin_gudang,admin_gudang_unit,pegawai,kepala_unit']);
+        // Route::post('pemakaian-barang/{id}/approve', [PemakaianBarangController::class, 'approve'])->name('pemakaian-barang.approve')->middleware(['role:admin,kepala_unit']);
+        // Route::post('pemakaian-barang/{id}/reject', [PemakaianBarangController::class, 'reject'])->name('pemakaian-barang.reject')->middleware(['role:admin,kepala_unit']);
     });
     
     // Asset & KIR - Admin, Admin Gudang, Kepala Unit, Pegawai (untuk unit mereka sendiri)

@@ -80,6 +80,8 @@ class PermissionHelper
                 'transaction.peminjaman-barang.create',
                 'transaction.peminjaman-barang.store',
                 'transaction.peminjaman-barang.show',
+                'transaction.pengembalian-barang.index',
+                'transaction.peminjaman-barang.pengembalian.create',
                 'transaction.peminjaman-barang.pengembalian',
                 'transaction.penerimaan-barang.index',
                 'transaction.penerimaan-barang.show',
@@ -109,6 +111,7 @@ class PermissionHelper
                 'transaction.permintaan-barang.show',
                 'transaction.peminjaman-barang.index',
                 'transaction.peminjaman-barang.show',
+                'transaction.pengembalian-barang.index',
                 'transaction.peminjaman-barang.verifikasi-unit-a',
                 'transaction.peminjaman-barang.approve-unit-b',
                 'transaction.peminjaman-barang.reject-unit-b',
@@ -144,6 +147,7 @@ class PermissionHelper
                 'transaction.permintaan-barang.show',
                 'transaction.peminjaman-barang.index',
                 'transaction.peminjaman-barang.show',
+                'transaction.pengembalian-barang.index',
                 'transaction.peminjaman-barang.mengetahui-kasubag-tu',
                 'transaction.approval.index', // Bisa melihat daftar approval
                 'transaction.approval.show', // Bisa melihat detail approval
@@ -205,6 +209,7 @@ class PermissionHelper
                 'transaction.approval.disposisi', // Bisa melihat disposisi
                 'transaction.peminjaman-barang.index',
                 'transaction.peminjaman-barang.show',
+                'transaction.pengembalian-barang.index',
                 'transaction.peminjaman-barang.approve-pengurus',
                 'transaction.peminjaman-barang.reject-pengurus',
                 'transaction.peminjaman-barang.serah-terima',
@@ -262,7 +267,7 @@ class PermissionHelper
                 'inventory.data-inventory.index', 'inventory.data-inventory.show',
                 'transaction.penerimaan-barang.index', 'transaction.penerimaan-barang.show', 'transaction.penerimaan-barang.create', 'transaction.penerimaan-barang.store', 'transaction.penerimaan-barang.edit', 'transaction.penerimaan-barang.update',
                 'transaction.retur-barang.index', 'transaction.retur-barang.show', 'transaction.retur-barang.create', 'transaction.retur-barang.store',
-                'transaction.pemakaian-barang.index', 'transaction.pemakaian-barang.show', 'transaction.pemakaian-barang.create', 'transaction.pemakaian-barang.store',
+                'transaction.pengembalian-barang.index',
                 'transaction.peminjaman-barang.index', 'transaction.peminjaman-barang.show', 'transaction.peminjaman-barang.serah-terima',
                 'asset.register-aset.index', 'asset.register-aset.show', 'asset.register-aset.edit', 'asset.register-aset.update',
                 'reports.stock-gudang', 'master.gudang.index', 'master.gudang.show',
@@ -502,7 +507,7 @@ class PermissionHelper
                     'distribusi' => ['route' => 'transaction.distribusi.index', 'permission' => 'transaction.distribusi.index'],
                     'penerimaan-barang' => ['route' => 'transaction.penerimaan-barang.index', 'permission' => 'transaction.penerimaan-barang.index'],
                     'retur-barang' => ['route' => 'transaction.retur-barang.index', 'permission' => 'transaction.retur-barang.index'],
-                    'pemakaian-barang' => ['route' => 'transaction.pemakaian-barang.index', 'permission' => 'transaction.pemakaian-barang.index'],
+                    'pengembalian-barang' => ['route' => 'transaction.pengembalian-barang.index', 'permission' => 'transaction.pengembalian-barang.index'],
                 ],
             ],
             'aset-kir' => [

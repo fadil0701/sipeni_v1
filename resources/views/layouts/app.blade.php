@@ -65,16 +65,6 @@
             window.__tableMode = (document.body && document.body.dataset.tableMode) || 'all';
         })();
     </script>
-    <div id="global-loading-overlay" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-gray-900/35">
-        <div class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-5 py-4 shadow-xl">
-            <svg class="h-5 w-5 animate-spin text-blue-600" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" class="opacity-20" stroke="currentColor" stroke-width="4"></circle>
-                <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path>
-            </svg>
-            <span class="text-sm font-medium text-gray-700">Memproses data, mohon tunggu...</span>
-        </div>
-    </div>
-    <div id="global-loading-bar" class="fixed left-0 top-0 z-[9999] h-0.5 w-0 bg-blue-600 transition-all duration-300"></div>
     <div class="min-h-screen flex">
         <!-- Sidebar -->
         <aside class="w-64 bg-blue-900 text-white flex-shrink-0">
@@ -136,6 +126,7 @@
                                     @endif
                                     @if(PermissionHelper::canAccess($currentUser, 'transaction.peminjaman-barang.index'))
                                         <li><a href="{{ route('transaction.peminjaman-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.peminjaman-barang.*'])) }}">Peminjaman Barang</a></li>
+                                        <li><a href="{{ route('transaction.pengembalian-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.pengembalian-barang.*'])) }}">Pengembalian Barang</a></li>
                                     @endif
                                     @if(PermissionHelper::canAccess($currentUser, 'planning.rku.index'))
                                         <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass($isRoute(['planning.rku.*'])) }}">Input RKU</a></li>
@@ -226,9 +217,7 @@
                                     @if(PermissionHelper::canAccess($currentUser, 'transaction.retur-barang.index'))
                                         <li><a href="{{ route('transaction.retur-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.retur-barang.*'])) }}">Retur Barang Rusak</a></li>
                                     @endif
-                                    @if(PermissionHelper::canAccess($currentUser, 'transaction.pemakaian-barang.index'))
-                                        <li><a href="{{ route('transaction.pemakaian-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.pemakaian-barang.*'])) }}">Pemakaian Barang</a></li>
-                                    @endif
+                                    {{-- Modul Pemakaian Barang dinonaktifkan --}}
                                 </ul>
                             </li>
                         @endif
@@ -359,7 +348,17 @@
         </aside>
 
         <!-- Main Content -->
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 flex flex-col overflow-hidden relative">
+            <div id="global-loading-overlay" class="absolute inset-0 z-[9999] hidden items-center justify-center bg-gray-900/35">
+                <div class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-5 py-4 shadow-xl">
+                    <svg class="h-5 w-5 animate-spin text-blue-600" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" class="opacity-20" stroke="currentColor" stroke-width="4"></circle>
+                        <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path>
+                    </svg>
+                    <span class="text-sm font-medium text-gray-700">Memproses data, mohon tunggu...</span>
+                </div>
+            </div>
+            <div id="global-loading-bar" class="absolute left-0 top-0 z-[9999] h-0.5 w-0 bg-blue-600 transition-all duration-300"></div>
             <!-- Header -->
             <header class="bg-white border-b border-gray-200">
                 <div class="px-6 py-4">
