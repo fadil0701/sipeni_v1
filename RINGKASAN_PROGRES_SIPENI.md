@@ -318,6 +318,18 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
    - saat input/update `Data Inventory` dengan `jenis_inventory = ASET`, data masih ikut masuk ke `data_stock`,
    - akar masalah: `DataInventoryObserver` masih memanggil `updateStock()` untuk alur ASET,
    - target perbaikan: batasi update stock hanya untuk `PERSEDIAAN/FARMASI` agar ASET tidak tercatat sebagai stok kuantitas gudang.
+9. Pembersihan menyeluruh konfirmasi bawaan browser (`confirm()`) ke modal konfirmasi custom. 🔴
+   - masih ada form/aksi dengan `onsubmit/onclick` legacy yang menampilkan popup browser native,
+   - target: migrasi seluruh modul ke `data-confirm` + handler modal global agar UX konfirmasi konsisten.
+10. Hardening pengujian add-row multi-item untuk modul operasional baru. 🔴
+   - cakupan target: `Stock Adjustment` multi-row dan `Permintaan Pemeliharaan` multi-row,
+   - target: validasi duplikasi row, empty row, nilai negatif, dan stabilitas submit multi-item.
+11. Penguatan uji concurrency generator nomor dokumen. 🔴
+   - fokus pada generator nomor dokumen transaksi (mis. `PMJ`, `PMH`) saat submit paralel,
+   - target: hindari bentrok nomor dan pastikan fallback retry berjalan stabil.
+12. Audit konsistensi data stok vs inventory pasca perubahan logika eligible stok. 🔴
+   - fokus pada aturan baru: stok menampilkan `PERSEDIAAN/FARMASI` + `ASET` tertentu sesuai kriteria,
+   - target: pastikan data historis tidak nyangkut/overcount setelah sinkronisasi aturan terbaru.
 
 ### Prioritas Menengah
 1. Rapikan istilah menu dan deskripsi halaman (mengurangi ambiguitas user). ✅ (istilah maintenance/service distandarkan ke pemeliharaan/laporan servis pada menu + halaman utama)
