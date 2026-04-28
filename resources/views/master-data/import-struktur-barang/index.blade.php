@@ -43,7 +43,7 @@
         @csrf
         <div>
             <label for="file" class="block text-sm font-medium text-gray-700 mb-2">File Excel</label>
-            <div class="flex flex-wrap items-center gap-3">
+            <div class="space-y-2">
                 <input
                     type="file"
                     id="file"
@@ -52,8 +52,8 @@
                     required
                     class="sr-only"
                 >
-                <label for="file" class="inline-flex cursor-pointer items-center px-4 py-2 rounded-md text-sm font-medium text-white bg-slate-700 hover:bg-slate-800 transition-colors">
-                    Pilih File
+                <label for="file" class="inline-flex cursor-pointer items-center rounded-md bg-gray-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700">
+                    Choose File
                 </label>
                 <span id="import-struktur-file-name" class="text-sm text-gray-600">Belum ada file dipilih</span>
             </div>

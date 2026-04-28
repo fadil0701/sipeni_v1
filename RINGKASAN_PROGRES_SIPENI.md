@@ -452,3 +452,59 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 ### E. Catatan Sisa Kecil
 - Masih ada 1 file untracked lokal yang belum dimasukkan commit:
   - `database/seeders/data/tes kir.pdf`
+
+---
+
+## 6) Update Sesi Lanjutan (2026-04-29)
+
+### A. Hardening Inventory, Stok, dan Konsistensi Data
+- **Status: Selesai**
+- Perbaikan observer inventory agar alur `ASET` tidak lagi tersinkron ke `data_stock`.
+- Perbaikan deteksi perubahan observer (`isDirty` -> `wasChanged`) pada event update.
+- Penambahan penanganan penurunan qty `ASET`:
+  - item berlebih yang belum terikat register dinonaktifkan (`NONAKTIF`) agar sinkron dengan qty terbaru.
+- Perbaikan pengurangan stok lama saat perubahan jenis inventory agar menggunakan nilai relasi lama (barang + gudang lama), bukan nilai sesudah update.
+
+### B. Hardening Nomor Dokumen & Error SQL
+- **Status: Selesai**
+- Penguatan generator `no_peminjaman`:
+  - lock saat baca nomor terakhir,
+  - validasi kandidat nomor unik,
+  - retry saat terjadi duplikasi pada kondisi paralel.
+- Perbaikan error SQL ambigu pada peminjaman:
+  - qualifier kolom `register_aset.id_inventory` pada query join untuk mencegah `Column 'id_inventory' is ambiguous`.
+
+### C. UI/UX Form & Konfirmasi Aksi
+- **Status: Selesai**
+- Perbaikan route yang dinonaktifkan di dashboard agar tidak memicu `RouteNotFoundException`.
+- Perbaikan form import struktur barang:
+  - mode tombol file dipastikan tampil stabil,
+  - mode compact: hanya tombol `Choose File` + nama file terpilih.
+- Perbaikan konfirmasi hapus di Data Inventory:
+  - migrasi dari `confirm()` native browser ke modal konfirmasi custom (`data-confirm`).
+- Penyesuaian form Data Inventory:
+  - field `Data Barang` tetap tampil untuk `ASET/PERSEDIAAN/FARMASI`.
+- Perbaikan auto-isi gudang pada create Data Inventory agar fallback lebih robust saat kategori tidak match persis.
+
+### D. Penyempurnaan Laporan Kartu Stok
+- **Status: Selesai**
+- Penambahan kolom baru pada tabel Kartu Stok:
+  - `Merek`,
+  - `No Batch`,
+  - `Expired Date`.
+- Data kolom tambahan diambil dari inventory terbaru per kombinasi barang + gudang.
+
+### E. Add-Row Multi Item (Form Operasional)
+- **Status: Selesai**
+- Stock Adjustment:
+  - form create mendukung add-row multi stock dalam satu submit,
+  - aksi baris menggunakan icon hapus,
+  - backend store dipisah per row dalam satu transaksi.
+- Permintaan Pemeliharaan:
+  - form create mendukung add-row multi aset dalam satu submit,
+  - setiap row menyimpan jenis pemeliharaan, prioritas, dan deskripsi kerusakan per aset,
+  - backend store membuat beberapa dokumen permintaan sekaligus dengan nomor berurutan.
+
+### F. Catatan Verifikasi
+- Validasi sintaks file yang diubah telah dijalankan (`php -l`) dan lulus.
+- Linter untuk file utama yang diubah: tidak ada error baru.

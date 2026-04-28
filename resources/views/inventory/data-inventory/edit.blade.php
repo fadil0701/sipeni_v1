@@ -391,18 +391,14 @@
                 }
             }
 
-            if (jenisInventory === 'ASET') {
-                if (dataBarangField) dataBarangField.style.display = 'block';
-                if (dataBarangInput) dataBarangInput.setAttribute('required', 'required');
-            } else if (jenisInventory === 'PERSEDIAAN' || jenisInventory === 'FARMASI') {
-                if (dataBarangField) dataBarangField.style.display = 'none';
-                if (dataBarangInput) {
+            // Data Barang selalu ditampilkan untuk semua jenis inventory.
+            if (dataBarangField) dataBarangField.style.display = 'block';
+            if (dataBarangInput) {
+                if (jenisInventory) {
+                    dataBarangInput.setAttribute('required', 'required');
+                } else {
                     dataBarangInput.removeAttribute('required');
-                    dataBarangInput.value = '';
                 }
-            } else {
-                if (dataBarangField) dataBarangField.style.display = 'block';
-                if (dataBarangInput) dataBarangInput.removeAttribute('required');
             }
 
             if (jenisInventory === 'ASET') {

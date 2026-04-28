@@ -141,50 +141,83 @@ class StockAdjustmentController extends Controller
             abort(403, 'Unauthorized');
         }
         
-        // Validasi input
+        // Validasi input multi-row
         $validated = $request->validate([
-            'id_stock' => 'required|exists:data_stock,id_stock',
             'tanggal_adjustment' => 'required|date',
-            'qty_sesudah' => 'required|numeric|min:0',
-            'jenis_adjustment' => 'required|in:PENAMBAHAN,PENGURANGAN,KOREKSI,OPNAME',
+            'status' => 'required|in:DRAFT,DIAJUKAN',
             'alasan' => 'nullable|string|max:500',
             'keterangan' => 'nullable|string|max:1000',
-            'status' => 'required|in:DRAFT,DIAJUKAN',
+            'rows' => 'required|array|min:1',
+            'rows.*.id_stock' => 'required|distinct|exists:data_stock,id_stock',
+            'rows.*.qty_sesudah' => 'required|numeric|min:0',
+            'rows.*.jenis_adjustment' => 'required|in:PENAMBAHAN,PENGURANGAN,KOREKSI,OPNAME',
         ]);
-        
-        // Ambil stock yang akan di-adjust
-        $stock = DataStock::findOrFail($validated['id_stock']);
-        
-        // Hitung selisih
-        $qtySebelum = $stock->qty_akhir;
-        $qtySesudah = $validated['qty_sesudah'];
-        $qtySelisih = $qtySesudah - $qtySebelum;
-        
-        // Buat stock adjustment
-        $adjustment = StockAdjustment::create([
-            'id_stock' => $validated['id_stock'],
-            'id_data_barang' => $stock->id_data_barang,
-            'id_gudang' => $stock->id_gudang,
-            'tanggal_adjustment' => $validated['tanggal_adjustment'],
-            'qty_sebelum' => $qtySebelum,
-            'qty_sesudah' => $qtySesudah,
-            'qty_selisih' => $qtySelisih,
-            'jenis_adjustment' => $validated['jenis_adjustment'],
-            'alasan' => $validated['alasan'] ?? null,
-            'keterangan' => $validated['keterangan'] ?? null,
-            'id_petugas' => Auth::id(),
-            'status' => $validated['status'],
-        ]);
-        
-        // Jika status DIAJUKAN dan user adalah admin, langsung approve
-        if ($validated['status'] == 'DIAJUKAN' && $user->hasRole('admin')) {
-            $this->approve($adjustment->id_adjustment);
+
+        $createdAdjustments = [];
+
+        DB::transaction(function () use ($validated, $user, &$createdAdjustments) {
+            foreach ($validated['rows'] as $row) {
+                $stock = DataStock::findOrFail($row['id_stock']);
+
+                $qtySebelum = (float) $stock->qty_akhir;
+                $qtySesudah = (float) $row['qty_sesudah'];
+                $qtySelisih = $qtySesudah - $qtySebelum;
+
+                $adjustment = StockAdjustment::create([
+                    'id_stock' => $stock->id_stock,
+                    'id_data_barang' => $stock->id_data_barang,
+                    'id_gudang' => $stock->id_gudang,
+                    'tanggal_adjustment' => $validated['tanggal_adjustment'],
+                    'qty_sebelum' => $qtySebelum,
+                    'qty_sesudah' => $qtySesudah,
+                    'qty_selisih' => $qtySelisih,
+                    'jenis_adjustment' => $row['jenis_adjustment'],
+                    'alasan' => $validated['alasan'] ?? null,
+                    'keterangan' => $validated['keterangan'] ?? null,
+                    'id_petugas' => Auth::id(),
+                    'status' => $validated['status'],
+                ]);
+
+                // Jika status DIAJUKAN dan user admin, langsung setujui + update stock.
+                if ($validated['status'] === 'DIAJUKAN' && $user->hasRole('admin')) {
+                    $adjustment->update([
+                        'status' => 'DISETUJUI',
+                        'id_approver' => Auth::id(),
+                        'tanggal_approval' => now(),
+                    ]);
+
+                    $stock->qty_akhir = $adjustment->qty_sesudah;
+                    if ((float) $adjustment->qty_selisih > 0) {
+                        $stock->qty_masuk += abs((float) $adjustment->qty_selisih);
+                    } else {
+                        $stock->qty_keluar += abs((float) $adjustment->qty_selisih);
+                    }
+                    $stock->last_updated = now();
+                    $stock->save();
+                }
+
+                $createdAdjustments[] = $adjustment;
+            }
+        });
+
+        if (count($createdAdjustments) === 1) {
+            $adjustment = $createdAdjustments[0];
+            if ($validated['status'] === 'DIAJUKAN' && $user->hasRole('admin')) {
+                return redirect()->route('inventory.stock-adjustment.show', $adjustment->id_adjustment)
+                    ->with('success', 'Stock adjustment berhasil dibuat dan disetujui.');
+            }
+
             return redirect()->route('inventory.stock-adjustment.show', $adjustment->id_adjustment)
-                ->with('success', 'Stock adjustment berhasil dibuat dan disetujui.');
+                ->with('success', 'Stock adjustment berhasil dibuat.');
         }
-        
-        return redirect()->route('inventory.stock-adjustment.show', $adjustment->id_adjustment)
-            ->with('success', 'Stock adjustment berhasil dibuat.');
+
+        if ($validated['status'] === 'DIAJUKAN' && $user->hasRole('admin')) {
+            return redirect()->route('inventory.stock-adjustment.index')
+                ->with('success', 'Stock adjustment multi-row berhasil dibuat dan disetujui.');
+        }
+
+        return redirect()->route('inventory.stock-adjustment.index')
+            ->with('success', 'Stock adjustment multi-row berhasil dibuat.');
     }
 
     /**

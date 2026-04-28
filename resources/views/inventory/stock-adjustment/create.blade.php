@@ -20,60 +20,40 @@
         @csrf
         
         <div class="space-y-6">
-            <!-- Pilih Stock -->
+            <!-- Detail Adjustment Multi-Row -->
             <div class="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Pilih Stock</h3>
-                <div>
-                    <label for="id_stock" class="block text-sm font-medium text-gray-700 mb-2">
-                        Data Stock <span class="text-red-500">*</span>
-                    </label>
-                    <select 
-                        id="id_stock" 
-                        name="id_stock" 
-                        required
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_stock') border-red-500 @enderror"
-                    >
-                        <option value="">Pilih Stock</option>
-                        @foreach($stocks as $stock)
-                            <option 
-                                value="{{ $stock->id_stock }}" 
-                                data-qty-akhir="{{ $stock->qty_akhir }}"
-                                {{ old('id_stock') == $stock->id_stock ? 'selected' : '' }}
-                            >
-                                {{ $stock->dataBarang->nama_barang ?? '-' }} 
-                                ({{ $stock->gudang->nama_gudang ?? '-' }})
-                                - Stock: {{ number_format($stock->qty_akhir, 2) }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('id_stock')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    <p class="mt-1 text-xs text-gray-500">Pilih stock yang akan disesuaikan</p>
+                <div class="mb-4 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900">Detail Stock Adjustment</h3>
+                    <button type="button" id="add-adjustment-row" class="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+                        + Add Row
+                    </button>
                 </div>
-            </div>
-
-            <!-- Informasi Stock Saat Ini -->
-            <div id="stock-info" class="bg-blue-50 rounded-lg p-6 border border-blue-200 hidden">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Informasi Stock Saat Ini</h3>
-                <dl class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">Qty Awal</dt>
-                        <dd class="mt-1 text-sm text-gray-900 font-semibold" id="qty-awal">-</dd>
-                    </div>
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">Qty Masuk</dt>
-                        <dd class="mt-1 text-sm text-gray-900 font-semibold" id="qty-masuk">-</dd>
-                    </div>
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">Qty Keluar</dt>
-                        <dd class="mt-1 text-sm text-gray-900 font-semibold" id="qty-keluar">-</dd>
-                    </div>
-                    <div class="sm:col-span-3">
-                        <dt class="text-sm font-medium text-gray-500">Qty Akhir (Saat Ini)</dt>
-                        <dd class="mt-1 text-lg text-blue-600 font-bold" id="qty-akhir">-</dd>
-                    </div>
-                </dl>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200" id="adjustment-rows-table">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Data Stock</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Qty Saat Ini</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Qty Sesudah</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Jenis Adjustment</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-gray-600 uppercase">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adjustment-rows-body"></tbody>
+                    </table>
+                </div>
+                @error('rows')
+                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+                @error('rows.*.id_stock')
+                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+                @error('rows.*.qty_sesudah')
+                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+                @error('rows.*.jenis_adjustment')
+                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Form Fields -->
@@ -91,47 +71,6 @@
                         class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('tanggal_adjustment') border-red-500 @enderror"
                     >
                     @error('tanggal_adjustment')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <div>
-                    <label for="qty_sesudah" class="block text-sm font-medium text-gray-700 mb-2">
-                        Qty Sesudah Adjustment <span class="text-red-500">*</span>
-                    </label>
-                    <input 
-                        type="number" 
-                        id="qty_sesudah" 
-                        name="qty_sesudah" 
-                        step="0.01"
-                        min="0"
-                        value="{{ old('qty_sesudah') }}"
-                        required
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('qty_sesudah') border-red-500 @enderror"
-                    >
-                    @error('qty_sesudah')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    <p class="mt-1 text-xs text-gray-500">Masukkan jumlah stock setelah adjustment</p>
-                </div>
-
-                <div>
-                    <label for="jenis_adjustment" class="block text-sm font-medium text-gray-700 mb-2">
-                        Jenis Adjustment <span class="text-red-500">*</span>
-                    </label>
-                    <select 
-                        id="jenis_adjustment" 
-                        name="jenis_adjustment" 
-                        required
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('jenis_adjustment') border-red-500 @enderror"
-                    >
-                        <option value="">Pilih Jenis</option>
-                        <option value="PENAMBAHAN" {{ old('jenis_adjustment') == 'PENAMBAHAN' ? 'selected' : '' }}>Penambahan</option>
-                        <option value="PENGURANGAN" {{ old('jenis_adjustment') == 'PENGURANGAN' ? 'selected' : '' }}>Pengurangan</option>
-                        <option value="KOREKSI" {{ old('jenis_adjustment', 'KOREKSI') == 'KOREKSI' ? 'selected' : '' }}>Koreksi</option>
-                        <option value="OPNAME" {{ old('jenis_adjustment') == 'OPNAME' ? 'selected' : '' }}>Opname</option>
-                    </select>
-                    @error('jenis_adjustment')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
@@ -207,30 +146,98 @@
 </div>
 
 <script>
-    // Load stock info saat stock dipilih
-    document.getElementById('id_stock').addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        const stockId = this.value;
-        
-        if (stockId) {
-            // Fetch stock data via AJAX
-            fetch(`/api/stock/${stockId}`)
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('qty-awal').textContent = parseFloat(data.qty_awal || 0).toLocaleString('id-ID', {minimumFractionDigits: 2});
-                    document.getElementById('qty-masuk').textContent = parseFloat(data.qty_masuk || 0).toLocaleString('id-ID', {minimumFractionDigits: 2});
-                    document.getElementById('qty-keluar').textContent = parseFloat(data.qty_keluar || 0).toLocaleString('id-ID', {minimumFractionDigits: 2});
-                    document.getElementById('qty-akhir').textContent = parseFloat(data.qty_akhir || 0).toLocaleString('id-ID', {minimumFractionDigits: 2});
-                    document.getElementById('stock-info').classList.remove('hidden');
-                    
-                    // Set default qty_sesudah = qty_akhir
-                    document.getElementById('qty_sesudah').value = data.qty_akhir || 0;
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
+    document.addEventListener('DOMContentLoaded', function () {
+        @php
+            $stocksPayload = $stocks->map(function ($stock) {
+                return [
+                    'id' => $stock->id_stock,
+                    'label' => ($stock->dataBarang->nama_barang ?? '-') . ' (' . ($stock->gudang->nama_gudang ?? '-') . ') - Stock: ' . number_format((float) $stock->qty_akhir, 2),
+                    'qty_akhir' => (float) $stock->qty_akhir,
+                ];
+            })->values()->toArray();
+        @endphp
+        const stocks = @json($stocksPayload);
+        const oldRows = @json(old('rows', []));
+        const tbody = document.getElementById('adjustment-rows-body');
+        const addBtn = document.getElementById('add-adjustment-row');
+
+        function stockOptionsHtml(selectedId) {
+            let html = '<option value="">Pilih Stock</option>';
+            stocks.forEach(function (stock) {
+                const selected = String(selectedId || '') === String(stock.id) ? 'selected' : '';
+                html += `<option value="${stock.id}" data-qty-akhir="${stock.qty_akhir}" ${selected}>${stock.label}</option>`;
+            });
+            return html;
+        }
+
+        function addRow(rowData) {
+            const index = tbody.querySelectorAll('tr').length;
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-gray-100';
+            tr.innerHTML = `
+                <td class="px-3 py-2">
+                    <select name="rows[${index}][id_stock]" class="row-stock block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required>
+                        ${stockOptionsHtml(rowData && rowData.id_stock)}
+                    </select>
+                </td>
+                <td class="px-3 py-2 text-sm text-gray-700">
+                    <span class="row-qty-akhir">-</span>
+                </td>
+                <td class="px-3 py-2">
+                    <input type="number" step="0.01" min="0" name="rows[${index}][qty_sesudah]" value="${(rowData && rowData.qty_sesudah) || ''}" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required>
+                </td>
+                <td class="px-3 py-2">
+                    <select name="rows[${index}][jenis_adjustment]" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required>
+                        <option value="">Pilih Jenis</option>
+                        <option value="PENAMBAHAN" ${(rowData && rowData.jenis_adjustment === 'PENAMBAHAN') ? 'selected' : ''}>Penambahan</option>
+                        <option value="PENGURANGAN" ${(rowData && rowData.jenis_adjustment === 'PENGURANGAN') ? 'selected' : ''}>Pengurangan</option>
+                        <option value="KOREKSI" ${(rowData && rowData.jenis_adjustment === 'KOREKSI') ? 'selected' : ''}>Koreksi</option>
+                        <option value="OPNAME" ${(rowData && rowData.jenis_adjustment === 'OPNAME') ? 'selected' : ''}>Opname</option>
+                    </select>
+                </td>
+                <td class="px-3 py-2 text-right">
+                    <button type="button" class="remove-row inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 transition-colors hover:bg-red-100 hover:text-red-700" title="Hapus baris" aria-label="Hapus baris">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11v6M14 11v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+
+            const stockSelect = tr.querySelector('.row-stock');
+            const qtyAkhirLabel = tr.querySelector('.row-qty-akhir');
+            const qtySesudahInput = tr.querySelector('input[name^="rows["][name$="[qty_sesudah]"]');
+
+            function syncStockMeta() {
+                const selectedOption = stockSelect.options[stockSelect.selectedIndex];
+                const qtyAkhir = selectedOption ? parseFloat(selectedOption.dataset.qtyAkhir || '0') : 0;
+                if (stockSelect.value) {
+                    qtyAkhirLabel.textContent = qtyAkhir.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    if (!qtySesudahInput.value) qtySesudahInput.value = qtyAkhir;
+                } else {
+                    qtyAkhirLabel.textContent = '-';
+                }
+            }
+
+            stockSelect.addEventListener('change', syncStockMeta);
+            syncStockMeta();
+
+            tr.querySelector('.remove-row').addEventListener('click', function () {
+                if (tbody.querySelectorAll('tr').length <= 1) return;
+                tr.remove();
+            });
+        }
+
+        addBtn.addEventListener('click', function () {
+            addRow(null);
+        });
+
+        if (Array.isArray(oldRows) && oldRows.length > 0) {
+            oldRows.forEach(function (row) { addRow(row); });
         } else {
-            document.getElementById('stock-info').classList.add('hidden');
+            addRow(null);
         }
     });
 </script>

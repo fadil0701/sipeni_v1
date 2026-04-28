@@ -10,16 +10,10 @@ class SumberAnggaranController extends Controller
 {
     public function index(Request $request)
     {
-        $search = trim((string) $request->query('search', ''));
-        $query = MasterSumberAnggaran::query();
-
-        if ($search !== '') {
-            $query->where('nama_anggaran', 'like', "%{$search}%");
-            $query->where('keterangan', 'like', "%{$search}%");
-        }
-
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
-        $sumberAnggarans = $query->latest()->paginate($perPage)->appends($request->query());
+        $sumberAnggarans = MasterSumberAnggaran::query()
+            ->latest()
+            ->paginate($perPage);
         return view('master-data.sumber-anggaran.index', compact('sumberAnggarans'));
     }
 

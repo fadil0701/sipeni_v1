@@ -104,56 +104,63 @@ class PermintaanPemeliharaanController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'id_register_aset' => 'required|exists:register_aset,id_register_aset',
             'id_unit_kerja' => 'required|exists:master_unit_kerja,id_unit_kerja',
             'id_pemohon' => 'required|exists:master_pegawai,id',
             'tanggal_permintaan' => 'required|date',
-            'jenis_pemeliharaan' => 'required|in:RUTIN,KALIBRASI,PERBAIKAN,PENGGANTIAN_SPAREPART',
-            'prioritas' => 'required|in:RENDAH,SEDANG,TINGGI,DARURAT',
-            'deskripsi_kerusakan' => 'nullable|string',
             'keterangan' => 'nullable|string',
+            'status_permintaan' => 'nullable|in:DRAFT,DIAJUKAN',
+            'rows' => 'required|array|min:1',
+            'rows.*.id_register_aset' => 'required|distinct|exists:register_aset,id_register_aset',
+            'rows.*.jenis_pemeliharaan' => 'required|in:RUTIN,KALIBRASI,PERBAIKAN,PENGGANTIAN_SPAREPART',
+            'rows.*.prioritas' => 'required|in:RENDAH,SEDANG,TINGGI,DARURAT',
+            'rows.*.deskripsi_kerusakan' => 'nullable|string',
         ]);
 
         DB::beginTransaction();
         try {
-            $register = RegisterAset::with('kartuInventarisRuangan')->findOrFail($request->id_register_aset);
             $pemohon = MasterPegawai::findOrFail($request->id_pemohon);
 
-            if ((int) $register->id_unit_kerja !== (int) $request->id_unit_kerja) {
-                throw new \RuntimeException('Unit kerja register aset tidak sesuai dengan unit kerja permintaan.');
-            }
             if ((int) $pemohon->id_unit_kerja !== (int) $request->id_unit_kerja) {
                 throw new \RuntimeException('Pemohon harus berasal dari unit kerja yang sama.');
             }
-            if ($register->kartuInventarisRuangan()->count() === 0) {
-                throw new \RuntimeException('Aset belum ditempatkan di KIR, silakan lengkapi penempatan terlebih dahulu.');
-            }
 
-            // Generate nomor permintaan
+            // Generate nomor permintaan berurutan untuk batch saat ini.
             $tahun = date('Y');
             $lastPermintaan = PermintaanPemeliharaan::whereYear('created_at', $tahun)
                 ->orderBy('id_permintaan_pemeliharaan', 'desc')
                 ->first();
-            
-            $urutan = $lastPermintaan ? (int)substr($lastPermintaan->no_permintaan_pemeliharaan, -4) + 1 : 1;
-            $noPermintaan = 'PMH/' . $tahun . '/' . str_pad($urutan, 4, '0', STR_PAD_LEFT);
+            $urutan = $lastPermintaan ? (int) substr($lastPermintaan->no_permintaan_pemeliharaan, -4) + 1 : 1;
+            $statusPermintaan = $request->status_permintaan ?? 'DRAFT';
 
-            $permintaan = PermintaanPemeliharaan::create([
-                'no_permintaan_pemeliharaan' => $noPermintaan,
-                'id_register_aset' => $request->id_register_aset,
-                'id_unit_kerja' => $request->id_unit_kerja,
-                'id_pemohon' => $request->id_pemohon,
-                'tanggal_permintaan' => $request->tanggal_permintaan,
-                'jenis_pemeliharaan' => $request->jenis_pemeliharaan,
-                'prioritas' => $request->prioritas,
-                'status_permintaan' => $request->status_permintaan ?? 'DRAFT',
-                'deskripsi_kerusakan' => $request->deskripsi_kerusakan,
-                'keterangan' => $request->keterangan,
-            ]);
+            foreach ($request->rows as $row) {
+                $register = RegisterAset::with('kartuInventarisRuangan')->findOrFail($row['id_register_aset']);
 
-            // Jika status DIAJUKAN, buat approval logs
-            if ($request->status_permintaan === 'DIAJUKAN') {
-                $this->createApprovalLogs($permintaan->id_permintaan_pemeliharaan);
+                if ((int) $register->id_unit_kerja !== (int) $request->id_unit_kerja) {
+                    throw new \RuntimeException('Unit kerja register aset tidak sesuai dengan unit kerja permintaan.');
+                }
+                if ($register->kartuInventarisRuangan()->count() === 0) {
+                    throw new \RuntimeException('Aset belum ditempatkan di KIR, silakan lengkapi penempatan terlebih dahulu.');
+                }
+
+                $noPermintaan = 'PMH/' . $tahun . '/' . str_pad((string) $urutan, 4, '0', STR_PAD_LEFT);
+                $urutan++;
+
+                $permintaan = PermintaanPemeliharaan::create([
+                    'no_permintaan_pemeliharaan' => $noPermintaan,
+                    'id_register_aset' => $row['id_register_aset'],
+                    'id_unit_kerja' => $request->id_unit_kerja,
+                    'id_pemohon' => $request->id_pemohon,
+                    'tanggal_permintaan' => $request->tanggal_permintaan,
+                    'jenis_pemeliharaan' => $row['jenis_pemeliharaan'],
+                    'prioritas' => $row['prioritas'],
+                    'status_permintaan' => $statusPermintaan,
+                    'deskripsi_kerusakan' => $row['deskripsi_kerusakan'] ?? null,
+                    'keterangan' => $request->keterangan,
+                ]);
+
+                if ($statusPermintaan === 'DIAJUKAN') {
+                    $this->createApprovalLogs($permintaan->id_permintaan_pemeliharaan);
+                }
             }
 
             DB::commit();

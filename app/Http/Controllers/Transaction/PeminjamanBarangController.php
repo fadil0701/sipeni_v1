@@ -15,6 +15,7 @@ use App\Models\PeminjamanBarangLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 
 class PeminjamanBarangController extends Controller
 {
@@ -112,7 +113,7 @@ class PeminjamanBarangController extends Controller
             ->get();
 
         $registeredBarangIds = RegisterAset::query()
-            ->whereNotNull('id_inventory')
+            ->whereNotNull('register_aset.id_inventory')
             ->join('data_inventory', 'register_aset.id_inventory', '=', 'data_inventory.id_inventory')
             ->pluck('data_inventory.id_data_barang')
             ->filter()
@@ -226,38 +227,52 @@ class PeminjamanBarangController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($validated, $pegawai) {
-            $peminjaman = PeminjamanBarang::create([
-                'no_peminjaman' => $this->generateNoPeminjaman(),
-                'id_unit_peminjam' => $validated['id_unit_peminjam'],
-                'id_pemohon' => $pegawai->id,
-                'tujuan_peminjaman' => $validated['tujuan_peminjaman'],
-                'id_unit_pemilik' => $validated['tujuan_peminjaman'] === 'UNIT' ? ($validated['id_unit_pemilik'] ?? null) : null,
-                'id_gudang_pusat' => $validated['tujuan_peminjaman'] === 'GUDANG_PUSAT' ? ($validated['id_gudang_pusat'] ?? null) : null,
-                'tanggal_pinjam' => $validated['tanggal_pinjam'],
-                'tanggal_rencana_kembali' => $validated['tanggal_rencana_kembali'],
-                'status' => PeminjamanBarang::STATUS_DIAJUKAN,
-                'alasan' => $validated['alasan'],
-            ]);
+        $created = false;
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            try {
+                DB::transaction(function () use ($validated, $pegawai) {
+                    $peminjaman = PeminjamanBarang::create([
+                        'no_peminjaman' => $this->generateNoPeminjaman(),
+                        'id_unit_peminjam' => $validated['id_unit_peminjam'],
+                        'id_pemohon' => $pegawai->id,
+                        'tujuan_peminjaman' => $validated['tujuan_peminjaman'],
+                        'id_unit_pemilik' => $validated['tujuan_peminjaman'] === 'UNIT' ? ($validated['id_unit_pemilik'] ?? null) : null,
+                        'id_gudang_pusat' => $validated['tujuan_peminjaman'] === 'GUDANG_PUSAT' ? ($validated['id_gudang_pusat'] ?? null) : null,
+                        'tanggal_pinjam' => $validated['tanggal_pinjam'],
+                        'tanggal_rencana_kembali' => $validated['tanggal_rencana_kembali'],
+                        'status' => PeminjamanBarang::STATUS_DIAJUKAN,
+                        'alasan' => $validated['alasan'],
+                    ]);
 
-            foreach ($validated['items'] as $item) {
-                DetailPeminjamanBarang::create([
-                    'id_peminjaman' => $peminjaman->id_peminjaman,
-                    'id_data_barang' => $item['id_data_barang'],
-                    'qty_pinjam' => $item['qty_pinjam'],
-                    'id_satuan' => $item['id_satuan'],
-                    'keterangan' => $item['keterangan_detail'] ?? null,
-                ]);
+                    foreach ($validated['items'] as $item) {
+                        DetailPeminjamanBarang::create([
+                            'id_peminjaman' => $peminjaman->id_peminjaman,
+                            'id_data_barang' => $item['id_data_barang'],
+                            'qty_pinjam' => $item['qty_pinjam'],
+                            'id_satuan' => $item['id_satuan'],
+                            'keterangan' => $item['keterangan_detail'] ?? null,
+                        ]);
+                    }
+
+                    $this->logStatusChange(
+                        $peminjaman->id_peminjaman,
+                        'ajukan_peminjaman',
+                        null,
+                        PeminjamanBarang::STATUS_DIAJUKAN,
+                        'Permintaan peminjaman diajukan oleh unit peminjam.'
+                    );
+                });
+
+                $created = true;
+                break;
+            } catch (QueryException $e) {
+                if (!$this->isDuplicateNoPeminjamanError($e) || $attempt === 3) {
+                    throw $e;
+                }
             }
+        }
 
-            $this->logStatusChange(
-                $peminjaman->id_peminjaman,
-                'ajukan_peminjaman',
-                null,
-                PeminjamanBarang::STATUS_DIAJUKAN,
-                'Permintaan peminjaman diajukan oleh unit peminjam.'
-            );
-        });
+        abort_unless($created, 500, 'Gagal membuat nomor peminjaman unik.');
 
         return redirect()->route('transaction.peminjaman-barang.index')
             ->with('success', 'Permintaan peminjaman berhasil diajukan.');
@@ -549,9 +564,11 @@ class PeminjamanBarangController extends Controller
     private function generateNoPeminjaman(): string
     {
         $prefix = 'PMJ-'.now()->format('Ymd').'-';
+        // Lock baris terakhir pada prefix harian agar aman dari request paralel.
         $last = PeminjamanBarang::query()
             ->where('no_peminjaman', 'like', $prefix.'%')
             ->orderByDesc('id_peminjaman')
+            ->lockForUpdate()
             ->value('no_peminjaman');
 
         $next = 1;
@@ -559,7 +576,15 @@ class PeminjamanBarangController extends Controller
             $next = ((int) $m[1]) + 1;
         }
 
-        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        do {
+            $candidate = $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+            $exists = PeminjamanBarang::query()
+                ->where('no_peminjaman', $candidate)
+                ->exists();
+            $next++;
+        } while ($exists);
+
+        return $candidate;
     }
 
     private function logStatusChange(int $idPeminjaman, string $aksi, ?string $fromStatus, ?string $toStatus, ?string $catatan): void
@@ -572,6 +597,12 @@ class PeminjamanBarangController extends Controller
             'status_sesudah' => $toStatus,
             'catatan' => $catatan,
         ]);
+    }
+
+    private function isDuplicateNoPeminjamanError(QueryException $e): bool
+    {
+        $message = strtolower($e->getMessage());
+        return str_contains($message, 'duplicate') && str_contains($message, 'no_peminjaman');
     }
 }
 

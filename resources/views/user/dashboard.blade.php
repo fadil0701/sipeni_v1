@@ -78,7 +78,7 @@
         @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.retur-barang.index'))
             <a href="{{ route('transaction.retur-barang.index') }}" class="inline-flex items-center rounded-md bg-amber-600 px-3 py-2 text-xs font-medium text-white hover:bg-amber-700">Retur Barang</a>
         @endif
-        @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.pemakaian-barang.index'))
+        @if(\Illuminate\Support\Facades\Route::has('transaction.pemakaian-barang.index') && \App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.pemakaian-barang.index'))
             <a href="{{ route('transaction.pemakaian-barang.index') }}" class="inline-flex items-center rounded-md bg-fuchsia-600 px-3 py-2 text-xs font-medium text-white hover:bg-fuchsia-700">Pemakaian Barang</a>
         @endif
     </div>

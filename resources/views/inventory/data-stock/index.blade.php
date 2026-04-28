@@ -45,6 +45,7 @@
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             >
                 <option value="">Semua Jenis</option>
+                <option value="ASET" {{ request('jenis') == 'ASET' ? 'selected' : '' }}>Aset (belum register)</option>
                 <option value="PERSEDIAAN" {{ request('jenis') == 'PERSEDIAAN' ? 'selected' : '' }}>Persediaan</option>
                 <option value="FARMASI" {{ request('jenis') == 'FARMASI' ? 'selected' : '' }}>Farmasi</option>
             </select>

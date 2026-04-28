@@ -13,6 +13,23 @@ use Illuminate\Support\Facades\Auth;
 
 class DataStockController extends Controller
 {
+    private function applyStockEligibleInventoryFilter($query): void
+    {
+        $query->where(function ($invQ) {
+            $invQ->whereIn('jenis_inventory', ['PERSEDIAAN', 'FARMASI'])
+                ->orWhere(function ($asetQ) {
+                    $asetQ->where('jenis_inventory', 'ASET')
+                        ->where(function ($regQ) {
+                            $regQ->whereDoesntHave('registerAset')
+                                ->orWhereHas('registerAset', function ($r) {
+                                    $r->whereNull('nomor_register')
+                                        ->orWhere('nomor_register', '');
+                                });
+                        });
+                });
+        });
+    }
+
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -31,7 +48,7 @@ class DataStockController extends Controller
                     })
                     ->whereHas('dataBarang', function($q) {
                         $q->whereHas('dataInventory', function($invQ) {
-                            $invQ->whereIn('jenis_inventory', ['PERSEDIAAN', 'FARMASI']);
+                            $this->applyStockEligibleInventoryFilter($invQ);
                         });
                     });
             } else {
@@ -40,12 +57,13 @@ class DataStockController extends Controller
             }
         } else {
             // GUDANG PUSAT: Melihat SEMUA data stock (tidak ada filter)
-            // Hanya tampilkan data stock untuk PERSEDIAAN dan FARMASI (bukan ASET)
-            // Filter berdasarkan data_inventory yang memiliki jenis PERSEDIAAN atau FARMASI
+            // Tampilkan data stock untuk:
+            // - PERSEDIAAN/FARMASI
+            // - ASET yang belum memiliki nomor register
             $query = DataStock::with(['dataBarang', 'gudang', 'satuan'])
                 ->whereHas('dataBarang', function($q) {
                     $q->whereHas('dataInventory', function($invQ) {
-                        $invQ->whereIn('jenis_inventory', ['PERSEDIAAN', 'FARMASI']);
+                        $this->applyStockEligibleInventoryFilter($invQ);
                     });
                 });
         }
@@ -53,13 +71,6 @@ class DataStockController extends Controller
         // Filters
         if ($request->filled('gudang')) {
             $query->where('id_gudang', $request->gudang);
-        }
-
-        if ($request->filled('jenis')) {
-            // Filter by jenis inventory through data_barang
-            $query->whereHas('dataBarang', function ($q) use ($request) {
-                // This would need to check through inventory relationship
-            });
         }
 
         if ($request->filled('sub_kategori')) {
@@ -93,14 +104,26 @@ class DataStockController extends Controller
         if ($request->filled('jenis')) {
             $query->whereHas('dataBarang', function ($q) use ($request) {
                 $q->whereHas('dataInventory', function ($invQ) use ($request) {
-                    $invQ->where('jenis_inventory', $request->jenis);
+                    if ($request->jenis === 'ASET') {
+                        $invQ->where('jenis_inventory', 'ASET')
+                            ->where(function ($regQ) {
+                                $regQ->whereDoesntHave('registerAset')
+                                    ->orWhereHas('registerAset', function ($r) {
+                                        $r->whereNull('nomor_register')
+                                            ->orWhere('nomor_register', '');
+                                    });
+                            });
+                    } else {
+                        $invQ->where('jenis_inventory', $request->jenis);
+                    }
                 });
             });
         }
 
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
         
-        // Sinkronkan DataStock dengan DataInventory untuk PERSEDIAAN/FARMASI
+        // Sinkronkan DataStock dengan DataInventory eligible untuk stok:
+        // PERSEDIAAN/FARMASI + ASET tanpa nomor register.
         // Hitung total qty_input dari DataInventory per gudang per barang
         $this->syncStockFromInventory();
         
@@ -128,7 +151,9 @@ class DataStockController extends Controller
         // Map jenis barang per kombinasi barang+gudang untuk kebutuhan tampilan tabel.
         // Selalu inisialisasi agar aman saat di-compact pada semua role/filter branch.
         $jenisBarangMap = DataInventory::query()
-            ->whereIn('jenis_inventory', ['PERSEDIAAN', 'FARMASI'])
+            ->where(function ($q) {
+                $this->applyStockEligibleInventoryFilter($q);
+            })
             ->select(['id_data_barang', 'id_gudang', 'jenis_inventory'])
             ->get()
             ->keyBy(function ($item) {
@@ -142,14 +167,18 @@ class DataStockController extends Controller
     }
     
     /**
-     * Sinkronkan DataStock dengan DataInventory untuk PERSEDIAAN/FARMASI
+     * Sinkronkan DataStock dengan DataInventory eligible untuk stok:
+     * PERSEDIAAN/FARMASI + ASET yang belum memiliki nomor register.
      * Hitung total qty_input dari DataInventory per gudang per barang
      * qty_akhir di DataStock = total qty_input dari semua DataInventory untuk barang dan gudang yang sama
      */
     private function syncStockFromInventory()
     {
-        // Ambil semua inventory PERSEDIAAN/FARMASI yang aktif
-        $inventories = \App\Models\DataInventory::whereIn('jenis_inventory', ['PERSEDIAAN', 'FARMASI'])
+        // Ambil semua inventory eligible yang aktif
+        $inventories = \App\Models\DataInventory::query()
+            ->where(function ($q) {
+                $this->applyStockEligibleInventoryFilter($q);
+            })
             ->where('status_inventory', 'AKTIF')
             ->with(['dataBarang', 'gudang', 'satuan'])
             ->get();
@@ -198,18 +227,16 @@ class DataStockController extends Controller
             $stock->save();
         }
         
-        // Hapus DataStock yang tidak memiliki inventory aktif untuk PERSEDIAAN/FARMASI
-        // Hanya hapus jika stock tersebut untuk PERSEDIAAN/FARMASI dan tidak ada di stockData
+        // Hapus DataStock yang tidak memiliki inventory aktif eligible untuk stok.
         if ($stockData->count() > 0) {
             $activeBarangGudang = $stockData->map(function($data) {
                 return $data['id_data_barang'] . '_' . $data['id_gudang'];
             })->toArray();
             
             // Hapus stock yang tidak ada di stockData (tidak ada inventory aktif)
-            // Hanya untuk stock yang terkait dengan PERSEDIAAN/FARMASI
             DataStock::whereHas('dataBarang', function($q) {
                 $q->whereHas('dataInventory', function($invQ) {
-                    $invQ->whereIn('jenis_inventory', ['PERSEDIAAN', 'FARMASI']);
+                    $this->applyStockEligibleInventoryFilter($invQ);
                 });
             })->get()->each(function($stock) use ($activeBarangGudang) {
                 $key = $stock->id_data_barang . '_' . $stock->id_gudang;
@@ -217,7 +244,9 @@ class DataStockController extends Controller
                     // Hanya hapus jika tidak ada inventory aktif untuk kombinasi barang dan gudang ini
                     $hasActiveInventory = \App\Models\DataInventory::where('id_data_barang', $stock->id_data_barang)
                         ->where('id_gudang', $stock->id_gudang)
-                        ->whereIn('jenis_inventory', ['PERSEDIAAN', 'FARMASI'])
+                        ->where(function ($q) {
+                            $this->applyStockEligibleInventoryFilter($q);
+                        })
                         ->where('status_inventory', 'AKTIF')
                         ->exists();
                     

@@ -585,35 +585,62 @@
 
             // Sinkronisasi otomatis gudang berdasarkan jenis inventory (kategori gudang pusat).
             if (gudangSelect && gudangHidden) {
-                let matchedOption = null;
-                Array.from(gudangSelect.options).forEach(function (opt) {
-                    if (!opt.value) return;
-                    if ((opt.dataset.kategori || '').toUpperCase() === (jenisInventory || '').toUpperCase()) {
-                        matchedOption = opt;
-                    }
+                const normalize = function (value) {
+                    return String(value || '').toUpperCase().replace(/[^A-Z]/g, '');
+                };
+                const targetTokens = {
+                    ASET: ['ASET'],
+                    PERSEDIAAN: ['PERSEDIAAN'],
+                    FARMASI: ['FARMASI'],
+                };
+                const tokens = targetTokens[jenisInventory] || [];
+                const optionList = Array.from(gudangSelect.options).filter(function (opt) {
+                    return !!opt.value;
                 });
+
+                let matchedOption = optionList.find(function (opt) {
+                    const kategori = normalize(opt.dataset.kategori || '');
+                    return tokens.some(function (token) { return kategori === token; });
+                }) || null;
+
+                if (!matchedOption && tokens.length) {
+                    matchedOption = optionList.find(function (opt) {
+                        const haystack = normalize((opt.dataset.kategori || '') + ' ' + (opt.textContent || ''));
+                        return tokens.some(function (token) { return haystack.includes(token); });
+                    }) || null;
+                }
+
+                if (!matchedOption && gudangHidden.value) {
+                    matchedOption = optionList.find(function (opt) {
+                        return String(opt.value) === String(gudangHidden.value);
+                    }) || null;
+                }
+
+                if (!matchedOption && optionList.length) {
+                    matchedOption = optionList[0];
+                }
 
                 if (matchedOption) {
                     gudangSelect.value = matchedOption.value;
                     gudangHidden.value = matchedOption.value;
+                    gudangSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    if (window.jQuery) {
+                        window.jQuery(gudangSelect).trigger('change.select2');
+                    }
                 } else {
                     gudangSelect.value = '';
                     gudangHidden.value = '';
                 }
             }
 
-            if (jenisInventory === 'ASET') {
-                if (dataBarangField) dataBarangField.style.display = 'block';
-                if (dataBarangInput) dataBarangInput.setAttribute('required', 'required');
-            } else if (jenisInventory === 'PERSEDIAAN' || jenisInventory === 'FARMASI') {
-                if (dataBarangField) dataBarangField.style.display = 'none';
-                if (dataBarangInput) {
+            // Data Barang selalu ditampilkan untuk semua jenis inventory.
+            if (dataBarangField) dataBarangField.style.display = 'block';
+            if (dataBarangInput) {
+                if (jenisInventory) {
+                    dataBarangInput.setAttribute('required', 'required');
+                } else {
                     dataBarangInput.removeAttribute('required');
-                    dataBarangInput.value = '';
                 }
-            } else {
-                if (dataBarangField) dataBarangField.style.display = 'block';
-                if (dataBarangInput) dataBarangInput.removeAttribute('required');
             }
 
             if (jenisInventory === 'ASET') {

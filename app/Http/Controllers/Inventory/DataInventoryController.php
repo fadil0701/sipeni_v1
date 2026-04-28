@@ -692,6 +692,8 @@ class DataInventoryController extends Controller
         try {
             $oldJenis = $inventory->jenis_inventory;
             $oldQty = $inventory->qty_input;
+            $oldDataBarangId = $inventory->id_data_barang;
+            $oldGudangId = $inventory->id_gudang;
             
             $inventory->update($validated);
             
@@ -703,8 +705,8 @@ class DataInventoryController extends Controller
                     // (Tidak dihapus, hanya update jika perlu)
                 } elseif (in_array($oldJenis, ['PERSEDIAAN', 'FARMASI'])) {
                     // Jika sebelumnya PERSEDIAAN/FARMASI, kurangi DataStock
-                    $oldStock = \App\Models\DataStock::where('id_data_barang', $inventory->id_data_barang)
-                        ->where('id_gudang', $inventory->id_gudang)
+                    $oldStock = \App\Models\DataStock::where('id_data_barang', $oldDataBarangId)
+                        ->where('id_gudang', $oldGudangId)
                         ->first();
                     if ($oldStock) {
                         $oldStock->qty_masuk -= $oldQty;

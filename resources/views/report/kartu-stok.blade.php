@@ -43,11 +43,18 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Keluar</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Akhir</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Merek</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Batch</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expired Date</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Update Terakhir</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($stocks as $stock)
+                    @php
+                        $metaKey = $stock->id_data_barang . '_' . $stock->id_gudang;
+                        $meta = $stockMetaMap[$metaKey] ?? null;
+                    @endphp
                     <tr>
                         <td class="px-6 py-4 text-sm text-gray-900">
                             <div class="font-medium">{{ $stock->dataBarang->nama_barang ?? '-' }}</div>
@@ -59,11 +66,14 @@
                         <td class="px-6 py-4 text-sm text-gray-900">{{ number_format((float) $stock->qty_keluar, 2, ',', '.') }}</td>
                         <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ number_format((float) $stock->qty_akhir, 2, ',', '.') }}</td>
                         <td class="px-6 py-4 text-sm text-gray-900">{{ $stock->satuan->nama_satuan ?? '-' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">{{ $meta?->merk ?: '-' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">{{ $meta?->no_batch ?: '-' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">{{ $meta?->tanggal_kedaluwarsa ? \Carbon\Carbon::parse($meta->tanggal_kedaluwarsa)->format('d/m/Y') : '-' }}</td>
                         <td class="px-6 py-4 text-sm text-gray-900">{{ optional($stock->last_updated)->format('d/m/Y H:i') ?? '-' }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">Tidak ada data kartu stok.</td>
+                        <td colspan="11" class="px-6 py-8 text-center text-sm text-gray-500">Tidak ada data kartu stok.</td>
                     </tr>
                 @endforelse
             </tbody>

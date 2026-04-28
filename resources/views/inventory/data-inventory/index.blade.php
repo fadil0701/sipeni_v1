@@ -227,8 +227,8 @@
                                 <form 
                                     action="{{ route('inventory.data-inventory.destroy', $inventory->id_inventory) }}" 
                                     method="POST" 
-                                    class="inline" 
-                                    onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');"
+                                    class="inline"
+                                    data-confirm="Apakah Anda yakin ingin menghapus data ini?"
                                 >
                                     @csrf
                                     @method('DELETE')

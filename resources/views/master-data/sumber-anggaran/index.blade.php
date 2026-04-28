@@ -29,12 +29,6 @@
     </div>
 @endif
 
-<x-index.filter-toolbar
-    :action="route('master-data.sumber-anggaran.index')"
-    search-placeholder="Cari nama sumber anggaran..."
-    button-text="Terapkan"
-/>
-
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table

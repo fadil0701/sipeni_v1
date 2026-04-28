@@ -136,7 +136,28 @@ class ReportController extends Controller
         $stocks = $query->latest('last_updated')->paginate($perPage)->appends($request->query());
         $gudangs = MasterGudang::all();
 
-        return view('report.kartu-stok', compact('stocks', 'gudangs'));
+        $stockMetaMap = collect();
+        $stockRows = $stocks->getCollection();
+        if ($stockRows->isNotEmpty()) {
+            $dataBarangIds = $stockRows->pluck('id_data_barang')->filter()->unique()->values();
+            $gudangIds = $stockRows->pluck('id_gudang')->filter()->unique()->values();
+
+            $latestInventories = \App\Models\DataInventory::query()
+                ->whereIn('id_data_barang', $dataBarangIds)
+                ->whereIn('id_gudang', $gudangIds)
+                ->orderByDesc('updated_at')
+                ->orderByDesc('id_inventory')
+                ->get(['id_data_barang', 'id_gudang', 'merk', 'no_batch', 'tanggal_kedaluwarsa'])
+                ->unique(function ($row) {
+                    return $row->id_data_barang . '_' . $row->id_gudang;
+                });
+
+            $stockMetaMap = $latestInventories->keyBy(function ($row) {
+                return $row->id_data_barang . '_' . $row->id_gudang;
+            });
+        }
+
+        return view('report.kartu-stok', compact('stocks', 'gudangs', 'stockMetaMap'));
     }
 
     public function exportStockGudang(Request $request)

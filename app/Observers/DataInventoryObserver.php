@@ -4,8 +4,9 @@ namespace App\Observers;
 
 use App\Models\DataInventory;
 use App\Models\InventoryItem;
-use App\Models\DataStock;
 use App\Services\InventoryQrCodeService;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class DataInventoryObserver
 {
@@ -17,7 +18,6 @@ class DataInventoryObserver
         // Auto Register Aset: Jika jenis inventory = ASET dan qty_input > 0
         if ($dataInventory->jenis_inventory === 'ASET' && $dataInventory->qty_input > 0) {
             $this->createInventoryItems($dataInventory);
-            $this->updateStock($dataInventory);
         }
     }
 
@@ -27,7 +27,7 @@ class DataInventoryObserver
     public function updated(DataInventory $dataInventory): void
     {
         // Jika jenis inventory berubah menjadi ASET dan qty_input > 0
-        if ($dataInventory->isDirty('jenis_inventory') && $dataInventory->jenis_inventory === 'ASET' && $dataInventory->qty_input > 0) {
+        if ($dataInventory->wasChanged('jenis_inventory') && $dataInventory->jenis_inventory === 'ASET' && $dataInventory->qty_input > 0) {
             // Cek apakah sudah ada InventoryItem untuk inventory ini
             $existingItemsCount = InventoryItem::where('id_inventory', $dataInventory->id_inventory)->count();
             
@@ -35,21 +35,19 @@ class DataInventoryObserver
             if ($existingItemsCount == 0) {
                 $this->createInventoryItems($dataInventory);
             }
-            
-            $this->updateStock($dataInventory);
         }
         // Jika qty_input berubah dan jenis = ASET
-        elseif ($dataInventory->jenis_inventory === 'ASET' && $dataInventory->isDirty('qty_input')) {
+        elseif ($dataInventory->jenis_inventory === 'ASET' && $dataInventory->wasChanged('qty_input')) {
             $oldQty = $dataInventory->getOriginal('qty_input') ?? 0;
             $newQty = $dataInventory->qty_input;
 
             if ($newQty > $oldQty) {
                 // Tambah inventory items
                 $this->createInventoryItems($dataInventory, $oldQty, $newQty);
+            } elseif ($newQty < $oldQty) {
+                // Kurangi item aktif yang belum terikat register aset.
+                $this->deactivateExcessInventoryItems($dataInventory, (int) $newQty);
             }
-            
-            // Update stock
-            $this->updateStock($dataInventory);
         }
     }
 
@@ -100,6 +98,50 @@ class DataInventoryObserver
         }
     }
 
+    protected function deactivateExcessInventoryItems(DataInventory $dataInventory, int $targetQty): void
+    {
+        $targetQty = max(0, $targetQty);
+        $activeItemsCount = InventoryItem::where('id_inventory', $dataInventory->id_inventory)
+            ->where('status_item', 'AKTIF')
+            ->count();
+
+        if ($activeItemsCount <= $targetQty) {
+            return;
+        }
+
+        $toDeactivate = $activeItemsCount - $targetQty;
+        $hasIdItemColumn = Schema::hasColumn('register_aset', 'id_item');
+
+        if (!$hasIdItemColumn) {
+            Log::warning('Skip penonaktifan item aset karena kolom register_aset.id_item belum tersedia.', [
+                'id_inventory' => $dataInventory->id_inventory,
+                'target_qty' => $targetQty,
+                'active_items' => $activeItemsCount,
+            ]);
+            return;
+        }
+
+        $candidateIds = InventoryItem::query()
+            ->where('id_inventory', $dataInventory->id_inventory)
+            ->where('status_item', 'AKTIF')
+            ->whereDoesntHave('registerAsetByItem')
+            ->orderByDesc('id_item')
+            ->limit($toDeactivate)
+            ->pluck('id_item')
+            ->all();
+
+        if (empty($candidateIds)) {
+            return;
+        }
+
+        InventoryItem::query()
+            ->whereIn('id_item', $candidateIds)
+            ->update([
+                'status_item' => 'NONAKTIF',
+                'updated_at' => now(),
+            ]);
+    }
+
     /**
      * Generate kode register dengan format: [KODE_DATA_BARANG]/[TAHUN]/[URUT]
      */
@@ -132,43 +174,4 @@ class DataInventoryObserver
         return 0;
     }
 
-    /**
-     * Update atau create data stock
-     */
-    protected function updateStock(DataInventory $dataInventory): void
-    {
-        $dataInventory->load(['dataBarang', 'gudang']);
-
-        $stock = DataStock::firstOrNew([
-            'id_data_barang' => $dataInventory->id_data_barang,
-            'id_gudang' => $dataInventory->id_gudang,
-        ]);
-
-        if ($stock->exists) {
-            // Update existing stock
-            $oldQty = $dataInventory->getOriginal('qty_input') ?? 0;
-            $newQty = $dataInventory->qty_input;
-            $diff = $newQty - $oldQty;
-
-            if ($dataInventory->jenis_inventory === 'ASET') {
-                // Untuk ASET, qty_masuk bertambah
-                $stock->qty_masuk += $diff;
-            } else {
-                // Untuk PERSEDIAAN, qty_masuk bertambah
-                $stock->qty_masuk += $diff;
-            }
-
-            $stock->qty_akhir = $stock->qty_awal + $stock->qty_masuk - $stock->qty_keluar;
-        } else {
-            // Create new stock
-            $stock->qty_awal = 0;
-            $stock->qty_masuk = $dataInventory->qty_input;
-            $stock->qty_keluar = 0;
-            $stock->qty_akhir = $dataInventory->qty_input;
-            $stock->id_satuan = $dataInventory->id_satuan;
-        }
-
-        $stock->last_updated = now();
-        $stock->save();
-    }
 }
