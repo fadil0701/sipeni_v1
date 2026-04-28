@@ -204,7 +204,7 @@ class DataInventoryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'id_data_barang' => 'required|exists:master_data_barang,id_data_barang',
+            'id_data_barang' => 'nullable|exists:master_data_barang,id_data_barang',
             'id_gudang' => [
                 'required',
                 'exists:master_gudang,id_gudang',
@@ -235,6 +235,17 @@ class DataInventoryController extends Controller
             'upload_foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'upload_dokumen' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
         ]);
+
+        // Form saat ini menyembunyikan field sub kegiatan, sementara kolom DB wajib.
+        if (($validated['jenis_inventory'] ?? '') === 'ASET' && empty($validated['id_data_barang'])) {
+            return back()->withInput()->withErrors(['id_data_barang' => 'Data Barang wajib diisi untuk inventory jenis ASET.']);
+        }
+        if (in_array(($validated['jenis_inventory'] ?? ''), ['PERSEDIAAN', 'FARMASI'], true) && empty($validated['id_data_barang'])) {
+            $validated['id_data_barang'] = MasterDataBarang::query()->value('id_data_barang');
+            if (!$validated['id_data_barang']) {
+                return back()->withInput()->withErrors(['id_data_barang' => 'Master Data Barang belum tersedia.']);
+            }
+        }
 
         // Form saat ini menyembunyikan field sub kegiatan, sementara kolom DB wajib.
         // Gunakan default sub kegiatan aktif pertama jika tidak dikirim.
@@ -594,7 +605,7 @@ class DataInventoryController extends Controller
         }
 
         $validated = $request->validate([
-            'id_data_barang' => 'required|exists:master_data_barang,id_data_barang',
+            'id_data_barang' => 'nullable|exists:master_data_barang,id_data_barang',
             'id_gudang' => $gudangRules,
             'id_anggaran' => 'required|exists:master_sumber_anggaran,id_anggaran',
             'id_sub_kegiatan' => 'nullable|exists:master_sub_kegiatan,id_sub_kegiatan',
@@ -616,6 +627,16 @@ class DataInventoryController extends Controller
             'upload_foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'upload_dokumen' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
         ]);
+
+        if (($validated['jenis_inventory'] ?? '') === 'ASET' && empty($validated['id_data_barang'])) {
+            return back()->withInput()->withErrors(['id_data_barang' => 'Data Barang wajib diisi untuk inventory jenis ASET.']);
+        }
+        if (in_array(($validated['jenis_inventory'] ?? ''), ['PERSEDIAAN', 'FARMASI'], true) && empty($validated['id_data_barang'])) {
+            $validated['id_data_barang'] = MasterDataBarang::query()->value('id_data_barang');
+            if (!$validated['id_data_barang']) {
+                return back()->withInput()->withErrors(['id_data_barang' => 'Master Data Barang belum tersedia.']);
+            }
+        }
 
         if (empty($validated['id_sub_kegiatan'])) {
             $validated['id_sub_kegiatan'] = $this->resolveDefaultSubKegiatanId();

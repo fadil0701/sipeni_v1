@@ -62,23 +62,6 @@
             <div>
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Barang</h3>
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <x-form.searchable-select
-                        id="id_data_barang"
-                        name="id_data_barang"
-                        label="Data Barang"
-                        :required="true"
-                        placeholder="Pilih Data Barang"
-                        help="Cari dengan kode barang atau nama barang."
-                        error="id_data_barang"
-                        class="select-data-barang"
-                    >
-                        @foreach($dataBarangs as $barang)
-                            <option value="{{ $barang->id_data_barang }}" {{ old('id_data_barang') == $barang->id_data_barang ? 'selected' : '' }}>
-                                {{ $barang->kode_data_barang }} - {{ $barang->nama_barang }}
-                            </option>
-                        @endforeach
-                    </x-form.searchable-select>
-
                     <div>
                         <label for="jenis_inventory" class="block text-sm font-medium text-gray-700 mb-2">
                             Jenis Inventory <span class="text-red-500">*</span>
@@ -98,6 +81,26 @@
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
+                    
+                    <div id="data_barang_field">
+                        <x-form.searchable-select
+                            id="id_data_barang"
+                            name="id_data_barang"
+                            label="Data Barang"
+                            :required="true"
+                            placeholder="Pilih Data Barang"
+                            help="Cari dengan kode barang atau nama barang."
+                            error="id_data_barang"
+                            class="select-data-barang">
+                            @foreach($dataBarangs as $barang)
+                                <option value="{{ $barang->id_data_barang }}" {{ old('id_data_barang') == $barang->id_data_barang ? 'selected' : '' }}>
+                                    {{ $barang->kode_data_barang }} - {{ $barang->nama_barang }}
+                                </option>
+                            @endforeach
+                        </x-form.searchable-select>
+                    </div>
+
+
 
                     <div id="jenis_barang_field" style="display: {{ in_array(old('jenis_inventory'), ['ASET','PERSEDIAAN','FARMASI']) ? 'block' : 'none' }};">
                         <label for="jenis_barang" class="block text-sm font-medium text-gray-700 mb-2">
@@ -574,7 +577,23 @@
 
         function toggleFields() {
             const jenisInventory = jenisInventorySelect.value;
+            const dataBarangField = document.getElementById('data_barang_field');
+            const dataBarangInput = document.getElementById('id_data_barang');
             updateJenisBarangOptions();
+
+            if (jenisInventory === 'ASET') {
+                if (dataBarangField) dataBarangField.style.display = 'block';
+                if (dataBarangInput) dataBarangInput.setAttribute('required', 'required');
+            } else if (jenisInventory === 'PERSEDIAAN' || jenisInventory === 'FARMASI') {
+                if (dataBarangField) dataBarangField.style.display = 'none';
+                if (dataBarangInput) {
+                    dataBarangInput.removeAttribute('required');
+                    dataBarangInput.value = '';
+                }
+            } else {
+                if (dataBarangField) dataBarangField.style.display = 'block';
+                if (dataBarangInput) dataBarangInput.removeAttribute('required');
+            }
 
             if (jenisInventory === 'ASET') {
                 // ASET: tampilkan tipe dan no_seri, sembunyikan no_batch dan tanggal_kedaluwarsa

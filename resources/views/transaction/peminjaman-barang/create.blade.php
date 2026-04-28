@@ -30,7 +30,7 @@
 
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
             @if(!empty($isAdminWithoutPegawai))
-                <div>
+                <div id="field_pemohon_manual">
                     <label for="id_pemohon_manual" class="mb-2 block text-sm font-medium text-gray-700">Pemohon Pegawai <span class="text-red-500">*</span></label>
                     <select id="id_pemohon_manual" name="id_pemohon_manual" required class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
                         <option value="">Pilih Pemohon Pegawai</option>
@@ -41,7 +41,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div>
+                <div id="field_unit_peminjam_admin">
                     <label for="id_unit_peminjam" class="mb-2 block text-sm font-medium text-gray-700">Unit Peminjam <span class="text-red-500">*</span></label>
                     <select id="id_unit_peminjam" name="id_unit_peminjam" required class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
                         <option value="">Pilih Unit Peminjam</option>
@@ -195,25 +195,39 @@ document.addEventListener('DOMContentLoaded', function () {
     const fieldGudang = document.getElementById('field_gudang_pusat');
     const unitSelect = document.getElementById('id_unit_pemilik');
     const gudangSelect = document.getElementById('id_gudang_pusat');
+    const adminUnitField = document.getElementById('field_unit_peminjam_admin');
+    const adminUnitSelect = document.getElementById('id_unit_peminjam');
 
     function toggleTujuanFields() {
         if (tujuan.value === 'UNIT') {
             fieldUnit.style.display = 'block';
             fieldGudang.style.display = 'none';
+            if (adminUnitField) adminUnitField.style.display = 'block';
             unitSelect.setAttribute('required', 'required');
             gudangSelect.removeAttribute('required');
+            if (adminUnitSelect) adminUnitSelect.setAttribute('required', 'required');
             gudangSelect.value = '';
         } else if (tujuan.value === 'GUDANG_PUSAT') {
             fieldGudang.style.display = 'block';
             fieldUnit.style.display = 'none';
+            if (adminUnitField) adminUnitField.style.display = 'none';
             gudangSelect.setAttribute('required', 'required');
             unitSelect.removeAttribute('required');
+            if (adminUnitSelect) {
+                adminUnitSelect.removeAttribute('required');
+                adminUnitSelect.value = '';
+            }
             unitSelect.value = '';
         } else {
             fieldUnit.style.display = 'none';
             fieldGudang.style.display = 'none';
+            if (adminUnitField) adminUnitField.style.display = 'none';
             unitSelect.removeAttribute('required');
             gudangSelect.removeAttribute('required');
+            if (adminUnitSelect) {
+                adminUnitSelect.removeAttribute('required');
+                adminUnitSelect.value = '';
+            }
             unitSelect.value = '';
             gudangSelect.value = '';
         }

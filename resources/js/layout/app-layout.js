@@ -158,6 +158,74 @@ function initLoadingAndConfirm() {
         document.addEventListener('keydown', handleKeydown);
     }
 
+    function extractConfirmMessage(handlerCode) {
+        if (!handlerCode) return null;
+        var match = handlerCode.match(/confirm\s*\(\s*(['"`])([\s\S]*?)\1\s*\)/i);
+        return match ? match[2] : null;
+    }
+
+    function neutralizeConfirm(handlerCode) {
+        if (!handlerCode) return '';
+        return handlerCode
+            .replace(/return\s+confirm\s*\(\s*(['"`])[\s\S]*?\1\s*\)\s*;?/gi, 'return true;')
+            .replace(/confirm\s*\(\s*(['"`])[\s\S]*?\1\s*\)\s*;?/gi, '')
+            .trim();
+    }
+
+    function migrateLegacyInlineConfirm() {
+        var forms = document.querySelectorAll('form[onsubmit], form [onclick], a[onclick], button[onclick], input[type="submit"][onclick]');
+        forms.forEach(function (el) {
+            if (el.dataset.legacyConfirmHandled === '1') return;
+
+            if (el.tagName === 'FORM') {
+                var onSubmitRaw = el.getAttribute('onsubmit') || '';
+                var submitMessage = extractConfirmMessage(onSubmitRaw);
+                if (submitMessage) {
+                    el.dataset.confirm = submitMessage;
+                    var cleanedSubmit = neutralizeConfirm(onSubmitRaw);
+                    if (cleanedSubmit) {
+                        el.setAttribute('onsubmit', cleanedSubmit);
+                    } else {
+                        el.removeAttribute('onsubmit');
+                    }
+                }
+                el.dataset.legacyConfirmHandled = '1';
+                return;
+            }
+
+            var raw = el.getAttribute('onclick') || '';
+            var message = extractConfirmMessage(raw);
+            if (!message) {
+                el.dataset.legacyConfirmHandled = '1';
+                return;
+            }
+
+            var cleaned = neutralizeConfirm(raw);
+            if (cleaned) {
+                el.setAttribute('onclick', cleaned);
+            } else {
+                el.removeAttribute('onclick');
+            }
+
+            el.addEventListener('click', function (event) {
+                event.preventDefault();
+                var targetForm = el.closest('form');
+                showConfirmDialog(message, function () {
+                    if (targetForm) {
+                        targetForm.dataset.confirmApproved = '1';
+                        targetForm.requestSubmit(el.type === 'submit' ? el : undefined);
+                    } else if (el.tagName === 'A' && el.href) {
+                        window.location.href = el.href;
+                    }
+                });
+            });
+
+            el.dataset.legacyConfirmHandled = '1';
+        });
+    }
+
+    migrateLegacyInlineConfirm();
+
     document.addEventListener('submit', function (event) {
         var form = event.target;
         if (!(form instanceof HTMLFormElement)) return;

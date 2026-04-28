@@ -186,12 +186,16 @@
                 </form>
             @endif
 
-            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_SERAH_TERIMA && ($user?->hasRole('admin') || $user?->hasRole('pegawai') || $user?->hasRole('kepala_unit')))
-                <form method="POST" action="{{ route('transaction.peminjaman-barang.pengembalian', $peminjaman->id_peminjaman) }}" class="flex items-center gap-2">
-                    @csrf
-                    <input type="text" name="kondisi_kembali" placeholder="Kondisi kembali" required class="rounded-md border border-gray-300 px-2 py-1 text-sm">
-                    <button type="submit" class="btn-primary-ui">Catat Pengembalian</button>
-                </form>
+            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_SERAH_TERIMA && ($user?->hasRole('admin') || $user?->hasRole('pegawai')))
+                @if($user?->hasRole('admin') || ((int) ($pegawai?->id_unit_kerja ?? 0) === (int) $peminjaman->id_unit_peminjam))
+                    <a href="{{ route('transaction.peminjaman-barang.pengembalian.create', $peminjaman->id_peminjaman) }}" class="btn-primary-ui inline-flex items-center">
+                        Isi Form Pengembalian
+                    </a>
+                @else
+                    <div class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                        Form pengembalian hanya bisa diisi pegawai dari unit peminjam.
+                    </div>
+                @endif
             @endif
 
             @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_PENGEMBALIAN && ($user?->hasRole('admin') || $user?->hasRole('admin_gudang')))

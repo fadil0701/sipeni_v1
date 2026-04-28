@@ -62,8 +62,19 @@ class PeminjamanBarangFlowTest extends TestCase
         $peminjaman->refresh();
         $this->assertSame(PeminjamanBarang::STATUS_SERAH_TERIMA, $peminjaman->status);
 
-        $this->actingAs($admin)->post(route('transaction.peminjaman-barang.pengembalian', $peminjaman->id_peminjaman), [
-            'kondisi_kembali' => 'Baik',
+        $pegawaiPeminjam = MasterPegawai::query()
+            ->where('id_unit_kerja', $peminjaman->id_unit_peminjam)
+            ->whereNotNull('user_id')
+            ->firstOrFail();
+        $pegawaiUser = User::query()->findOrFail($pegawaiPeminjam->user_id);
+        $itemsPayload = $peminjaman->details->map(function ($detail) {
+            return [
+                'id_detail_peminjaman' => $detail->id_detail_peminjaman,
+                'kondisi_kembali' => 'Baik',
+            ];
+        })->values()->all();
+        $this->actingAs($pegawaiUser)->post(route('transaction.peminjaman-barang.pengembalian', $peminjaman->id_peminjaman), [
+            'items' => $itemsPayload,
         ])->assertSessionHas('success');
         $peminjaman->refresh();
         $this->assertSame(PeminjamanBarang::STATUS_PENGEMBALIAN, $peminjaman->status);

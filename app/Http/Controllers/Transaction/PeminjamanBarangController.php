@@ -7,6 +7,7 @@ use App\Models\DetailPeminjamanBarang;
 use App\Models\MasterDataBarang;
 use App\Models\MasterGudang;
 use App\Models\MasterPegawai;
+use App\Models\RegisterAset;
 use App\Models\MasterSatuan;
 use App\Models\MasterUnitKerja;
 use App\Models\PeminjamanBarang;
@@ -110,8 +111,17 @@ class PeminjamanBarangController extends Controller
             ->orderBy('nama_gudang')
             ->get();
 
+        $registeredBarangIds = RegisterAset::query()
+            ->whereNotNull('id_inventory')
+            ->join('data_inventory', 'register_aset.id_inventory', '=', 'data_inventory.id_inventory')
+            ->pluck('data_inventory.id_data_barang')
+            ->filter()
+            ->unique()
+            ->values();
+
         $dataBarangs = MasterDataBarang::query()
             ->with('satuan')
+            ->whereIn('id_data_barang', $registeredBarangIds)
             ->orderBy('nama_barang')
             ->limit(1500)
             ->get();
@@ -268,6 +278,66 @@ class PeminjamanBarangController extends Controller
         return view('transaction.peminjaman-barang.show', compact('peminjaman'));
     }
 
+    public function indexPengembalian(Request $request)
+    {
+        $user = Auth::user();
+        $pegawai = $user ? MasterPegawai::query()->where('user_id', $user->id)->first() : null;
+
+        $allowedStatuses = [
+            PeminjamanBarang::STATUS_SERAH_TERIMA,
+            PeminjamanBarang::STATUS_PENGEMBALIAN,
+            PeminjamanBarang::STATUS_SELESAI,
+        ];
+
+        $query = PeminjamanBarang::query()
+            ->with(['unitPeminjam', 'pemohon'])
+            ->whereIn('status', $allowedStatuses)
+            ->latest('id_peminjaman');
+
+        if ($request->filled('status') && in_array((string) $request->string('status'), $allowedStatuses, true)) {
+            $query->where('status', (string) $request->string('status'));
+        }
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->string('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('no_peminjaman', 'like', '%' . $search . '%')
+                    ->orWhereHas('unitPeminjam', function ($sub) use ($search) {
+                        $sub->where('nama_unit_kerja', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('pemohon', function ($sub) use ($search) {
+                        $sub->where('nama_pegawai', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        $list = $query->paginate(10)->appends($request->query());
+        $statusLabels = PeminjamanBarang::statusLabels();
+        $summary = [
+            'siap_dikembalikan' => PeminjamanBarang::query()->where('status', PeminjamanBarang::STATUS_SERAH_TERIMA)->count(),
+            'menunggu_finalisasi' => PeminjamanBarang::query()->where('status', PeminjamanBarang::STATUS_PENGEMBALIAN)->count(),
+            'selesai' => PeminjamanBarang::query()->where('status', PeminjamanBarang::STATUS_SELESAI)->count(),
+        ];
+
+        return view('transaction.pengembalian-barang.index', compact(
+            'list',
+            'allowedStatuses',
+            'statusLabels',
+            'summary',
+            'user',
+            'pegawai'
+        ));
+    }
+
+    public function createPengembalian($id)
+    {
+        $this->authorizeRole(['admin', 'pegawai']);
+        $peminjaman = $this->findAndGuardStatus($id, PeminjamanBarang::STATUS_SERAH_TERIMA);
+        $this->ensureSameUnitForRole($peminjaman->id_unit_peminjam, 'pegawai');
+
+        return view('transaction.peminjaman-barang.pengembalian', compact('peminjaman'));
+    }
+
     public function verifikasiUnitA(Request $request, $id)
     {
         $this->authorizeRole(['admin', 'kepala_unit']);
@@ -376,14 +446,21 @@ class PeminjamanBarangController extends Controller
 
     public function pengembalian(Request $request, $id)
     {
-        $this->authorizeRole(['admin', 'pegawai', 'kepala_unit']);
+        $this->authorizeRole(['admin', 'pegawai']);
         $peminjaman = $this->findAndGuardStatus($id, PeminjamanBarang::STATUS_SERAH_TERIMA);
-        $this->ensureSameUnitForRole($peminjaman->id_unit_peminjam, 'kepala_unit', 'pegawai');
-        $validated = $request->validate(['kondisi_kembali' => 'required|string|max:100']);
+        $this->ensureSameUnitForRole($peminjaman->id_unit_peminjam, 'pegawai');
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.id_detail_peminjaman' => 'required|exists:detail_peminjaman_barang,id_detail_peminjaman',
+            'items.*.kondisi_kembali' => 'required|string|max:100',
+        ]);
 
         DB::transaction(function () use ($peminjaman, $validated) {
-            foreach ($peminjaman->details as $detail) {
-                $detail->update(['kondisi_kembali' => $validated['kondisi_kembali']]);
+            $detailMap = $peminjaman->details->keyBy('id_detail_peminjaman');
+            foreach ($validated['items'] as $item) {
+                $detail = $detailMap->get((int) $item['id_detail_peminjaman']);
+                abort_if(!$detail, 422, 'Detail peminjaman tidak valid untuk dokumen ini.');
+                $detail->update(['kondisi_kembali' => $item['kondisi_kembali']]);
             }
             $before = $peminjaman->status;
             $peminjaman->update([
@@ -395,7 +472,7 @@ class PeminjamanBarangController extends Controller
                 'pengembalian',
                 $before,
                 PeminjamanBarang::STATUS_PENGEMBALIAN,
-                'Pengembalian dicatat. Kondisi kembali: '.$validated['kondisi_kembali']
+                'Pengembalian dicatat per item.'
             );
         });
 

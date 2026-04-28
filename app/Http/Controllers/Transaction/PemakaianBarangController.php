@@ -23,7 +23,9 @@ class PemakaianBarangController extends Controller
 {
     public function __construct(
         private readonly StockGuardService $stockGuard
-    ) {}
+    ) {
+        abort(404, 'Modul Pemakaian Barang dinonaktifkan.');
+    }
 
     /**
      * Display a listing of the resource.

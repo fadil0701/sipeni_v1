@@ -43,14 +43,20 @@
         @csrf
         <div>
             <label for="file" class="block text-sm font-medium text-gray-700 mb-2">File Excel</label>
-            <input
-                type="file"
-                id="file"
-                name="file"
-                accept=".xlsx,.xls"
-                required
-                class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            >
+            <div class="flex flex-wrap items-center gap-3">
+                <input
+                    type="file"
+                    id="file"
+                    name="file"
+                    accept=".xlsx,.xls"
+                    required
+                    class="sr-only"
+                >
+                <label for="file" class="inline-flex cursor-pointer items-center px-4 py-2 rounded-md text-sm font-medium text-white bg-slate-700 hover:bg-slate-800 transition-colors">
+                    Pilih File
+                </label>
+                <span id="import-struktur-file-name" class="text-sm text-gray-600">Belum ada file dipilih</span>
+            </div>
         </div>
 
         <div>
@@ -61,4 +67,20 @@
     </form>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const fileInput = document.getElementById('file');
+    const fileNameLabel = document.getElementById('import-struktur-file-name');
+    if (!fileInput || !fileNameLabel) return;
+
+    fileInput.addEventListener('change', function () {
+        const fileName = fileInput.files && fileInput.files.length ? fileInput.files[0].name : '';
+        fileNameLabel.textContent = fileName || 'Belum ada file dipilih';
+        fileNameLabel.title = fileName || '';
+    });
+});
+</script>
+@endpush
 
