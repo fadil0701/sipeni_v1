@@ -21,6 +21,8 @@
         main table {
             border-collapse: collapse;
             border: 1px solid #e5e7eb;
+            width: 100%;
+            table-layout: auto;
         }
         main table > thead > tr > th,
         main table > thead > tr > td,
@@ -29,6 +31,52 @@
         main table > tfoot > tr > th,
         main table > tfoot > tr > td {
             border: 1px solid #e5e7eb;
+            padding: 0.45rem 0.65rem;
+            vertical-align: middle;
+            line-height: 1.25rem;
+        }
+
+        /* Semua header tabel rata tengah */
+        main table > thead > tr > th {
+            text-align: center;
+        }
+
+        /* Aksi: kolom dibuat ringkas, tidak melebar berlebihan */
+        main table :is(th, td):last-child {
+            width: 1%;
+            white-space: nowrap;
+        }
+
+        /* Konten aksi default dirapikan agar lebih hemat tinggi row */
+        main table td form,
+        main table td .inline-flex,
+        main table td .flex {
+            align-items: center;
+        }
+
+        /* Pagination: kunci warna agar tetap seperti mode siang */
+        main nav[role="navigation"] span[aria-current="page"] span,
+        main nav[role="navigation"] span[aria-current="page"] {
+            background-color: #2563eb !important;
+            color: #ffffff !important;
+            border-color: #2563eb !important;
+        }
+
+        main nav[role="navigation"] a,
+        main nav[role="navigation"] span {
+            color: #374151 !important;
+            background-color: #ffffff !important;
+            border-color: #d1d5db !important;
+        }
+
+        main nav[role="navigation"] a:hover {
+            background-color: #eff6ff !important;
+            color: #1d4ed8 !important;
+            border-color: #93c5fd !important;
+        }
+
+        main nav[role="navigation"] svg {
+            color: #6b7280 !important;
         }
     </style>
     

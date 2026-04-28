@@ -314,6 +314,10 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
    - modul retur berdiri sendiri, tidak lagi menumpang status peminjaman,
    - form retur multi-item berbasis inventory unit (tanpa ketergantungan penerimaan),
    - skema database dan seeder telah diselaraskan.
+8. Koreksi logika stock untuk jenis inventory ASET (bug sinkronisasi observer). 🔴
+   - saat input/update `Data Inventory` dengan `jenis_inventory = ASET`, data masih ikut masuk ke `data_stock`,
+   - akar masalah: `DataInventoryObserver` masih memanggil `updateStock()` untuk alur ASET,
+   - target perbaikan: batasi update stock hanya untuk `PERSEDIAAN/FARMASI` agar ASET tidak tercatat sebagai stok kuantitas gudang.
 
 ### Prioritas Menengah
 1. Rapikan istilah menu dan deskripsi halaman (mengurangi ambiguitas user). ✅ (istilah maintenance/service distandarkan ke pemeliharaan/laporan servis pada menu + halaman utama)
@@ -394,3 +398,57 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Finalisasi UAT manual lintas role untuk alur peminjaman barang (antar unit vs gudang pusat).
 - Penyelarasan akhir UI modul retur agar seluruh wording lama (penerimaan/distribusi) konsisten dengan domain retur terpisah.
 - Penambahan test otomatis khusus modul retur terpisah untuk mencegah regresi lintas migrasi skema baru.
+
+---
+
+## 5) Update Sesi Pemulihan Perubahan (2026-04-28)
+
+### A. Pemulihan Kode Setelah Working Tree Rusak
+- **Status: Selesai**
+- Dilakukan pemulihan environment saat `artisan` sempat tidak terbaca (`Could not open input file: artisan`).
+- Dilakukan backup perubahan lokal ke stash sebelum recovery untuk mencegah kehilangan data.
+- Working tree dipulihkan agar file inti Laravel kembali normal dan server dapat berjalan.
+- Verifikasi berhasil:
+  - `php artisan --version` berjalan normal,
+  - `php artisan serve` kembali aktif.
+
+### B. Re-implement Fitur Yang Sempat Hilang
+- **Status: Selesai**
+- Seluruh perubahan prioritas dari awal percakapan di-apply ulang ke source code:
+  - menu + halaman **Pengembalian Barang** terpisah dari daftar Peminjaman,
+  - route index pengembalian khusus (`transaction.pengembalian-barang.index`),
+  - form pengembalian per-item (`items[].kondisi_kembali`) berdasarkan detail pinjaman,
+  - akses form pengembalian untuk `admin` dan `pegawai` (pegawai tetap dibatasi unit peminjam),
+  - tombol di halaman detail peminjaman diarahkan ke halaman form pengembalian khusus,
+  - modul `Pemakaian Barang` dinonaktifkan (route dinonaktifkan + controller hard abort 404),
+  - tampilan nama file terpilih di halaman import struktur barang,
+  - pembersihan `confirm()` native pada form delete gudang,
+  - penguatan migrasi confirm legacy (`onsubmit/onclick`) ke modal konfirmasi custom,
+  - penyesuaian overlay loading agar tidak menutup interaksi sidebar,
+  - penyesuaian field dinamis peminjaman berdasarkan tujuan (`UNIT` vs `GUDANG_PUSAT`),
+  - penyesuaian field `Data Barang` pada Data Inventory:
+    - tampil & wajib untuk `ASET`,
+    - disembunyikan untuk `PERSEDIAAN/FARMASI` dengan fallback backend aman.
+
+### C. Verifikasi Teknis Setelah Pemulihan
+- **Status: Selesai**
+- Validasi sintaks controller utama: lulus (`php -l`).
+- Validasi route baru pengembalian: terdaftar di route list.
+- Test otomatis alur peminjaman: lulus (`PeminjamanBarangFlowTest`).
+- Build aset frontend: lulus (`npm run build`).
+- Pembersihan cache Laravel: selesai (`php artisan optimize:clear`).
+
+### D. Update Repository GitHub
+- **Status: Selesai**
+- Commit pemulihan berhasil dibuat:
+  - `625828c`
+  - `Restore loan return workflow, inventory form rules, and custom confirm modal behavior.`
+- Perubahan berhasil di-push ke remote branch:
+  - `origin/sistem-ppkp-terintegrasi`
+- Catatan distribusi:
+  - perubahan sudah ada di branch kerja,
+  - belum masuk ke `main` sebelum proses PR/merge.
+
+### E. Catatan Sisa Kecil
+- Masih ada 1 file untracked lokal yang belum dimasukkan commit:
+  - `database/seeders/data/tes kir.pdf`
