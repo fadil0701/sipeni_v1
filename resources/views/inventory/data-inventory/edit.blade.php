@@ -47,10 +47,11 @@
                         <label for="id_gudang" class="block text-sm font-medium text-gray-700 mb-2">
                             Gudang <span class="text-red-500">*</span>
                         </label>
-                        <select id="id_gudang" name="id_gudang" required class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_gudang') border-red-500 @enderror">
-                            <option value="">Pilih Gudang Pusat</option>
+                        <input type="hidden" id="id_gudang_hidden" name="id_gudang" value="{{ old('id_gudang', $dataInventory->id_gudang) }}">
+                        <select id="id_gudang" disabled class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_gudang') border-red-500 @enderror">
+                            <option value="">Otomatis sesuai Jenis Inventory</option>
                             @foreach($gudangs as $gudang)
-                                <option value="{{ $gudang->id_gudang }}" {{ old('id_gudang', $dataInventory->id_gudang) == $gudang->id_gudang ? 'selected' : '' }}>
+                                <option value="{{ $gudang->id_gudang }}" data-kategori="{{ $gudang->kategori_gudang }}" {{ old('id_gudang', $dataInventory->id_gudang) == $gudang->id_gudang ? 'selected' : '' }}>
                                     {{ $gudang->nama_gudang }}
                                     @if($gudang->kategori_gudang)
                                         - {{ $gudang->kategori_gudang }}
@@ -58,7 +59,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        <p class="mt-1 text-xs text-gray-500">Hanya gudang PUSAT yang dapat digunakan untuk input inventory. Gudang UNIT hanya menerima distribusi barang.</p>
+                        <p class="mt-1 text-xs text-gray-500">Gudang otomatis mengikuti Jenis Inventory dan tidak dapat dipilih manual.</p>
                         @error('id_gudang')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
 
@@ -367,7 +368,28 @@
             const jenisInventory = jenisInventorySelect.value;
             const dataBarangField = document.getElementById('data_barang_field');
             const dataBarangInput = document.getElementById('id_data_barang');
+            const gudangSelect = document.getElementById('id_gudang');
+            const gudangHidden = document.getElementById('id_gudang_hidden');
             updateJenisBarangOptions();
+
+            // Sinkronisasi otomatis gudang berdasarkan jenis inventory (kategori gudang pusat).
+            if (gudangSelect && gudangHidden) {
+                let matchedOption = null;
+                Array.from(gudangSelect.options).forEach(function (opt) {
+                    if (!opt.value) return;
+                    if ((opt.dataset.kategori || '').toUpperCase() === (jenisInventory || '').toUpperCase()) {
+                        matchedOption = opt;
+                    }
+                });
+
+                if (matchedOption) {
+                    gudangSelect.value = matchedOption.value;
+                    gudangHidden.value = matchedOption.value;
+                } else {
+                    gudangSelect.value = '';
+                    gudangHidden.value = '';
+                }
+            }
 
             if (jenisInventory === 'ASET') {
                 if (dataBarangField) dataBarangField.style.display = 'block';

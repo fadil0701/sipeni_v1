@@ -539,15 +539,42 @@ function initTableEnhancer() {
             table.tHead.rows[0].insertBefore(th, table.tHead.rows[0].firstChild);
         }
 
-        table.classList.add('w-full', 'text-sm');
+        table.classList.add('w-full', 'text-sm', 'table-auto');
         if (table.tHead) table.tHead.classList.add('bg-gray-50');
-        allRows.forEach(function (row) { row.classList.add('hover:bg-gray-50', 'transition-colors'); });
+        allRows.forEach(function (row) {
+            row.classList.add('hover:bg-gray-50', 'transition-colors');
+            Array.from(row.cells || []).forEach(function (cell) {
+                // Kompres tinggi row global untuk tabel index/list
+                cell.classList.remove('px-6', 'py-4', 'py-3');
+                cell.classList.add('px-3', 'py-2', 'align-middle');
+            });
+        });
+
+        if (table.tHead && table.tHead.rows && table.tHead.rows[0]) {
+            Array.from(table.tHead.rows[0].cells || []).forEach(function (th) {
+                th.classList.remove('px-6', 'py-3');
+                th.classList.add('px-3', 'py-2', 'align-middle');
+            });
+        }
 
         var sortCol = -1;
         var sortDir = 'asc';
         headers.forEach(function (th, idx) {
             var headerText = (th.textContent || '').trim().toLowerCase();
-            if (headerText === 'aksi' || headerText === 'action' || headerText === 'opsi') th.classList.add('no-sort');
+            if (headerText === 'aksi' || headerText === 'action' || headerText === 'opsi') {
+                th.classList.add('no-sort');
+                th.style.width = '1%';
+                th.style.whiteSpace = 'nowrap';
+                var bodyRows = Array.from(tbody.rows || []);
+                bodyRows.forEach(function (row) {
+                    var td = row.cells[idx];
+                    if (!td) return;
+                    td.style.width = '1%';
+                    td.style.whiteSpace = 'nowrap';
+                    td.classList.remove('px-6', 'py-4', 'py-3');
+                    td.classList.add('px-2', 'py-1.5', 'align-middle');
+                });
+            }
             if (filterColumn && !th.classList.contains('no-sort')) {
                 var option = document.createElement('option');
                 option.value = String(idx);
@@ -639,7 +666,7 @@ function initActionIcons() {
         el.dataset.iconifiedAction = '1';
         el.setAttribute('title', label);
         el.setAttribute('aria-label', label);
-        el.classList.add('inline-flex', 'items-center', 'justify-center', 'h-8', 'w-8', 'rounded-full', 'border', 'transition-colors', 'duration-150');
+        el.classList.add('inline-flex', 'items-center', 'justify-center', 'h-7', 'w-7', 'rounded-full', 'border', 'transition-colors', 'duration-150');
         if (actionKey === 'detail' || actionKey === 'lihat') el.classList.add('border-blue-200', 'bg-blue-50', 'text-blue-600', 'hover:bg-blue-100');
         else if (actionKey === 'edit') el.classList.add('border-amber-200', 'bg-amber-50', 'text-amber-600', 'hover:bg-amber-100');
         else el.classList.add('border-red-200', 'bg-red-50', 'text-red-600', 'hover:bg-red-100');
@@ -716,6 +743,41 @@ function initFilterFormConsistency() {
     });
 }
 
+function initGlobalPaginationSizeSelector() {
+    var paginations = document.querySelectorAll('main nav[role="navigation"]');
+    if (!paginations.length) return;
+
+    paginations.forEach(function (pagination) {
+        if (pagination.dataset.perPageEnhanced === '1') return;
+
+        var wrapper = document.createElement('div');
+        wrapper.className = 'mb-3 flex items-center justify-end gap-2 text-sm text-gray-700';
+        wrapper.innerHTML = ''
+            + '<label for="global-per-page-selector" class="text-sm font-medium text-gray-700">Rows:</label>'
+            + '<select id="global-per-page-selector" class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">'
+            + '  <option value="10">10</option>'
+            + '  <option value="20">20</option>'
+            + '  <option value="50">50</option>'
+            + '  <option value="100">100</option>'
+            + '</select>';
+
+        var selector = wrapper.querySelector('select');
+        var currentPerPage = (new URLSearchParams(window.location.search).get('per_page') || '10').trim();
+        if (!['10', '20', '50', '100'].includes(currentPerPage)) currentPerPage = '10';
+        selector.value = currentPerPage;
+
+        selector.addEventListener('change', function () {
+            var params = new URLSearchParams(window.location.search);
+            params.set('per_page', selector.value);
+            params.delete('page');
+            window.location.search = params.toString();
+        });
+
+        pagination.parentNode.insertBefore(wrapper, pagination);
+        pagination.dataset.perPageEnhanced = '1';
+    });
+}
+
 onReady(function () {
     initLayoutGlobals();
     ensureChoicesLoaded();
@@ -725,4 +787,5 @@ onReady(function () {
     initTableEnhancer();
     initActionIcons();
     initFilterFormConsistency();
+    initGlobalPaginationSizeSelector();
 });
