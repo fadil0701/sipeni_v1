@@ -293,7 +293,7 @@
                                 @enderror
                             </div>
 
-                            <div class="permintaan-detail-stock">
+                            <div class="permintaan-detail-stock hidden">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Stock Tersedia
                                 </label>
@@ -427,7 +427,7 @@
                 </select>
             </div>
 
-            <div class="permintaan-detail-stock">
+            <div class="permintaan-detail-stock hidden">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     Stock Tersedia
                 </label>

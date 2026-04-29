@@ -294,6 +294,7 @@
 
                                     <li class="px-4 pt-3 text-[11px] uppercase tracking-wide text-blue-300">Data Inventory</li>
                                         <li><a href="{{ route('inventory.data-inventory.index') }}" class="{{ $linkClass($isRoute(['inventory.data-inventory.*'])) }}">Data Inventory</a></li>
+                                        <li><a href="{{ route('inventory.data-inventory.import.index') }}" class="{{ $linkClass($isRoute(['inventory.data-inventory.import.*'])) }}">Import Data Inventory</a></li>
                                         <li><a href="{{ route('inventory.scan-qr') }}" class="{{ $linkClass($isRoute(['inventory.scan-qr'])) }}">Scan QR Code</a></li>
 
                                     <li class="px-4 pt-3 text-[11px] uppercase tracking-wide text-blue-300">Stok &amp; Transaksi</li>

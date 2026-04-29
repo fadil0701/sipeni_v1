@@ -135,7 +135,7 @@
             <thead class="bg-gray-50">
                 <tr>
                     <x-table.num-th />
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nomor Register</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Kerja</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Periode</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Mulai</th>
@@ -149,8 +149,9 @@
                     <tr class="hover:bg-gray-50 transition-colors">
                         <x-table.num-td :paginator="$jadwals" />
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">{{ $jadwal->registerAset->nomor_register ?? '-' }}</div>
-                            <div class="text-xs text-gray-500">{{ $jadwal->registerAset->inventory->dataBarang->nama_barang ?? '-' }}</div>
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ optional(optional($jadwal->registerAset)->unitKerja)->nama_unit_kerja ?? '-' }}
+                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">

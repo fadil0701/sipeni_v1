@@ -15,14 +15,20 @@
     <form action="{{ route('maintenance.jadwal-maintenance.store') }}" method="POST" class="p-6 space-y-6">
         @csrf
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Register Aset</label>
-            <select name="id_register_aset" required class="block w-full px-3 py-2 border border-gray-300 rounded-md @error('id_register_aset') border-red-500 @enderror">
-                <option value="">Pilih aset</option>
-                @foreach($registerAsets as $aset)
-                    <option value="{{ $aset->id_register_aset }}" @selected(old('id_register_aset') == $aset->id_register_aset)>{{ $aset->nomor_register }} - {{ $aset->inventory->dataBarang->nama_barang ?? '-' }}</option>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Unit Kerja</label>
+            <select
+                name="id_unit_kerja"
+                required
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md @error('id_unit_kerja') border-red-500 @enderror"
+            >
+                <option value="">Pilih Unit Kerja</option>
+                @foreach($unitKerjas as $unitKerja)
+                    <option value="{{ $unitKerja->id_unit_kerja }}" @selected(old('id_unit_kerja') == $unitKerja->id_unit_kerja)>
+                        {{ $unitKerja->nama_unit_kerja }}
+                    </option>
                 @endforeach
             </select>
-            @error('id_register_aset')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
+            @error('id_unit_kerja')<p class="text-sm text-red-600 mt-1 text-sm">{{ $message }}</p>@enderror
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div>

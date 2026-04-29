@@ -26,32 +26,8 @@ class MasterSumberAnggaranSeeder extends Seeder
                 'keterangan' => 'Pendapatan Badan Layanan Umum Daerah.',
             ],
             [
-                'nama_anggaran' => 'PNBP',
-                'keterangan' => 'Penerimaan Negara Bukan Pajak.',
-            ],
-            [
-                'nama_anggaran' => 'DAK',
-                'keterangan' => 'Dana Alokasi Khusus.',
-            ],
-            [
-                'nama_anggaran' => 'DAU',
-                'keterangan' => 'Dana Alokasi Umum.',
-            ],
-            [
                 'nama_anggaran' => 'Hibah',
                 'keterangan' => 'Hibah pemerintah atau pihak ketiga.',
-            ],
-            [
-                'nama_anggaran' => 'Pinjaman luar negeri',
-                'keterangan' => 'Pinjaman/hibah luar negeri untuk pembangunan atau pengadaan.',
-            ],
-            [
-                'nama_anggaran' => 'Swasta/kemitraan',
-                'keterangan' => 'Kerja sama atau pendanaan non-APBN/APBD.',
-            ],
-            [
-                'nama_anggaran' => 'Dana Diklat / BOK',
-                'keterangan' => 'Dana bantuan operasional kesehatan atau pendidikan (sesuai peruntukan).',
             ],
         ];
 

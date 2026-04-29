@@ -10,8 +10,8 @@
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
     <h2 class="text-xl font-semibold text-gray-900 mb-4">Detail Jadwal Pemeliharaan</h2>
     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div><dt class="text-gray-500">Unit Kerja</dt><dd class="font-medium">{{ optional(optional($jadwal->registerAset)->unitKerja)->nama_unit_kerja ?? '-' }}</dd></div>
         <div><dt class="text-gray-500">Nomor Register</dt><dd class="font-medium">{{ $jadwal->registerAset->nomor_register ?? '-' }}</dd></div>
-        <div><dt class="text-gray-500">Aset</dt><dd class="font-medium">{{ $jadwal->registerAset->inventory->dataBarang->nama_barang ?? '-' }}</dd></div>
         <div><dt class="text-gray-500">Jenis</dt><dd class="font-medium">{{ $jadwal->jenis_maintenance }}</dd></div>
         <div><dt class="text-gray-500">Periode</dt><dd class="font-medium">{{ $jadwal->periode }}</dd></div>
         <div><dt class="text-gray-500">Tanggal Mulai</dt><dd class="font-medium">{{ optional($jadwal->tanggal_mulai)->format('d/m/Y') }}</dd></div>

@@ -332,7 +332,7 @@
                                         @enderror
                                     </div>
 
-                                    <div class="permintaan-detail-stock">
+                                    <div class="permintaan-detail-stock hidden">
                                         <label class="block text-sm font-medium text-gray-700 mb-2">
                                             Stock Tersedia
                                         </label>
@@ -467,7 +467,7 @@
                 </select>
             </div>
 
-            <div class="permintaan-detail-stock">
+            <div class="permintaan-detail-stock hidden">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     Stock Tersedia
                 </label>
@@ -726,8 +726,9 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
                 }
                 
                 if (checkedJenis.length === 0) {
-                    // Tidak ada checkbox ter-check, sembunyikan semua
-                    shouldShow = false;
+                    // Jika belum ada subjenis dipilih, jangan sembunyikan semua opsi.
+                    // Kalau disembunyikan total, field "Data Barang" akan terlihat kosong.
+                    shouldShow = true;
                 } else if (checkedJenis.includes('FARMASI') && checkedJenis.includes('PERSEDIAAN')) {
                     // Keduanya ter-check: tampilkan Farmasi ATAU Persediaan
                     shouldShow = isFarmasi || isPersediaan;
@@ -1633,7 +1634,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 
                                 let shouldShow = false;
                                 if (checkedJenis.length === 0) {
-                                    shouldShow = false;
+                                    // Jika belum ada subjenis dipilih, jangan sembunyikan semua opsi.
+                                    shouldShow = true;
                                 } else if (checkedJenis.includes('FARMASI') && checkedJenis.includes('PERSEDIAAN')) {
                                     shouldShow = isFarmasi || isPersediaan;
                                 } else if (checkedJenis.includes('FARMASI')) {

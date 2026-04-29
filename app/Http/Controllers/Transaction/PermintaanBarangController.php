@@ -11,6 +11,7 @@ use App\Models\MasterDataBarang;
 use App\Models\MasterSatuan;
 use App\Models\DataStock;
 use App\Models\DataInventory;
+use App\Models\MasterGudang;
 use App\Models\ApprovalFlowDefinition;
 use Illuminate\Support\Facades\Auth;
 use App\Enums\PermintaanBarangStatus;
@@ -474,25 +475,43 @@ class PermintaanBarangController extends Controller
      */
     private function getBarangMasterFromInventory(): array
     {
-        $stockPersediaanIds = DataInventory::query()
-            ->where('jenis_inventory', 'PERSEDIAAN')
-            ->where('status_inventory', 'AKTIF')
-            ->whereNotNull('id_data_barang')
-            ->distinct()
-            ->pluck('id_data_barang')
-            ->map(fn ($id) => (int) $id)
-            ->values()
-            ->all();
+        // Source of truth dropdown adalah data_stock (karena stok yang ditampilkan di UI
+        // juga bersumber dari data_stock / getStockGudangPusat()).
+        // Sebelumnya dropdown diambil dari data_inventory dengan status_inventory='AKTIF'
+        // sehingga jika inventory belum AKTIF, dropdown bisa kosong.
+        $gudangPusatPersediaanIds = MasterGudang::query()
+            ->where('jenis_gudang', 'PUSAT')
+            ->where('kategori_gudang', 'PERSEDIAAN')
+            ->pluck('id_gudang')
+            ->toArray();
 
-        $stockFarmasiIds = DataInventory::query()
-            ->where('jenis_inventory', 'FARMASI')
-            ->where('status_inventory', 'AKTIF')
-            ->whereNotNull('id_data_barang')
-            ->distinct()
-            ->pluck('id_data_barang')
-            ->map(fn ($id) => (int) $id)
-            ->values()
-            ->all();
+        $gudangPusatFarmasiIds = MasterGudang::query()
+            ->where('jenis_gudang', 'PUSAT')
+            ->where('kategori_gudang', 'FARMASI')
+            ->pluck('id_gudang')
+            ->toArray();
+
+        $stockPersediaanIds = empty($gudangPusatPersediaanIds)
+            ? []
+            : DataStock::query()
+                ->whereIn('id_gudang', $gudangPusatPersediaanIds)
+                ->whereNotNull('id_data_barang')
+                ->distinct()
+                ->pluck('id_data_barang')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+
+        $stockFarmasiIds = empty($gudangPusatFarmasiIds)
+            ? []
+            : DataStock::query()
+                ->whereIn('id_gudang', $gudangPusatFarmasiIds)
+                ->whereNotNull('id_data_barang')
+                ->distinct()
+                ->pluck('id_data_barang')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
 
         $inventoryBarangIds = array_values(array_unique(array_merge($stockPersediaanIds, $stockFarmasiIds)));
 

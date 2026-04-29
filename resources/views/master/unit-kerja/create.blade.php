@@ -68,6 +68,7 @@
                     id="kota_kabupaten"
                     name="kota_kabupaten"
                     required
+                    data-searchable="false"
                     class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('kota_kabupaten') border-red-500 @enderror"
                 >
                     <option value="">Pilih Kota/Kabupaten</option>
@@ -85,13 +86,40 @@
                 <label for="kecamatan" class="block text-sm font-medium text-gray-700 mb-2">
                     Kecamatan <span class="text-red-500">*</span>
                 </label>
+                @php
+                    $kotaKabupatenValue = old('kota_kabupaten');
+                    $selectedKecamatanServer = old('kecamatan');
+                    $kecamatanOptions = [];
+                    $normalizeText = function ($value) {
+                        $value = (string) ($value ?? '');
+                        $value = preg_replace('/[\x{00A0}\x{2007}\x{202F}\x{FEFF}]+/u', ' ', $value);
+                        $value = preg_replace('/\x{200B}/u', '', $value);
+                        $value = preg_replace('/\s+/u', ' ', $value);
+                        $value = trim($value);
+                        return mb_strtoupper($value, 'UTF-8');
+                    };
+
+                    $selectedNorm = $normalizeText($kotaKabupatenValue);
+                    foreach ($wilayahDki as $kotaKabupaten => $list) {
+                        if ($normalizeText($kotaKabupaten) === $selectedNorm) {
+                            $kecamatanOptions = $list;
+                            break;
+                        }
+                    }
+                @endphp
                 <select
                     id="kecamatan"
                     name="kecamatan"
                     required
+                    data-searchable="false"
                     class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('kecamatan') border-red-500 @enderror"
                 >
                     <option value="">Pilih Kecamatan</option>
+                    @foreach($kecamatanOptions as $kecamatan)
+                        <option value="{{ $kecamatan }}" @selected($selectedKecamatanServer === $kecamatan)>
+                            {{ $kecamatan }}
+                        </option>
+                    @endforeach
                 </select>
                 @error('kecamatan')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -120,14 +148,45 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const wilayahDki = @json($wilayahDki);
+        // Normalisasi agar pencocokan key tidak gagal karena perbedaan spasi/case (termasuk NBSP).
+        const normalizeText = function (value) {
+            let v = String(value ?? '');
+            v = v
+                .replace(/[\u00A0\u2007\u202F\u200B\uFEFF]/g, ' ')
+                .replace(/\u200B/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            return v.toUpperCase();
+        };
         const kotaSelect = document.getElementById('kota_kabupaten');
         const kecamatanSelect = document.getElementById('kecamatan');
         const oldKecamatan = @json(old('kecamatan'));
 
         function renderKecamatanOptions(selectedKota, selectedKecamatan) {
-            kecamatanSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
-            const list = wilayahDki[selectedKota] || [];
+            const normalizedKota = normalizeText(selectedKota);
+            let list = [];
+            const normalizedNoSpace = normalizedKota.replace(/\s+/g, '');
 
+            // Hindari lookup berbasis key yang rapuh; cari dengan iterasi + normalisasi.
+            // Sertakan fallback "no-space" dan "contains" untuk menangani variasi karakter tak terlihat.
+            Object.entries(wilayahDki || {}).some(function ([kota, kecamatans]) {
+                const kotaNorm = normalizeText(kota);
+                const kotaNoSpace = kotaNorm.replace(/\s+/g, '');
+                const matchExact = kotaNorm === normalizedKota;
+                const matchNoSpace = kotaNoSpace === normalizedNoSpace;
+                const matchContains = kotaNorm.includes(normalizedKota) || normalizedKota.includes(kotaNorm);
+                if (matchExact || matchNoSpace || matchContains) {
+                    list = Array.isArray(kecamatans) ? kecamatans : [];
+                    return true;
+                }
+                return false;
+            });
+
+            if (!list || !list.length) {
+                return;
+            }
+
+            kecamatanSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
             list.forEach(function (kecamatan) {
                 const option = document.createElement('option');
                 option.value = kecamatan;

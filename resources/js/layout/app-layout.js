@@ -82,7 +82,10 @@ function initLoadingAndConfirm() {
         if (action.includes('/logout')) return null;
         if (method === 'DELETE') return 'Apakah Anda yakin data ini akan dihapus?';
         if (method === 'PUT' || method === 'PATCH') return 'Apakah Anda yakin perubahan data ini akan disimpan?';
-        if (method === 'POST') return 'Apakah Anda yakin data ini akan disimpan?';
+        // POST umumnya dipakai untuk aksi "create/store".
+        // Sesuai kebutuhan: tidak perlu modal konfirmasi saat data pertama kali dibuat,
+        // dan tetap langsung kembali/redirect ke index yang diharapkan.
+        if (method === 'POST') return null;
         return null;
     }
 

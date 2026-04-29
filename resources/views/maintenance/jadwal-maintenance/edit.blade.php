@@ -16,12 +16,13 @@
         @csrf
         @method('PUT')
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Register Aset</label>
-            <select name="id_register_aset" required class="block w-full px-3 py-2 border border-gray-300 rounded-md">
-                @foreach($registerAsets as $aset)
-                    <option value="{{ $aset->id_register_aset }}" @selected(old('id_register_aset', $jadwal->id_register_aset) == $aset->id_register_aset)>{{ $aset->nomor_register }} - {{ $aset->inventory->dataBarang->nama_barang ?? '-' }}</option>
-                @endforeach
-            </select>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Unit Kerja</label>
+            <input
+                type="text"
+                disabled
+                value="{{ optional(optional($jadwal->registerAset)->unitKerja)->nama_unit_kerja }}"
+                class="block w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50"
+            >
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-6">
             <div>

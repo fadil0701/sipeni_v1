@@ -66,6 +66,10 @@
         $user = auth()->user();
         $stepOrder = $currentFlow?->step_order ?? 0;
         $canKoreksi = ($stepOrder == 3 && ($user->hasRole('kasubbag_tu') || $user->hasRole('admin')) && $approval->status === 'MENUNGGU');
+        // Aturan tampilan kolom:
+        // - Step 2 (Kepala Unit): jangan tampilkan "Stock Tersedia"
+        // - Step 3 (Kepala Subbag/Kasubbag TU): tampilkan "Stock Tersedia"
+        $showStockTersedia = $stepOrder >= 3;
     @endphp
     
     @if($canKoreksi)
@@ -145,7 +149,9 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode Barang</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Barang</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock Tersedia</th>
+                                    @if($showStockTersedia)
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock Tersedia</th>
+                                    @endif
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Diminta</th>
                                     @if($canKoreksi)
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Koreksi Qty</th>
@@ -166,22 +172,24 @@
                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $index + 1 }}</td>
                                     <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ $detail->dataBarang?->kode_data_barang ?? '-' }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $detail->dataBarang?->nama_barang ?? $detail->deskripsi_barang ?? '-' }}</td>
-                                    <td class="px-4 py-3 text-sm">
-                                        @if($detail->id_data_barang)
-                                        <span class="font-semibold {{ $totalStock > 0 ? 'text-green-600' : 'text-red-600' }}">
-                                            {{ number_format($totalStock, 2, ',', '.') }}
-                                        </span>
-                                        @if($detailStock['per_gudang']->isNotEmpty())
-                                        <div class="text-xs text-gray-500 mt-1">
-                                            @foreach($detailStock['per_gudang'] as $stockGudang)
-                                                <div>{{ $stockGudang['nama_gudang'] }}: {{ number_format($stockGudang['qty_akhir'], 2, ',', '.') }}</div>
-                                            @endforeach
-                                        </div>
-                                        @endif
-                                        @else
-                                        <span class="text-gray-500">-</span>
-                                        @endif
-                                    </td>
+                                    @if($showStockTersedia)
+                                        <td class="px-4 py-3 text-sm">
+                                            @if($detail->id_data_barang)
+                                            <span class="font-semibold {{ $totalStock > 0 ? 'text-green-600' : 'text-red-600' }}">
+                                                {{ number_format($totalStock, 2, ',', '.') }}
+                                            </span>
+                                            @if($detailStock['per_gudang']->isNotEmpty())
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                @foreach($detailStock['per_gudang'] as $stockGudang)
+                                                    <div>{{ $stockGudang['nama_gudang'] }}: {{ number_format($stockGudang['qty_akhir'], 2, ',', '.') }}</div>
+                                                @endforeach
+                                            </div>
+                                            @endif
+                                            @else
+                                            <span class="text-gray-500">-</span>
+                                            @endif
+                                        </td>
+                                    @endif
                                     <td class="px-4 py-3 text-sm">
                                         <span class="{{ $isOverStock ? 'text-red-600 font-semibold' : 'text-gray-900' }}">
                                             {{ number_format($detail->qty_diminta, 2, ',', '.') }}

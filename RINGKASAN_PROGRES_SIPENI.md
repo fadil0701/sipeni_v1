@@ -339,6 +339,7 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 3. Implementasi TTE tahap 1 pada dokumen cetak/download (kode verifikasi + QR + verifikasi).
 4. Finalisasi konsistensi UI modul retur (`index/show/edit`) agar seluruh label lama berbasis penerimaan/distribusi sudah bersih total.
 5. Tambahkan test terarah untuk alur retur terpisah (create multi-item, approve/tolak, update stok pusat/unit).
+6. Koreksi/penegasan definisi `Qty Awal` pada laporan `Kartu Stok` (saat ini masih bernilai 0 pasca import/adjustment) agar sesuai domain bisnis yang diinginkan.
 
 ### Prioritas Rendah
 1. Penyempurnaan visual minor pada selectable/search fields.
@@ -543,9 +544,15 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Penyelarasan UI form operasional:
   - layout posisi form `Permintaan Pemeliharaan` disamakan dengan pola form `Peminjaman Barang` (blok informasi, detail item, keterangan, dan area tombol aksi).
 - Sumber data form berbasis inventory aktif:
-  - `Permintaan Barang` (opsi "Dari master") dipastikan mengambil kandidat barang dari `data_inventory` aktif, bukan daftar master murni.
+  - `Permintaan Barang` (opsi "Dari master") dipastikan mengambil kandidat barang dari `data_stock` (PUSAT/Persediaan/Farmasi), bukan daftar master murni.
   - `Peminjaman Barang` daftar barang form create disesuaikan agar kandidat berasal dari `data_inventory` aktif.
   - `Permintaan Pemeliharaan` daftar register aset pada create/edit dibatasi ke register yang memiliki relasi inventory aktif.
+- Hardening UX Permintaan/Approval Barang:
+  - Dropdown "Data Barang" tidak lagi menyembunyikan seluruh opsi saat checkbox `jenis_permintaan[]` belum ter-check (agar tidak tampil kosong).
+  - Kolom/field "Stock Tersedia" disembunyikan di form create/edit Permintaan Barang dan tata letak grid detail tidak bergeser.
+  - Di halaman approval Permintaan Barang, "Stock Tersedia" tampil hanya saat step >= 3 (Kepala Subbag/Kasubbag TU).
+- Hardening UX Stock Adjustment:
+  - Label dropdown `Data Stock` tidak lagi menampilkan angka stock (dipindahkan ke kolom `Qty Saat Ini` terpisah) dan `Qty Saat Ini` dibaca dari atribut `data-qty-akhir`.
 - Hardening UX Data Inventory:
   - perbaikan auto-fill `Gudang` pada form create agar tidak terisi saat `Jenis Inventory` masih kosong.
 - Dashboard ringkasan:

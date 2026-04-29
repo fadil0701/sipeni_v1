@@ -23,6 +23,7 @@ use App\Http\Controllers\Master\SatuanController;
 use App\Http\Controllers\Master\SumberAnggaranController;
 use App\Http\Controllers\Inventory\DataStockController;
 use App\Http\Controllers\Inventory\DataInventoryController;
+use App\Http\Controllers\Inventory\InventoryDataImportController;
 use App\Http\Controllers\Transaction\DistribusiController;
 use App\Http\Controllers\Transaction\PermintaanBarangController;
 use App\Http\Controllers\Transaction\PeminjamanBarangController;
@@ -99,6 +100,12 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('inventory')->name('inventory.')->middleware(['role:admin,admin_gudang,admin_gudang_aset,admin_gudang_persediaan,admin_gudang_farmasi,admin_gudang_unit,kepala_unit,pegawai,kasubbag_tu'])->group(function () {
         Route::get('data-stock', [DataStockController::class, 'index'])->name('data-stock.index');
         Route::get('scan-qr', [\App\Http\Controllers\Inventory\InventoryItemController::class, 'scanQrPage'])->name('scan-qr');
+        
+        // Import Data Inventory
+        Route::get('data-inventory/import', [InventoryDataImportController::class, 'index'])->name('data-inventory.import.index');
+        Route::post('data-inventory/import', [InventoryDataImportController::class, 'import'])->name('data-inventory.import.import');
+        Route::get('data-inventory/import/template/download', [InventoryDataImportController::class, 'downloadTemplate'])->name('data-inventory.import.template');
+
         Route::resource('data-inventory', DataInventoryController::class);
         Route::get('inventory-item/{id}/template-qr', [\App\Http\Controllers\Inventory\InventoryItemController::class, 'templateQr'])->name('inventory-item.template-qr');
         Route::get('inventory-item/{id}/template-qr/download', [\App\Http\Controllers\Inventory\InventoryItemController::class, 'downloadTemplateQr'])->name('inventory-item.template-qr.download');

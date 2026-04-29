@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\JadwalMaintenance;
 use App\Models\MasterPegawai;
+use App\Models\MasterUnitKerja;
 use App\Models\PermintaanPemeliharaan;
 use App\Models\RegisterAset;
 use Carbon\Carbon;
@@ -72,17 +73,25 @@ class JadwalMaintenanceController extends Controller
 
     public function create()
     {
-        $registerAsets = RegisterAset::where('status_aset', 'AKTIF')
-            ->with(['inventory.dataBarang'])
+        // UI hanya memilih Unit Kerja.
+        // Backend tetap membuat jadwal per aset aktif di unit tersebut,
+        // supaya generate permintaan pemeliharaan tetap berbasis aset.
+        $unitKerjas = MasterUnitKerja::query()
+            ->whereIn('id_unit_kerja', RegisterAset::query()
+                ->where('status_aset', 'AKTIF')
+                ->selectRaw('DISTINCT id_unit_kerja')
+                ->pluck('id_unit_kerja')
+            )
+            ->orderBy('nama_unit_kerja')
             ->get();
-        
-        return view('maintenance.jadwal-maintenance.create', compact('registerAsets'));
+
+        return view('maintenance.jadwal-maintenance.create', compact('unitKerjas'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'id_register_aset' => 'required|exists:register_aset,id_register_aset',
+            'id_unit_kerja' => 'required|exists:master_unit_kerja,id_unit_kerja',
             'jenis_maintenance' => 'required|in:RUTIN,KALIBRASI,PERBAIKAN,PENGGANTIAN_SPAREPART',
             'periode' => 'required|in:HARIAN,MINGGUAN,BULANAN,3_BULAN,6_BULAN,TAHUNAN,CUSTOM',
             'interval_hari' => 'nullable|integer|min:1|required_if:periode,CUSTOM',
@@ -92,42 +101,63 @@ class JadwalMaintenanceController extends Controller
 
         $tanggalSelanjutnya = $this->calculateNextDate($request->tanggal_mulai, $request->periode, $request->interval_hari);
 
-        JadwalMaintenance::create([
-            'id_register_aset' => $request->id_register_aset,
-            'jenis_maintenance' => $request->jenis_maintenance,
-            'periode' => $request->periode,
-            'interval_hari' => $request->interval_hari,
-            'tanggal_mulai' => $request->tanggal_mulai,
-            'tanggal_selanjutnya' => $tanggalSelanjutnya,
-            'status' => 'AKTIF',
-            'keterangan' => $request->keterangan,
-            'created_by' => Auth::id(),
-        ]);
+        $registerAsets = RegisterAset::query()
+            ->where('status_aset', 'AKTIF')
+            ->where('id_unit_kerja', $request->id_unit_kerja)
+            ->get();
+
+        if ($registerAsets->isEmpty()) {
+            return back()->withInput()->withErrors([
+                'id_unit_kerja' => 'Tidak ada register aset aktif pada unit kerja tersebut.',
+            ]);
+        }
+
+        // Buat jadwal untuk tiap aset agar permintaan pemeliharaan tetap berbasis aset.
+        DB::beginTransaction();
+        try {
+            foreach ($registerAsets as $aset) {
+                JadwalMaintenance::create([
+                    'id_register_aset' => $aset->id_register_aset,
+                    'jenis_maintenance' => $request->jenis_maintenance,
+                    'periode' => $request->periode,
+                    'interval_hari' => $request->interval_hari,
+                    'tanggal_mulai' => $request->tanggal_mulai,
+                    'tanggal_selanjutnya' => $tanggalSelanjutnya,
+                    'status' => 'AKTIF',
+                    'keterangan' => $request->keterangan,
+                    'created_by' => Auth::id(),
+                ]);
+            }
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->withInput()->withErrors([
+                'error' => 'Gagal membuat jadwal maintenance: ' . $e->getMessage(),
+            ]);
+        }
 
         return redirect()->route('maintenance.jadwal-maintenance.index')
-            ->with('success', 'Jadwal maintenance berhasil dibuat.');
+            ->with('success', 'Jadwal maintenance berhasil dibuat untuk unit kerja dan aset aktifnya.');
     }
 
     public function show($id)
     {
-        $jadwal = JadwalMaintenance::with(['registerAset.inventory.dataBarang', 'creator'])->findOrFail($id);
+        $jadwal = JadwalMaintenance::with(['registerAset.unitKerja', 'registerAset.inventory.dataBarang', 'creator'])
+            ->findOrFail($id);
         return view('maintenance.jadwal-maintenance.show', compact('jadwal'));
     }
 
     public function edit($id)
     {
-        $jadwal = JadwalMaintenance::findOrFail($id);
-        $registerAsets = RegisterAset::where('status_aset', 'AKTIF')
-            ->with(['inventory.dataBarang'])
-            ->get();
-        
-        return view('maintenance.jadwal-maintenance.edit', compact('jadwal', 'registerAsets'));
+        $jadwal = JadwalMaintenance::with(['registerAset.unitKerja', 'registerAset.inventory.dataBarang'])
+            ->findOrFail($id);
+
+        return view('maintenance.jadwal-maintenance.edit', compact('jadwal'));
     }
 
     public function update(Request $request, $id)
     {
         $request->validate([
-            'id_register_aset' => 'required|exists:register_aset,id_register_aset',
             'jenis_maintenance' => 'required|in:RUTIN,KALIBRASI,PERBAIKAN,PENGGANTIAN_SPAREPART',
             'periode' => 'required|in:HARIAN,MINGGUAN,BULANAN,3_BULAN,6_BULAN,TAHUNAN,CUSTOM',
             'interval_hari' => 'nullable|integer|min:1|required_if:periode,CUSTOM',
@@ -140,7 +170,6 @@ class JadwalMaintenanceController extends Controller
         $tanggalSelanjutnya = $this->calculateNextDate($request->tanggal_mulai, $request->periode, $request->interval_hari);
 
         $jadwal->update([
-            'id_register_aset' => $request->id_register_aset,
             'jenis_maintenance' => $request->jenis_maintenance,
             'periode' => $request->periode,
             'interval_hari' => $request->interval_hari,
