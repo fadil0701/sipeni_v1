@@ -394,7 +394,7 @@
                         Verifikasi, Setujui & Disposisi
                     </button>
 
-                    <form method="POST" action="{{ route('transaction.approval.kembalikan', $approval->id) }}" id="formKembalikan">
+                    <form method="POST" action="{{ route('transaction.approval.kembalikan', $approval->id) }}" id="formKembalikan" data-confirm="Apakah Anda yakin ingin mengembalikan permintaan ini?">
                         @csrf
                         <div class="mb-4">
                             <label for="catatan_kembalikan" class="block text-sm font-medium text-gray-700 mb-2">
@@ -533,7 +533,7 @@
             return false;
         }
         
-        return confirm('Apakah Anda yakin ingin mengembalikan permintaan ini?');
+        return true;
     }
 </script>
 @endpush

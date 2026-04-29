@@ -9,6 +9,7 @@ use App\Models\DetailDistribusi;
 use App\Models\MasterSatuan;
 use App\Models\PermintaanBarang;
 use App\Models\TransaksiDistribusi;
+use App\Models\User;
 use App\Services\DistribusiService;
 use Database\Seeders\ComprehensiveDummySeeder;
 use Database\Seeders\DatabaseSeeder;
@@ -86,5 +87,64 @@ class InventoryBusinessFlowTest extends TestCase
 
         $updated = DataStock::query()->findOrFail($stock->id_stock);
         $this->assertEquals((float) $expectedQty, (float) $updated->qty_akhir);
+    }
+
+    public function test_reconcile_stock_fix_membentuk_row_data_stock_yang_hilang(): void
+    {
+        $inventory = DataInventory::query()
+            ->whereIn('jenis_inventory', ['PERSEDIAAN', 'FARMASI'])
+            ->where('status_inventory', '!=', 'HABIS')
+            ->firstOrFail();
+
+        DataStock::query()
+            ->where('id_data_barang', $inventory->id_data_barang)
+            ->where('id_gudang', $inventory->id_gudang)
+            ->delete();
+
+        $this->assertDatabaseMissing('data_stock', [
+            'id_data_barang' => $inventory->id_data_barang,
+            'id_gudang' => $inventory->id_gudang,
+        ]);
+
+        $this->artisan('inventory:reconcile-stock --fix')
+            ->assertExitCode(0);
+
+        $this->assertDatabaseHas('data_stock', [
+            'id_data_barang' => $inventory->id_data_barang,
+            'id_gudang' => $inventory->id_gudang,
+        ]);
+    }
+
+    public function test_stock_adjustment_multi_row_rejects_duplicate_stock_and_negative_qty(): void
+    {
+        $admin = User::query()->where('email', 'pusdatinppkp@gmail.com')->firstOrFail();
+        $stock = DataStock::query()->firstOrFail();
+
+        $payload = [
+            'tanggal_adjustment' => now()->toDateString(),
+            'status' => 'DRAFT',
+            'rows' => [
+                [
+                    'id_stock' => $stock->id_stock,
+                    'qty_sesudah' => 5,
+                    'jenis_adjustment' => 'KOREKSI',
+                ],
+                [
+                    'id_stock' => $stock->id_stock,
+                    'qty_sesudah' => -1,
+                    'jenis_adjustment' => 'OPNAME',
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($admin)
+            ->from(route('inventory.stock-adjustment.create'))
+            ->post(route('inventory.stock-adjustment.store'), $payload);
+
+        $response->assertRedirect(route('inventory.stock-adjustment.create'));
+        $response->assertSessionHasErrors([
+            'rows.1.id_stock',
+            'rows.1.qty_sesudah',
+        ]);
     }
 }

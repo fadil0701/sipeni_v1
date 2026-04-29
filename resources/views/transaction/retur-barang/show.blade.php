@@ -53,7 +53,7 @@
                     <button 
                         type="submit" 
                         class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                        onclick="return confirm('Apakah Anda yakin ingin menerima retur ini? Stock akan diupdate setelah retur diterima.')"
+                        data-confirm="Apakah Anda yakin ingin menerima retur ini? Stock akan diupdate setelah retur diterima."
                     >
                         Terima Retur
                     </button>

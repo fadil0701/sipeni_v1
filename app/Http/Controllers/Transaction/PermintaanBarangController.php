@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Enums\PermintaanBarangStatus;
 use App\Services\PermintaanService;
 use App\Services\ApprovalService;
+use Illuminate\Support\Collection;
 
 class PermintaanBarangController extends Controller
 {
@@ -117,31 +118,11 @@ class PermintaanBarangController extends Controller
         }
         
         $satuans = MasterSatuan::all();
-
-        // Data barang untuk permintaan rutin/cito: HANYA Persediaan & Farmasi (Aset non-stock tidak masuk alur permintaan barang)
-        // PERSEDIAAN & FARMASI: barang yang ada di Data Inventory (jenis sama)
-        $stockPersediaanIds = DataInventory::where('jenis_inventory', 'PERSEDIAAN')
-            ->where('status_inventory', 'AKTIF')
-            ->pluck('id_data_barang')
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $stockFarmasiIds = DataInventory::where('jenis_inventory', 'FARMASI')
-            ->where('status_inventory', 'AKTIF')
-            ->pluck('id_data_barang')
-            ->unique()
-            ->values()
-            ->toArray();
-
-        // Dropdown Data Barang: hanya Persediaan & Farmasi (permintaan rutin/cito)
-        $inventoryBarangIds = array_unique(array_merge(
-            array_map('intval', $stockPersediaanIds),
-            array_map('intval', $stockFarmasiIds)
-        ));
-        $dataBarangs = $inventoryBarangIds
-            ? MasterDataBarang::with(['subjenisBarang', 'satuan'])->whereIn('id_data_barang', $inventoryBarangIds)->orderBy('kode_data_barang')->get()
-            : collect();
+        [
+            'dataBarangs' => $dataBarangs,
+            'stockPersediaanIds' => $stockPersediaanIds,
+            'stockFarmasiIds' => $stockFarmasiIds,
+        ] = $this->getBarangMasterFromInventory();
 
         // Stock data: hanya PERSEDIAAN/FARMASI (stock gudang pusat, wajib validasi)
         $stockPersediaanIdsInt = array_map('intval', $stockPersediaanIds);
@@ -320,28 +301,11 @@ class PermintaanBarangController extends Controller
             $pegawais = MasterPegawai::all();
         }
 
-        // Data barang untuk permintaan rutin/cito: HANYA Persediaan & Farmasi (sama seperti create)
-        $stockPersediaanIds = DataInventory::where('jenis_inventory', 'PERSEDIAAN')
-            ->where('status_inventory', 'AKTIF')
-            ->pluck('id_data_barang')
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $stockFarmasiIds = DataInventory::where('jenis_inventory', 'FARMASI')
-            ->where('status_inventory', 'AKTIF')
-            ->pluck('id_data_barang')
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $inventoryBarangIds = array_unique(array_merge(
-            array_map('intval', $stockPersediaanIds),
-            array_map('intval', $stockFarmasiIds)
-        ));
-        $dataBarangs = $inventoryBarangIds
-            ? MasterDataBarang::with(['subjenisBarang', 'satuan'])->whereIn('id_data_barang', $inventoryBarangIds)->orderBy('kode_data_barang')->get()
-            : collect();
+        [
+            'dataBarangs' => $dataBarangs,
+            'stockPersediaanIds' => $stockPersediaanIds,
+            'stockFarmasiIds' => $stockFarmasiIds,
+        ] = $this->getBarangMasterFromInventory();
 
         // Stock data: hanya PERSEDIAAN/FARMASI (stock gudang pusat)
         $stockPersediaanIdsInt = array_map('intval', $stockPersediaanIds);
@@ -495,5 +459,55 @@ class PermintaanBarangController extends Controller
             return redirect()->route('transaction.permintaan-barang.show', $id)
                 ->with('error', 'Terjadi kesalahan saat mengajukan permintaan: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Sumber "Dari master" untuk form permintaan barang:
+     * wajib berasal dari data yang sudah pernah diinput di Data Inventory,
+     * bukan seluruh master_data_barang.
+     *
+     * @return array{
+     *   dataBarangs: Collection<int, MasterDataBarang>,
+     *   stockPersediaanIds: array<int, int>,
+     *   stockFarmasiIds: array<int, int>
+     * }
+     */
+    private function getBarangMasterFromInventory(): array
+    {
+        $stockPersediaanIds = DataInventory::query()
+            ->where('jenis_inventory', 'PERSEDIAAN')
+            ->where('status_inventory', 'AKTIF')
+            ->whereNotNull('id_data_barang')
+            ->distinct()
+            ->pluck('id_data_barang')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        $stockFarmasiIds = DataInventory::query()
+            ->where('jenis_inventory', 'FARMASI')
+            ->where('status_inventory', 'AKTIF')
+            ->whereNotNull('id_data_barang')
+            ->distinct()
+            ->pluck('id_data_barang')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        $inventoryBarangIds = array_values(array_unique(array_merge($stockPersediaanIds, $stockFarmasiIds)));
+
+        $dataBarangs = empty($inventoryBarangIds)
+            ? collect()
+            : MasterDataBarang::query()
+                ->with(['subjenisBarang', 'satuan'])
+                ->whereIn('id_data_barang', $inventoryBarangIds)
+                ->orderBy('kode_data_barang')
+                ->get();
+
+        return [
+            'dataBarangs' => $dataBarangs,
+            'stockPersediaanIds' => $stockPersediaanIds,
+            'stockFarmasiIds' => $stockFarmasiIds,
+        ];
     }
 }

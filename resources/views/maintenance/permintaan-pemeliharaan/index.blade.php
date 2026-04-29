@@ -237,7 +237,7 @@
                                         action="{{ route('maintenance.permintaan-pemeliharaan.destroy', $permintaan->id_permintaan_pemeliharaan) }}" 
                                         method="POST" 
                                         class="inline" 
-                                        onsubmit="return confirm('Apakah Anda yakin ingin menghapus permintaan ini?');"
+                                        data-confirm="Apakah Anda yakin ingin menghapus permintaan ini?"
                                     >
                                         @csrf
                                         @method('DELETE')

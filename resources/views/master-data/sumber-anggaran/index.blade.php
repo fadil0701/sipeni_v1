@@ -57,7 +57,7 @@
                             <div class="flex items-center justify-end space-x-3">
                                 <a href="{{ route('master-data.sumber-anggaran.show', $sumberAnggaran->id_anggaran) }}" class="text-blue-600 hover:text-blue-900 transition-colors">Detail</a>
                                 <a href="{{ route('master-data.sumber-anggaran.edit', $sumberAnggaran->id_anggaran) }}" class="text-indigo-600 hover:text-indigo-900 transition-colors">Edit</a>
-                                <form action="{{ route('master-data.sumber-anggaran.destroy', $sumberAnggaran->id_anggaran) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');">
+                                <form action="{{ route('master-data.sumber-anggaran.destroy', $sumberAnggaran->id_anggaran) }}" method="POST" class="inline" data-confirm="Apakah Anda yakin ingin menghapus data ini?">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-red-600 hover:text-red-900 transition-colors">Hapus</button>

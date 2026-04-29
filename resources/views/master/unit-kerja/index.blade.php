@@ -85,7 +85,7 @@
                                     action="{{ route('master.unit-kerja.destroy', $unitKerja->id_unit_kerja) }}" 
                                     method="POST" 
                                     class="inline" 
-                                    onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');"
+                                    data-confirm="Apakah Anda yakin ingin menghapus data ini?"
                                 >
                                     @csrf
                                     @method('DELETE')

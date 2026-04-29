@@ -257,7 +257,7 @@
                                         action="{{ route('transaction.permintaan-barang.ajukan', $permintaan->id_permintaan) }}" 
                                         method="POST" 
                                         class="inline cursor-pointer"
-                                        onsubmit="return confirm('Apakah Anda yakin ingin mengajukan permintaan ini?');"
+                                        data-confirm="Apakah Anda yakin ingin mengajukan permintaan ini?"
                                     >
                                         @csrf
                                         <button 
@@ -284,7 +284,7 @@
                                         action="{{ route('transaction.permintaan-barang.destroy', $permintaan->id_permintaan) }}" 
                                         method="POST" 
                                         class="inline cursor-pointer" 
-                                        onsubmit="return confirm('Apakah Anda yakin ingin menghapus permintaan ini?');"
+                                        data-confirm="Apakah Anda yakin ingin menghapus permintaan ini?"
                                     >
                                         @csrf
                                         @method('DELETE')

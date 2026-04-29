@@ -140,7 +140,7 @@
 </div>
 @endif
 
-<div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-5 mb-6">
+<div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-6 mb-6">
     <div class="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
         <div class="flex items-center justify-between">
             <div>
@@ -159,9 +159,9 @@
     <div class="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-xs uppercase tracking-wide text-gray-500">Stok Gudang</p>
-                <p class="mt-2 text-2xl font-semibold text-gray-900">{{ number_format($totalStock, 0, ',', '.') }}</p>
-                <p class="mt-1 text-xs text-gray-500">Qty akhir</p>
+                <p class="text-xs uppercase tracking-wide text-gray-500">Nilai Persediaan</p>
+                <p class="mt-2 text-2xl font-semibold text-gray-900">Rp {{ number_format($totalPersediaanValue, 0, ',', '.') }}</p>
+                <p class="mt-1 text-xs text-gray-500">Akumulasi nilai inventory persediaan</p>
             </div>
             <div class="rounded-lg bg-emerald-100 p-3 text-emerald-600">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,6 +181,21 @@
             <div class="rounded-lg bg-cyan-100 p-3 text-cyan-600">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 1v8m0 0v1m0-1a4.978 4.978 0 01-2.121-.475M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-xs uppercase tracking-wide text-gray-500">Nilai Farmasi</p>
+                <p class="mt-2 text-2xl font-semibold text-gray-900">Rp {{ number_format($totalFarmasiValue, 0, ',', '.') }}</p>
+                <p class="mt-1 text-xs text-gray-500">Akumulasi nilai inventory farmasi</p>
+            </div>
+            <div class="rounded-lg bg-teal-100 p-3 text-teal-600">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a4 4 0 00-5.656 0L12 17.2l-1.772-1.772a4 4 0 10-5.656 5.656L12 28.312l7.428-7.228a4 4 0 000-5.656z"/>
                 </svg>
             </div>
         </div>

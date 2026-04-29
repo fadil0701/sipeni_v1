@@ -31,7 +31,7 @@
                     action="{{ route('maintenance.permintaan-pemeliharaan.ajukan', $permintaan->id_permintaan_pemeliharaan) }}" 
                     method="POST" 
                     class="inline"
-                    onsubmit="return confirm('Apakah Anda yakin ingin mengajukan permintaan ini?');"
+                    data-confirm="Apakah Anda yakin ingin mengajukan permintaan ini?"
                 >
                     @csrf
                     <button 

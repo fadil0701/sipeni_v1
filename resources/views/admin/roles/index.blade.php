@@ -109,7 +109,7 @@
                                         action="{{ route('admin.roles.destroy', $role->id) }}" 
                                         method="POST" 
                                         class="inline" 
-                                        onsubmit="return confirm('Apakah Anda yakin ingin menghapus role ini?');"
+                                        data-confirm="Apakah Anda yakin ingin menghapus role ini?"
                                     >
                                         @csrf
                                         @method('DELETE')

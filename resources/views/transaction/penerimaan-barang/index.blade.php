@@ -219,7 +219,7 @@
                                     action="{{ route('transaction.penerimaan-barang.destroy', $penerimaan->id_penerimaan) }}" 
                                     method="POST" 
                                     class="inline" 
-                                    onsubmit="return confirm('Apakah Anda yakin ingin menghapus penerimaan ini?');"
+                                    data-confirm="Apakah Anda yakin ingin menghapus penerimaan ini?"
                                 >
                                     @csrf
                                     @method('DELETE')

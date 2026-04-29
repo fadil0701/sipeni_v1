@@ -66,5 +66,47 @@ class RegisterAsetKirFlowTest extends TestCase
         $this->assertNotEquals($inventoryItem->kode_register, $register->nomor_register);
         $this->assertNull($register->id_ruangan);
     }
+
+    public function test_register_aset_unit_kerja_supports_virtual_unit_route_mode(): void
+    {
+        $admin = User::query()->where('email', 'pusdatinppkp@gmail.com')->firstOrFail();
+        $unitKerjaId = (int) DB::table('register_aset')
+            ->whereNotNull('id_unit_kerja')
+            ->orderBy('id_register_aset')
+            ->value('id_unit_kerja');
+        $this->assertGreaterThan(0, $unitKerjaId);
+
+        $response = $this->actingAs($admin)
+            ->get(route('asset.register-aset.unit-kerja.show', [
+                'unit_kerja' => 'unit-' . $unitKerjaId,
+            ]));
+
+        $response->assertOk();
+        $response->assertSee('Register Aset');
+    }
+
+    public function test_pegawai_cannot_access_register_aset_of_other_unit(): void
+    {
+        $pegawaiUnit = DB::table('master_pegawai')
+            ->whereNotNull('user_id')
+            ->whereNotNull('id_unit_kerja')
+            ->orderBy('id')
+            ->first();
+        $this->assertNotNull($pegawaiUnit);
+
+        $otherUnitId = (int) DB::table('master_unit_kerja')
+            ->where('id_unit_kerja', '!=', $pegawaiUnit->id_unit_kerja)
+            ->orderBy('id_unit_kerja')
+            ->value('id_unit_kerja');
+        $this->assertGreaterThan(0, $otherUnitId);
+
+        $pegawaiUser = User::query()->findOrFail($pegawaiUnit->user_id);
+        $response = $this->actingAs($pegawaiUser)
+            ->get(route('asset.register-aset.unit-kerja.show', [
+                'unit_kerja' => 'unit-' . $otherUnitId,
+            ]));
+
+        $response->assertForbidden();
+    }
 }
 

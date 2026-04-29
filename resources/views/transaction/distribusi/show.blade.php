@@ -47,7 +47,7 @@
                     <button
                         type="submit"
                         class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200"
-                        onclick="return confirm('Proses distribusi ini sekarang?')"
+                        data-confirm="Proses distribusi ini sekarang?"
                     >
                         Proses
                     </button>
@@ -60,7 +60,7 @@
                 >
                     Edit
                 </a>
-                <form method="POST" action="{{ route('transaction.distribusi.kirim', $distribusi->id_distribusi) }}" class="inline" onsubmit="if (!{{ $hasPegawaiPengirim ? 'true' : 'false' }}) { alert('Pilih pegawai pengirim terlebih dahulu pada menu Edit.'); return false; } return confirm('Kirim distribusi ini sekarang?');">
+                <form method="POST" action="{{ route('transaction.distribusi.kirim', $distribusi->id_distribusi) }}" class="inline" data-confirm="Kirim distribusi ini sekarang?" onsubmit="if (!{{ $hasPegawaiPengirim ? 'true' : 'false' }}) { alert('Pilih pegawai pengirim terlebih dahulu pada menu Edit.'); return false; } return true;">
                     @csrf
                     <button
                         type="submit"

@@ -51,5 +51,29 @@ class KirDokumenFlowTest extends TestCase
         $response->assertSee('KARTU INVENTARIS RUANGAN');
         $response->assertSee('window.print()');
     }
+
+    public function test_pegawai_cannot_access_kir_dokumen_for_other_unit(): void
+    {
+        $pegawaiUnit = DB::table('master_pegawai')
+            ->whereNotNull('user_id')
+            ->whereNotNull('id_unit_kerja')
+            ->orderBy('id')
+            ->first();
+        $this->assertNotNull($pegawaiUnit);
+
+        $targetUnitId = (int) DB::table('master_unit_kerja')
+            ->where('id_unit_kerja', '!=', $pegawaiUnit->id_unit_kerja)
+            ->orderBy('id_unit_kerja')
+            ->value('id_unit_kerja');
+        $this->assertGreaterThan(0, $targetUnitId);
+
+        $pegawaiUser = User::query()->findOrFail($pegawaiUnit->user_id);
+        $response = $this->actingAs($pegawaiUser)
+            ->get(route('asset.kartu-inventaris-ruangan.dokumen-unit', [
+                'id_unit_kerja' => $targetUnitId,
+            ]));
+
+        $response->assertForbidden();
+    }
 }
 

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\DataInventory;
 use App\Models\DataStock;
+use App\Models\MasterDataBarang;
 use Illuminate\Console\Command;
 
 class ReconcileDataStockFromInventory extends Command
@@ -23,8 +24,10 @@ class ReconcileDataStockFromInventory extends Command
             ->keyBy(fn ($row) => $row->id_data_barang.'-'.$row->id_gudang);
 
         $stocks = DataStock::query()->get();
+        $stockByKey = $stocks->keyBy(fn ($stock) => $stock->id_data_barang.'-'.$stock->id_gudang);
         $rows = [];
         $mismatchCount = 0;
+        $missingCount = 0;
         $isFix = (bool) $this->option('fix');
 
         foreach ($stocks as $stock) {
@@ -54,12 +57,51 @@ class ReconcileDataStockFromInventory extends Command
             }
         }
 
+        foreach ($expected as $key => $expectedRow) {
+            if (isset($stockByKey[$key])) {
+                continue;
+            }
+
+            $missingCount++;
+            $rows[] = [
+                'MISSING',
+                $expectedRow->id_data_barang,
+                $expectedRow->id_gudang,
+                number_format(0, 2, ',', '.'),
+                number_format((float) $expectedRow->expected_qty, 2, ',', '.'),
+                number_format((float) $expectedRow->expected_qty, 2, ',', '.'),
+            ];
+
+            if ($isFix) {
+                $barang = MasterDataBarang::query()
+                    ->select('id_satuan')
+                    ->find($expectedRow->id_data_barang);
+
+                if (!$barang?->id_satuan) {
+                    $this->warn("Lewati create stock karena id_satuan tidak ditemukan untuk id_data_barang={$expectedRow->id_data_barang}");
+                    continue;
+                }
+
+                DataStock::query()->create([
+                    'id_data_barang' => $expectedRow->id_data_barang,
+                    'id_gudang' => $expectedRow->id_gudang,
+                    'qty_awal' => 0,
+                    'qty_masuk' => (float) $expectedRow->expected_qty,
+                    'qty_keluar' => 0,
+                    'qty_akhir' => (float) $expectedRow->expected_qty,
+                    'id_satuan' => $barang->id_satuan,
+                    'last_updated' => now(),
+                ]);
+            }
+        }
+
         $this->table(
             ['ID Stock', 'ID Barang', 'ID Gudang', 'Qty Sistem', 'Qty Rekonsiliasi', 'Selisih'],
             $rows
         );
 
-        $this->info("Total mismatch: {$mismatchCount}");
+        $this->info("Total mismatch qty: {$mismatchCount}");
+        $this->info("Total missing data_stock: {$missingCount}");
         $this->info($isFix ? 'Mode fix: perubahan disimpan.' : 'Mode audit: jalankan dengan --fix untuk sinkronisasi.');
 
         return self::SUCCESS;

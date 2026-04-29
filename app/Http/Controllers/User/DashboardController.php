@@ -49,9 +49,14 @@ class DashboardController extends Controller
             $query->where('jenis_inventory', 'ASET');
         })->count();
 
-        $totalStock = DataStock::sum('qty_akhir');
         $totalAssetValue = (float) DataInventory::query()
             ->where('jenis_inventory', 'ASET')
+            ->sum('total_harga');
+        $totalPersediaanValue = (float) DataInventory::query()
+            ->where('jenis_inventory', 'PERSEDIAAN')
+            ->sum('total_harga');
+        $totalFarmasiValue = (float) DataInventory::query()
+            ->where('jenis_inventory', 'FARMASI')
             ->sum('total_harga');
 
         $activeRequests = PermintaanBarang::whereNotIn('status', [
@@ -378,8 +383,9 @@ class DashboardController extends Controller
 
         return view('user.dashboard', compact(
             'totalAssets',
-            'totalStock',
             'totalAssetValue',
+            'totalPersediaanValue',
+            'totalFarmasiValue',
             'activeRequests',
             'latestRequests',
             'trackingItems',

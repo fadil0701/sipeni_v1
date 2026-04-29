@@ -15,127 +15,69 @@
         <h2 class="text-xl font-semibold text-gray-900">Tambah Permintaan Pemeliharaan</h2>
     </div>
     
-    <form action="{{ route('maintenance.permintaan-pemeliharaan.store') }}" method="POST" class="p-6">
+    <form action="{{ route('maintenance.permintaan-pemeliharaan.store') }}" method="POST" class="p-6 space-y-6">
         @csrf
-        
-        <div class="space-y-6">
-            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                    <label for="id_unit_kerja" class="block text-sm font-medium text-gray-700 mb-2">
-                        Unit Kerja <span class="text-red-500">*</span>
-                    </label>
-                    <select 
-                        id="id_unit_kerja" 
-                        name="id_unit_kerja" 
-                        required
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_unit_kerja') border-red-500 @enderror"
-                    >
-                        <option value="">Pilih Unit Kerja</option>
-                        @foreach($unitKerjas as $unitKerja)
-                            <option value="{{ $unitKerja->id_unit_kerja }}" {{ old('id_unit_kerja') == $unitKerja->id_unit_kerja ? 'selected' : '' }}>
-                                {{ $unitKerja->nama_unit_kerja }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('id_unit_kerja')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
 
-                <div>
-                    <label for="id_pemohon" class="block text-sm font-medium text-gray-700 mb-2">
-                        Pemohon <span class="text-red-500">*</span>
-                    </label>
-                    <select 
-                        id="id_pemohon" 
-                        name="id_pemohon" 
-                        required
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_pemohon') border-red-500 @enderror"
-                    >
-                        <option value="">Pilih Pemohon</option>
-                        @foreach($pegawais as $pegawai)
-                            <option value="{{ $pegawai->id }}" {{ old('id_pemohon') == $pegawai->id ? 'selected' : '' }}>
-                                {{ $pegawai->nama_pegawai }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('id_pemohon')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div>
+                <label for="id_unit_kerja" class="block text-sm font-medium text-gray-700 mb-2">
+                    Unit Kerja <span class="text-red-500">*</span>
+                </label>
+                <select 
+                    id="id_unit_kerja" 
+                    name="id_unit_kerja" 
+                    required
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_unit_kerja') border-red-500 @enderror"
+                >
+                    <option value="">Pilih Unit Kerja</option>
+                    @foreach($unitKerjas as $unitKerja)
+                        <option value="{{ $unitKerja->id_unit_kerja }}" {{ old('id_unit_kerja') == $unitKerja->id_unit_kerja ? 'selected' : '' }}>
+                            {{ $unitKerja->nama_unit_kerja }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('id_unit_kerja')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <div>
-                <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                    <div class="mb-3 flex items-center justify-between">
-                        <label class="block text-sm font-medium text-gray-700">
-                            Detail Permintaan Aset <span class="text-red-500">*</span>
-                        </label>
-                        <button type="button" id="add-permintaan-row" class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">
-                            + Add Row
-                        </button>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-100">
-                                <tr>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Register Aset</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Jenis Pemeliharaan</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Prioritas</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Deskripsi Kerusakan</th>
-                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-600 uppercase">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="permintaan-rows-body"></tbody>
-                        </table>
-                    </div>
-                    @error('rows')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    @error('rows.*.id_register_aset')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    @error('rows.*.jenis_pemeliharaan')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    @error('rows.*.prioritas')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    @error('rows.*.deskripsi_kerusakan')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                    <label for="tanggal_permintaan" class="block text-sm font-medium text-gray-700 mb-2">
-                        Tanggal Permintaan <span class="text-red-500">*</span>
-                    </label>
-                    <input 
-                        type="date" 
-                        id="tanggal_permintaan" 
-                        name="tanggal_permintaan" 
-                        required
-                        value="{{ old('tanggal_permintaan', date('Y-m-d')) }}"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('tanggal_permintaan') border-red-500 @enderror"
-                    >
-                    @error('tanggal_permintaan')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-
+                <label for="id_pemohon" class="block text-sm font-medium text-gray-700 mb-2">
+                    Pemohon <span class="text-red-500">*</span>
+                </label>
+                <select 
+                    id="id_pemohon" 
+                    name="id_pemohon" 
+                    required
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_pemohon') border-red-500 @enderror"
+                >
+                    <option value="">Pilih Pemohon</option>
+                    @foreach($pegawais as $pegawai)
+                        <option value="{{ $pegawai->id }}" {{ old('id_pemohon') == $pegawai->id ? 'selected' : '' }}>
+                            {{ $pegawai->nama_pegawai }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('id_pemohon')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <div>
-                <label for="keterangan" class="block text-sm font-medium text-gray-700 mb-2">Keterangan</label>
-                <textarea 
-                    id="keterangan" 
-                    name="keterangan" 
-                    rows="3"
-                    placeholder="Keterangan tambahan (opsional)..."
-                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >{{ old('keterangan') }}</textarea>
+                <label for="tanggal_permintaan" class="block text-sm font-medium text-gray-700 mb-2">
+                    Tanggal Permintaan <span class="text-red-500">*</span>
+                </label>
+                <input 
+                    type="date" 
+                    id="tanggal_permintaan" 
+                    name="tanggal_permintaan" 
+                    required
+                    value="{{ old('tanggal_permintaan', date('Y-m-d')) }}"
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('tanggal_permintaan') border-red-500 @enderror"
+                >
+                @error('tanggal_permintaan')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <div>
@@ -152,7 +94,58 @@
             </div>
         </div>
 
-        <div class="mt-8 flex justify-end space-x-3 border-t border-gray-200 pt-6">
+        <div class="rounded-lg border border-gray-200 p-4">
+            <div class="mb-3 flex items-center justify-between">
+                <h3 class="text-base font-semibold text-gray-900">
+                    Detail Permintaan Aset <span class="text-red-500">*</span>
+                </h3>
+                <button type="button" id="add-permintaan-row" class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">
+                    + Add Row
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 rounded-md border border-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Register Aset</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Jenis Pemeliharaan</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Prioritas</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Deskripsi Kerusakan</th>
+                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-600 uppercase">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="permintaan-rows-body"></tbody>
+                </table>
+            </div>
+            @error('rows')
+                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+            @error('rows.*.id_register_aset')
+                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+            @error('rows.*.jenis_pemeliharaan')
+                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+            @error('rows.*.prioritas')
+                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+            @error('rows.*.deskripsi_kerusakan')
+                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label for="keterangan" class="block text-sm font-medium text-gray-700 mb-2">Keterangan</label>
+            <textarea 
+                id="keterangan" 
+                name="keterangan" 
+                rows="3"
+                placeholder="Keterangan tambahan (opsional)..."
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            >{{ old('keterangan') }}</textarea>
+        </div>
+
+        <div class="flex justify-end space-x-3 border-t border-gray-200 pt-6">
             <a 
                 href="{{ route('maintenance.permintaan-pemeliharaan.index') }}" 
                 class="px-5 py-2.5 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -166,7 +159,7 @@
                 Simpan
             </button>
         </div>
-    </form>
+    </form>    
 </div>
 @endsection
 

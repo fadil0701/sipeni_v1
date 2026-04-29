@@ -281,6 +281,75 @@ class MaintenanceFlowTest extends TestCase
         $this->assertSame($historyCountBefore, $historyCountAfter);
     }
 
+    public function test_permintaan_pemeliharaan_multi_row_validates_duplicate_and_creates_multiple_documents(): void
+    {
+        $admin = User::query()->where('email', 'pusdatinppkp@gmail.com')->firstOrFail();
+        $registerAset = RegisterAset::query()
+            ->where('status_aset', 'AKTIF')
+            ->whereHas('kartuInventarisRuangan')
+            ->whereNotNull('id_unit_kerja')
+            ->take(2)
+            ->get();
+        $this->assertCount(2, $registerAset);
+
+        $pemohon = $this->findPemohonByUnit((int) $registerAset[0]->id_unit_kerja);
+
+        $invalidPayload = [
+            'id_unit_kerja' => $registerAset[0]->id_unit_kerja,
+            'id_pemohon' => $pemohon->id,
+            'tanggal_permintaan' => now()->toDateString(),
+            'status_permintaan' => 'DRAFT',
+            'rows' => [
+                [
+                    'id_register_aset' => $registerAset[0]->id_register_aset,
+                    'jenis_pemeliharaan' => 'RUTIN',
+                    'prioritas' => 'SEDANG',
+                    'deskripsi_kerusakan' => 'Baris pertama',
+                ],
+                [
+                    'id_register_aset' => $registerAset[0]->id_register_aset,
+                    'jenis_pemeliharaan' => 'PERBAIKAN',
+                    'prioritas' => 'TINGGI',
+                    'deskripsi_kerusakan' => 'Baris duplikat',
+                ],
+            ],
+        ];
+
+        $invalidResponse = $this->actingAs($admin)
+            ->from(route('maintenance.permintaan-pemeliharaan.create'))
+            ->post(route('maintenance.permintaan-pemeliharaan.store'), $invalidPayload);
+        $invalidResponse->assertRedirect(route('maintenance.permintaan-pemeliharaan.create'));
+        $invalidResponse->assertSessionHasErrors(['rows.1.id_register_aset']);
+
+        $validPayload = [
+            'id_unit_kerja' => $registerAset[0]->id_unit_kerja,
+            'id_pemohon' => $pemohon->id,
+            'tanggal_permintaan' => now()->toDateString(),
+            'status_permintaan' => 'DRAFT',
+            'rows' => [
+                [
+                    'id_register_aset' => $registerAset[0]->id_register_aset,
+                    'jenis_pemeliharaan' => 'RUTIN',
+                    'prioritas' => 'SEDANG',
+                    'deskripsi_kerusakan' => 'Baris aset 1',
+                ],
+                [
+                    'id_register_aset' => $registerAset[1]->id_register_aset,
+                    'jenis_pemeliharaan' => 'PERBAIKAN',
+                    'prioritas' => 'TINGGI',
+                    'deskripsi_kerusakan' => 'Baris aset 2',
+                ],
+            ],
+        ];
+
+        $beforeCount = PermintaanPemeliharaan::query()->count();
+        $validResponse = $this->actingAs($admin)
+            ->post(route('maintenance.permintaan-pemeliharaan.store'), $validPayload);
+        $validResponse->assertRedirect(route('maintenance.permintaan-pemeliharaan.index'));
+
+        $this->assertSame($beforeCount + 2, PermintaanPemeliharaan::query()->count());
+    }
+
     private function findRegisterWithKirAndPemohon(): RegisterAset
     {
         $register = RegisterAset::query()

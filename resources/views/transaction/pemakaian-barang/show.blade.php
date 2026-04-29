@@ -49,7 +49,7 @@
                     <button 
                         type="submit" 
                         class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors"
-                        onclick="return confirm('Apakah Anda yakin ingin mengajukan pemakaian ini untuk persetujuan?')"
+                        data-confirm="Apakah Anda yakin ingin mengajukan pemakaian ini untuk persetujuan?"
                     >
                         Ajukan
                     </button>
@@ -61,7 +61,7 @@
                     <button 
                         type="submit" 
                         class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                        onclick="return confirm('Apakah Anda yakin ingin menyetujui pemakaian ini? Stock akan diupdate setelah disetujui.')"
+                        data-confirm="Apakah Anda yakin ingin menyetujui pemakaian ini? Stock akan diupdate setelah disetujui."
                     >
                         Setujui
                     </button>

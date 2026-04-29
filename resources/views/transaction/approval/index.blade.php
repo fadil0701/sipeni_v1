@@ -270,7 +270,7 @@
                                     </a>
                                     {{-- Kepala Unit: Mengetahui (Step 2) --}}
                                     @if($canMengetahui)
-                                        <form method="POST" action="{{ route('transaction.approval.mengetahui', $currentStep->id) }}" class="inline" onsubmit="return confirm('Setujui permintaan sebagai Diketahui?');">
+                                        <form method="POST" action="{{ route('transaction.approval.mengetahui', $currentStep->id) }}" class="inline" data-confirm="Setujui permintaan sebagai Diketahui?">
                                             @csrf
                                             <button type="submit" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors" title="Mengetahui">
                                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -295,7 +295,7 @@
                                     @endif
                                     {{-- Kepala Pusat: Setujui / Tolak (Step 4) --}}
                                     @if($canApprove)
-                                        <form method="POST" action="{{ route('transaction.approval.approve', $currentStep->id) }}" class="inline" onsubmit="return confirm('Setujui permintaan ini?');">
+                                        <form method="POST" action="{{ route('transaction.approval.approve', $currentStep->id) }}" class="inline" data-confirm="Setujui permintaan ini?">
                                             @csrf
                                             <button type="submit" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors" title="Setujui">
                                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -314,7 +314,7 @@
                                                 Tolak
                                             </summary>
                                             <div class="absolute right-0 mt-1 w-72 rounded-lg border border-gray-200 bg-white p-3 shadow-lg z-10">
-                                                <form method="POST" action="{{ route('transaction.approval.reject', $currentStep->id) }}" onsubmit="var c = this.querySelector('textarea'); if (!c.value || c.value.trim().length < 10) { alert('Catatan penolakan wajib minimal 10 karakter.'); return false; } return confirm('Yakin menolak permintaan ini?');">
+                                                <form method="POST" action="{{ route('transaction.approval.reject', $currentStep->id) }}" data-confirm="Yakin menolak permintaan ini?" onsubmit="var c = this.querySelector('textarea'); if (!c.value || c.value.trim().length < 10) { alert('Catatan penolakan wajib minimal 10 karakter.'); return false; } return true;">
                                                     @csrf
                                                     <label class="block text-xs font-medium text-gray-700 mb-1">Catatan penolakan (min. 10 karakter)</label>
                                                     <textarea name="catatan" rows="3" class="block w-full px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="Alasan penolakan..." required minlength="10"></textarea>

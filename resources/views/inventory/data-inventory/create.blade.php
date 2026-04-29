@@ -81,44 +81,6 @@
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
-                    
-                    <div id="data_barang_field">
-                        <x-form.searchable-select
-                            id="id_data_barang"
-                            name="id_data_barang"
-                            label="Data Barang"
-                            :required="true"
-                            placeholder="Pilih Data Barang"
-                            help="Cari dengan kode barang atau nama barang."
-                            error="id_data_barang"
-                            class="select-data-barang">
-                            @foreach($dataBarangs as $barang)
-                                <option value="{{ $barang->id_data_barang }}" {{ old('id_data_barang') == $barang->id_data_barang ? 'selected' : '' }}>
-                                    {{ $barang->kode_data_barang }} - {{ $barang->nama_barang }}
-                                </option>
-                            @endforeach
-                        </x-form.searchable-select>
-                    </div>
-
-
-
-                    <div id="jenis_barang_field" style="display: {{ in_array(old('jenis_inventory'), ['ASET','PERSEDIAAN','FARMASI']) ? 'block' : 'none' }};">
-                        <label for="jenis_barang" class="block text-sm font-medium text-gray-700 mb-2">
-                            Jenis Barang <span class="text-red-500">*</span>
-                        </label>
-                        <select 
-                            id="jenis_barang" 
-                            name="jenis_barang" 
-                            data-current-value="{{ old('jenis_barang') }}"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('jenis_barang') border-red-500 @enderror"
-                        >
-                            <option value="">Pilih Jenis Barang</option>
-                            {{-- Options diisi via JavaScript berdasarkan jenis_inventory --}}
-                        </select>
-                        @error('jenis_barang')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
 
                     <div>
                         <label for="id_gudang" class="block text-sm font-medium text-gray-700 mb-2">
@@ -142,6 +104,43 @@
                         </select>
                         <p class="mt-1 text-xs text-gray-500">Gudang otomatis mengikuti Jenis Inventory dan tidak dapat dipilih manual.</p>
                         @error('id_gudang')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    
+                    <div id="data_barang_field">
+                        <x-form.searchable-select
+                            id="id_data_barang"
+                            name="id_data_barang"
+                            label="Data Barang"
+                            :required="true"
+                            placeholder="Pilih Data Barang"
+                            help="Cari dengan kode barang atau nama barang."
+                            error="id_data_barang"
+                            class="select-data-barang">
+                            @foreach($dataBarangs as $barang)
+                                <option value="{{ $barang->id_data_barang }}" {{ old('id_data_barang') == $barang->id_data_barang ? 'selected' : '' }}>
+                                    {{ $barang->kode_data_barang }} - {{ $barang->nama_barang }}
+                                </option>
+                            @endforeach
+                        </x-form.searchable-select>
+                    </div>
+
+
+                    <div id="jenis_barang_field" style="display: {{ in_array(old('jenis_inventory'), ['ASET','PERSEDIAAN','FARMASI']) ? 'block' : 'none' }};">
+                        <label for="jenis_barang" class="block text-sm font-medium text-gray-700 mb-2">
+                            Jenis Barang <span class="text-red-500">*</span>
+                        </label>
+                        <select 
+                            id="jenis_barang" 
+                            name="jenis_barang" 
+                            data-current-value="{{ old('jenis_barang') }}"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('jenis_barang') border-red-500 @enderror"
+                        >
+                            <option value="">Pilih Jenis Barang</option>
+                            {{-- Options diisi via JavaScript berdasarkan jenis_inventory --}}
+                        </select>
+                        @error('jenis_barang')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -585,6 +584,16 @@
 
             // Sinkronisasi otomatis gudang berdasarkan jenis inventory (kategori gudang pusat).
             if (gudangSelect && gudangHidden) {
+                // Jika jenis inventory belum dipilih, gudang harus tetap kosong.
+                if (!jenisInventory) {
+                    gudangSelect.value = '';
+                    gudangHidden.value = '';
+                    if (window.jQuery) {
+                        window.jQuery(gudangSelect).trigger('change.select2');
+                    }
+                    return;
+                }
+
                 const normalize = function (value) {
                     return String(value || '').toUpperCase().replace(/[^A-Z]/g, '');
                 };
@@ -614,10 +623,6 @@
                     matchedOption = optionList.find(function (opt) {
                         return String(opt.value) === String(gudangHidden.value);
                     }) || null;
-                }
-
-                if (!matchedOption && optionList.length) {
-                    matchedOption = optionList[0];
                 }
 
                 if (matchedOption) {

@@ -102,7 +102,7 @@
                         <a href="{{ route('procurement.paket-pengadaan.show', $paket->id_paket) }}" class="text-blue-600 hover:text-blue-900">Detail</a>
                         <a href="{{ route('procurement.paket-pengadaan.edit', $paket->id_paket) }}" class="ml-3 text-indigo-600 hover:text-indigo-900">Edit</a>
                         @if(!$paket->kontrak)
-                        <form action="{{ route('procurement.paket-pengadaan.destroy', $paket->id_paket) }}" method="POST" class="inline ml-1" onsubmit="return confirm('Yakin hapus paket ini?');">
+                        <form action="{{ route('procurement.paket-pengadaan.destroy', $paket->id_paket) }}" method="POST" class="inline ml-1" data-confirm="Yakin hapus paket ini?">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="text-red-600 hover:text-red-900">Hapus</button>

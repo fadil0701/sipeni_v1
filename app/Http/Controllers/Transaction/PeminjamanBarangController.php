@@ -12,6 +12,7 @@ use App\Models\MasterSatuan;
 use App\Models\MasterUnitKerja;
 use App\Models\PeminjamanBarang;
 use App\Models\PeminjamanBarangLog;
+use App\Models\DataInventory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -112,17 +113,19 @@ class PeminjamanBarangController extends Controller
             ->orderBy('nama_gudang')
             ->get();
 
-        $registeredBarangIds = RegisterAset::query()
-            ->whereNotNull('register_aset.id_inventory')
-            ->join('data_inventory', 'register_aset.id_inventory', '=', 'data_inventory.id_inventory')
-            ->pluck('data_inventory.id_data_barang')
+        // Sumber barang "master" untuk peminjaman wajib berasal dari Data Inventory aktif.
+        $inventoryBarangIds = DataInventory::query()
+            ->where('status_inventory', 'AKTIF')
+            ->whereNotNull('id_data_barang')
+            ->distinct()
+            ->pluck('id_data_barang')
             ->filter()
             ->unique()
             ->values();
 
         $dataBarangs = MasterDataBarang::query()
             ->with('satuan')
-            ->whereIn('id_data_barang', $registeredBarangIds)
+            ->whereIn('id_data_barang', $inventoryBarangIds)
             ->orderBy('nama_barang')
             ->limit(1500)
             ->get();

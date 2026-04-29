@@ -113,7 +113,7 @@
                             <div class="flex items-center justify-end space-x-3">
                                 <a href="{{ route('master-manajemen.master-jabatan.show', $jabatan->id_jabatan) }}" class="text-blue-600 hover:text-blue-900 transition-colors">Detail</a>
                                 <a href="{{ route('master-manajemen.master-jabatan.edit', $jabatan->id_jabatan) }}" class="text-indigo-600 hover:text-indigo-900 transition-colors">Edit</a>
-                                <form action="{{ route('master-manajemen.master-jabatan.destroy', $jabatan->id_jabatan) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus jabatan ini?');">
+                                <form action="{{ route('master-manajemen.master-jabatan.destroy', $jabatan->id_jabatan) }}" method="POST" class="inline" data-confirm="Apakah Anda yakin ingin menghapus jabatan ini?">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-red-600 hover:text-red-900 transition-colors">Hapus</button>

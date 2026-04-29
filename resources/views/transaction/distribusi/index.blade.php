@@ -186,7 +186,7 @@
                                 @endif
 
                                 @if($statusValue === 'diproses')
-                                    <form method="POST" action="{{ route('transaction.distribusi.kirim', $distribusi->id_distribusi) }}" class="inline" onsubmit="if (!{{ $distribusi->id_pegawai_pengirim ? 'true' : 'false' }}) { alert('Pilih pegawai pengirim terlebih dahulu pada menu Edit, lalu simpan.'); return false; } return confirm('Kirim distribusi ini sekarang?');">
+                                    <form method="POST" action="{{ route('transaction.distribusi.kirim', $distribusi->id_distribusi) }}" class="inline" data-confirm="Kirim distribusi ini sekarang?" onsubmit="if (!{{ $distribusi->id_pegawai_pengirim ? 'true' : 'false' }}) { alert('Pilih pegawai pengirim terlebih dahulu pada menu Edit, lalu simpan.'); return false; } return true;">
                                         @csrf
                                         <input type="hidden" name="kirim_from" value="index">
                                         <button 

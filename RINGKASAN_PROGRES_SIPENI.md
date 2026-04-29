@@ -314,26 +314,28 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
    - modul retur berdiri sendiri, tidak lagi menumpang status peminjaman,
    - form retur multi-item berbasis inventory unit (tanpa ketergantungan penerimaan),
    - skema database dan seeder telah diselaraskan.
-8. Koreksi logika stock untuk jenis inventory ASET (bug sinkronisasi observer). 🔴
+8. Koreksi logika stock untuk jenis inventory ASET (bug sinkronisasi observer). ✅
    - saat input/update `Data Inventory` dengan `jenis_inventory = ASET`, data masih ikut masuk ke `data_stock`,
    - akar masalah: `DataInventoryObserver` masih memanggil `updateStock()` untuk alur ASET,
    - target perbaikan: batasi update stock hanya untuk `PERSEDIAAN/FARMASI` agar ASET tidak tercatat sebagai stok kuantitas gudang.
-9. Pembersihan menyeluruh konfirmasi bawaan browser (`confirm()`) ke modal konfirmasi custom. 🔴
-   - masih ada form/aksi dengan `onsubmit/onclick` legacy yang menampilkan popup browser native,
-   - target: migrasi seluruh modul ke `data-confirm` + handler modal global agar UX konfirmasi konsisten.
-10. Hardening pengujian add-row multi-item untuk modul operasional baru. 🔴
+9. Pembersihan menyeluruh konfirmasi bawaan browser (`confirm()`) ke modal konfirmasi custom. ✅
+   - migrasi menyeluruh ke atribut `data-confirm` pada form/aksi modul utama telah selesai,
+   - pemindaian `resources/views/**/*.blade.php` tidak lagi menemukan pemanggilan `confirm(`.
+10. Hardening pengujian add-row multi-item untuk modul operasional baru. ✅
    - cakupan target: `Stock Adjustment` multi-row dan `Permintaan Pemeliharaan` multi-row,
    - target: validasi duplikasi row, empty row, nilai negatif, dan stabilitas submit multi-item.
-11. Penguatan uji concurrency generator nomor dokumen. 🔴
+11. Penguatan uji concurrency generator nomor dokumen. ✅
    - fokus pada generator nomor dokumen transaksi (mis. `PMJ`, `PMH`) saat submit paralel,
    - target: hindari bentrok nomor dan pastikan fallback retry berjalan stabil.
-12. Audit konsistensi data stok vs inventory pasca perubahan logika eligible stok. 🔴
+12. Audit konsistensi data stok vs inventory pasca perubahan logika eligible stok. ✅
    - fokus pada aturan baru: stok menampilkan `PERSEDIAAN/FARMASI` + `ASET` tertentu sesuai kriteria,
    - target: pastikan data historis tidak nyangkut/overcount setelah sinkronisasi aturan terbaru.
 
 ### Prioritas Menengah
 1. Rapikan istilah menu dan deskripsi halaman (mengurangi ambiguitas user). ✅ (istilah maintenance/service distandarkan ke pemeliharaan/laporan servis pada menu + halaman utama)
-2. Tambahkan test coverage untuk alur utama KIR dan register aset.
+2. Tambahkan test coverage untuk alur utama KIR dan register aset. ✅
+   - `KirDokumenFlowTest`: tambah skenario akses ditolak untuk pegawai yang mencoba membuka dokumen KIR unit lain.
+   - `RegisterAsetKirFlowTest`: tambah skenario mode route virtual unit (`unit-{id}`) dan proteksi akses lintas unit.
 3. Implementasi TTE tahap 1 pada dokumen cetak/download (kode verifikasi + QR + verifikasi).
 4. Finalisasi konsistensi UI modul retur (`index/show/edit`) agar seluruh label lama berbasis penerimaan/distribusi sudah bersih total.
 5. Tambahkan test terarah untuk alur retur terpisah (create multi-item, approve/tolak, update stok pusat/unit).
@@ -520,3 +522,32 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 ### F. Catatan Verifikasi
 - Validasi sintaks file yang diubah telah dijalankan (`php -l`) dan lulus.
 - Linter untuk file utama yang diubah: tidak ada error baru.
+
+### G. Finalisasi Prioritas Tinggi Tambahan (2026-04-29)
+- **Status: Selesai**
+- Konfirmasi aksi lintas modul:
+  - migrasi massal `onsubmit/onclick` legacy berbasis `confirm()` ke `data-confirm`,
+  - seluruh view utama kini konsisten memakai modal konfirmasi global.
+- Hardening dokumen nomor `PMH`:
+  - generator nomor permintaan pemeliharaan dibuat aman untuk submit paralel (lock + unique candidate scan).
+- Hardening pengujian multi-row:
+  - test validasi duplikasi + nilai negatif pada `Stock Adjustment`,
+  - test validasi duplikasi register + pembuatan multi dokumen pada `Permintaan Pemeliharaan`.
+- Audit stok vs inventory:
+  - command `inventory:reconcile-stock` kini juga mendeteksi dan membentuk row `data_stock` yang hilang (mode `--fix`).
+- Catatan eksekusi test:
+  - eksekusi test fitur terblokir koneksi MySQL lokal (`127.0.0.1:3306` tidak aktif) sehingga verifikasi runtime penuh menunggu DB aktif.
+
+### H. Update Lanjutan UI + Sumber Data Form (2026-04-29)
+- **Status: Selesai**
+- Penyelarasan UI form operasional:
+  - layout posisi form `Permintaan Pemeliharaan` disamakan dengan pola form `Peminjaman Barang` (blok informasi, detail item, keterangan, dan area tombol aksi).
+- Sumber data form berbasis inventory aktif:
+  - `Permintaan Barang` (opsi "Dari master") dipastikan mengambil kandidat barang dari `data_inventory` aktif, bukan daftar master murni.
+  - `Peminjaman Barang` daftar barang form create disesuaikan agar kandidat berasal dari `data_inventory` aktif.
+  - `Permintaan Pemeliharaan` daftar register aset pada create/edit dibatasi ke register yang memiliki relasi inventory aktif.
+- Hardening UX Data Inventory:
+  - perbaikan auto-fill `Gudang` pada form create agar tidak terisi saat `Jenis Inventory` masih kosong.
+- Dashboard ringkasan:
+  - kartu `Stok Gudang` diganti menjadi metrik nilai,
+  - ditambahkan pemisahan `Nilai Persediaan` dan `Nilai Farmasi` agar ringkasan lebih representatif dibanding qty stok gabungan.

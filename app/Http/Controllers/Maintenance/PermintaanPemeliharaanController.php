@@ -83,6 +83,10 @@ class PermintaanPemeliharaanController extends Controller
                 $pegawais = MasterPegawai::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
                 $registerAsets = RegisterAset::where('id_unit_kerja', $pegawai->id_unit_kerja)
                     ->where('status_aset', 'AKTIF')
+                    ->whereNotNull('id_inventory')
+                    ->whereHas('inventory', function ($q) {
+                        $q->where('status_inventory', 'AKTIF');
+                    })
                     ->with(['inventory.dataBarang'])
                     ->get();
             } else {
@@ -94,6 +98,10 @@ class PermintaanPemeliharaanController extends Controller
             $unitKerjas = MasterUnitKerja::all();
             $pegawais = MasterPegawai::all();
             $registerAsets = RegisterAset::where('status_aset', 'AKTIF')
+                ->whereNotNull('id_inventory')
+                ->whereHas('inventory', function ($q) {
+                    $q->where('status_inventory', 'AKTIF');
+                })
                 ->with(['inventory.dataBarang'])
                 ->get();
         }
@@ -103,7 +111,7 @@ class PermintaanPemeliharaanController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'id_unit_kerja' => 'required|exists:master_unit_kerja,id_unit_kerja',
             'id_pemohon' => 'required|exists:master_pegawai,id',
             'tanggal_permintaan' => 'required|date',
@@ -118,24 +126,21 @@ class PermintaanPemeliharaanController extends Controller
 
         DB::beginTransaction();
         try {
-            $pemohon = MasterPegawai::findOrFail($request->id_pemohon);
+            $pemohon = MasterPegawai::findOrFail($validated['id_pemohon']);
 
-            if ((int) $pemohon->id_unit_kerja !== (int) $request->id_unit_kerja) {
+            if ((int) $pemohon->id_unit_kerja !== (int) $validated['id_unit_kerja']) {
                 throw new \RuntimeException('Pemohon harus berasal dari unit kerja yang sama.');
             }
 
-            // Generate nomor permintaan berurutan untuk batch saat ini.
+            // Generate nomor permintaan berurutan secara aman untuk request paralel.
             $tahun = date('Y');
-            $lastPermintaan = PermintaanPemeliharaan::whereYear('created_at', $tahun)
-                ->orderBy('id_permintaan_pemeliharaan', 'desc')
-                ->first();
-            $urutan = $lastPermintaan ? (int) substr($lastPermintaan->no_permintaan_pemeliharaan, -4) + 1 : 1;
-            $statusPermintaan = $request->status_permintaan ?? 'DRAFT';
+            $urutan = $this->nextUrutanPermintaan($tahun);
+            $statusPermintaan = $validated['status_permintaan'] ?? 'DRAFT';
 
-            foreach ($request->rows as $row) {
+            foreach ($validated['rows'] as $row) {
                 $register = RegisterAset::with('kartuInventarisRuangan')->findOrFail($row['id_register_aset']);
 
-                if ((int) $register->id_unit_kerja !== (int) $request->id_unit_kerja) {
+                if ((int) $register->id_unit_kerja !== (int) $validated['id_unit_kerja']) {
                     throw new \RuntimeException('Unit kerja register aset tidak sesuai dengan unit kerja permintaan.');
                 }
                 if ($register->kartuInventarisRuangan()->count() === 0) {
@@ -148,14 +153,14 @@ class PermintaanPemeliharaanController extends Controller
                 $permintaan = PermintaanPemeliharaan::create([
                     'no_permintaan_pemeliharaan' => $noPermintaan,
                     'id_register_aset' => $row['id_register_aset'],
-                    'id_unit_kerja' => $request->id_unit_kerja,
-                    'id_pemohon' => $request->id_pemohon,
-                    'tanggal_permintaan' => $request->tanggal_permintaan,
+                    'id_unit_kerja' => $validated['id_unit_kerja'],
+                    'id_pemohon' => $validated['id_pemohon'],
+                    'tanggal_permintaan' => $validated['tanggal_permintaan'],
                     'jenis_pemeliharaan' => $row['jenis_pemeliharaan'],
                     'prioritas' => $row['prioritas'],
                     'status_permintaan' => $statusPermintaan,
                     'deskripsi_kerusakan' => $row['deskripsi_kerusakan'] ?? null,
-                    'keterangan' => $request->keterangan,
+                    'keterangan' => $validated['keterangan'] ?? null,
                 ]);
 
                 if ($statusPermintaan === 'DIAJUKAN') {
@@ -170,6 +175,30 @@ class PermintaanPemeliharaanController extends Controller
             DB::rollBack();
             return back()->withInput()->with('error', 'Gagal membuat permintaan pemeliharaan: ' . $e->getMessage());
         }
+    }
+
+    private function nextUrutanPermintaan(string $tahun): int
+    {
+        $prefix = 'PMH/' . $tahun . '/';
+
+        $lastNoPermintaan = PermintaanPemeliharaan::query()
+            ->where('no_permintaan_pemeliharaan', 'like', $prefix . '%')
+            ->orderByDesc('id_permintaan_pemeliharaan')
+            ->lockForUpdate()
+            ->value('no_permintaan_pemeliharaan');
+
+        $next = 1;
+        if ($lastNoPermintaan && preg_match('/(\d{4})$/', $lastNoPermintaan, $matches)) {
+            $next = ((int) $matches[1]) + 1;
+        }
+
+        while (PermintaanPemeliharaan::query()
+            ->where('no_permintaan_pemeliharaan', $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT))
+            ->exists()) {
+            $next++;
+        }
+
+        return $next;
     }
 
     public function show($id)
@@ -207,6 +236,10 @@ class PermintaanPemeliharaanController extends Controller
                 $pegawais = MasterPegawai::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
                 $registerAsets = RegisterAset::where('id_unit_kerja', $pegawai->id_unit_kerja)
                     ->where('status_aset', 'AKTIF')
+                    ->whereNotNull('id_inventory')
+                    ->whereHas('inventory', function ($q) {
+                        $q->where('status_inventory', 'AKTIF');
+                    })
                     ->with(['inventory.dataBarang'])
                     ->get();
             } else {
@@ -218,6 +251,10 @@ class PermintaanPemeliharaanController extends Controller
             $unitKerjas = MasterUnitKerja::all();
             $pegawais = MasterPegawai::all();
             $registerAsets = RegisterAset::where('status_aset', 'AKTIF')
+                ->whereNotNull('id_inventory')
+                ->whereHas('inventory', function ($q) {
+                    $q->where('status_inventory', 'AKTIF');
+                })
                 ->with(['inventory.dataBarang'])
                 ->get();
         }
