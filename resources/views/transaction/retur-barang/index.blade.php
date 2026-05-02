@@ -79,7 +79,7 @@
                     id="search" 
                     name="search" 
                     value="{{ request('search') }}"
-                    placeholder="Cari no retur, no penerimaan atau SBBK..."
+                    placeholder="Cari nomor retur atau nama unit..."
                     class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
             </div>
@@ -129,7 +129,6 @@
                 <tr>
                     <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Retur</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Penerimaan</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Kerja</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang Asal</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang Tujuan</th>
@@ -145,17 +144,6 @@
                         <x-table.num-td :paginator="$returs" />
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $retur->no_retur }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">
-                                @if($retur->penerimaan)
-                                    <a href="{{ route('transaction.penerimaan-barang.show', $retur->penerimaan->id_penerimaan) }}" class="text-blue-600 hover:text-blue-900">
-                                        {{ $retur->penerimaan->no_penerimaan ?? '-' }}
-                                    </a>
-                                @else
-                                    -
-                                @endif
-                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ $retur->unitKerja->nama_unit_kerja ?? '-' }}</div>
@@ -235,7 +223,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="px-6 py-12 text-center">
+                        <td colspan="9" class="px-6 py-12 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>

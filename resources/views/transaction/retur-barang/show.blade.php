@@ -98,26 +98,6 @@
                             </span>
                         </dd>
                     </div>
-                    @if($retur->penerimaan)
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 mb-1">No. Penerimaan</dt>
-                        <dd class="text-sm font-semibold text-gray-900">
-                            <a href="{{ route('transaction.penerimaan-barang.show', $retur->penerimaan->id_penerimaan) }}" class="text-blue-600 hover:text-blue-900">
-                                {{ $retur->penerimaan->no_penerimaan ?? '-' }}
-                            </a>
-                        </dd>
-                    </div>
-                    @endif
-                    @if($retur->distribusi)
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 mb-1">No. SBBK</dt>
-                        <dd class="text-sm font-semibold text-gray-900">
-                            <a href="{{ route('transaction.distribusi.show', $retur->distribusi->id_distribusi) }}" class="text-blue-600 hover:text-blue-900">
-                                {{ $retur->distribusi->no_sbbk ?? '-' }}
-                            </a>
-                        </dd>
-                    </div>
-                    @endif
                     <div>
                         <dt class="text-sm font-medium text-gray-500 mb-1">Unit Kerja</dt>
                         <dd class="text-sm font-semibold text-gray-900">{{ $retur->unitKerja->nama_unit_kerja ?? '-' }}</dd>
@@ -146,12 +126,6 @@
                     <div class="sm:col-span-2">
                         <dt class="text-sm font-medium text-gray-500 mb-1">Alasan Retur</dt>
                         <dd class="text-sm text-gray-900">{{ $parsedAlasan !== '' ? $parsedAlasan : '-' }}</dd>
-                    </div>
-                    @endif
-                    @if($retur->keterangan)
-                    <div class="sm:col-span-2">
-                        <dt class="text-sm font-medium text-gray-500 mb-1">Keterangan</dt>
-                        <dd class="text-sm text-gray-900">{{ $retur->keterangan }}</dd>
                     </div>
                     @endif
                 </dl>

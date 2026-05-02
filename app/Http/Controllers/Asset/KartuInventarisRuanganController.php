@@ -12,6 +12,9 @@ use App\Models\InventoryItem;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
+use App\Services\Tte\TteSealService;
+use App\Models\TteDocumentSeal;
+use Illuminate\Validation\ValidationException;
 
 class KartuInventarisRuanganController extends Controller
 {
@@ -115,12 +118,36 @@ class KartuInventarisRuanganController extends Controller
             ->orderBy('id_kir')
             ->get();
 
+        $signatories = $this->resolveKirSignatories($idUnitKerja);
+
+        $tteSeal = null;
+        $tteVerificationUrl = null;
+        $tteSignaturesByRole = collect();
+        $tteCanSignRoles = [];
+        if (($request->boolean('tte') || $request->boolean('download')) && $rows->isNotEmpty()) {
+            $tteSeal = app(TteSealService::class)->createOrGetSealForKirUnit(
+                $idUnitKerja,
+                $rows,
+                Auth::id(),
+                ['nama_unit_kerja' => $unitKerja->nama_unit_kerja]
+            );
+            app(TteSealService::class)->ensureKirSignatureSlots($tteSeal, $signatories);
+            $tteSeal->load('signatures');
+            $tteSignaturesByRole = $tteSeal->signatures->keyBy('signer_role');
+            $tteVerificationUrl = route('verifikasi-dokumen.show', ['token' => $tteSeal->public_token], true);
+            $tteCanSignRoles = $this->resolveKirSignRolesUserMaySign($user, $tteSeal, $idUnitKerja);
+        }
+
         $payload = [
             'unitKerja' => $unitKerja,
             'rows' => $rows,
             'printMode' => $request->boolean('print'),
             'downloadMode' => $request->boolean('download'),
-            'signatories' => $this->resolveKirSignatories($idUnitKerja),
+            'signatories' => $signatories,
+            'tteSeal' => $tteSeal,
+            'tteVerificationUrl' => $tteVerificationUrl,
+            'tteSignaturesByRole' => $tteSignaturesByRole,
+            'tteCanSignRoles' => $tteCanSignRoles,
         ];
 
         if ($request->boolean('download')) {
@@ -196,6 +223,73 @@ class KartuInventarisRuanganController extends Controller
             'pengurus_barang' => $pengurusBarang,
             'kepala_unit' => $kepalaUnit,
         ];
+    }
+
+    /**
+     * TTE internal per peran: daftar peran yang boleh ditandatangani user saat ini untuk segel ini.
+     *
+     * @return list<string>
+     */
+    private function resolveKirSignRolesUserMaySign(User $user, TteDocumentSeal $seal, int $idUnitKerja): array
+    {
+        $pegawai = MasterPegawai::query()->where('user_id', $user->id)->first();
+        if (! $pegawai) {
+            return [];
+        }
+
+        $allowed = [];
+        foreach (TteSealService::KIR_SIGNER_ROLES as $role) {
+            $sig = $seal->signatures->firstWhere('signer_role', $role);
+            if (! $sig || $sig->signed_at !== null) {
+                continue;
+            }
+            if (! $sig->expected_pegawai_id || (int) $sig->expected_pegawai_id !== (int) $pegawai->id) {
+                continue;
+            }
+            if ($role === 'kepala_unit' && (int) $pegawai->id_unit_kerja !== $idUnitKerja) {
+                continue;
+            }
+            $allowed[] = $role;
+        }
+
+        return $allowed;
+    }
+
+    public function signDokumenUnitKerja(Request $request, int $idUnitKerja)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && ! $user->hasRole('admin')) {
+            $pegawaiGate = MasterPegawai::where('user_id', $user->id)->first();
+            if (! $pegawaiGate || (int) $pegawaiGate->id_unit_kerja !== $idUnitKerja) {
+                abort(403, 'Unauthorized - Anda hanya dapat menandatangani dokumen KIR unit kerja Anda sendiri');
+            }
+        }
+
+        $validated = $request->validate([
+            'public_token' => 'required|string|size:64',
+            'signer_role' => 'required|in:kepala_pusat,pengurus_barang,kepala_unit',
+        ]);
+
+        $seal = TteDocumentSeal::query()->where('public_token', $validated['public_token'])->first();
+        if (! $seal || (int) $seal->reference_id !== $idUnitKerja || $seal->document_type !== TteSealService::DOCUMENT_KIR_UNIT) {
+            return redirect()
+                ->route('asset.kartu-inventaris-ruangan.dokumen-unit', ['id_unit_kerja' => $idUnitKerja, 'tte' => 1])
+                ->withErrors(['tte' => 'Segel dokumen tidak valid atau sudah tidak sesuai. Buka ulang dokumen dengan mode TTE.']);
+        }
+
+        try {
+            app(TteSealService::class)->signKirSlot($user, $seal, $validated['signer_role'], $idUnitKerja);
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('asset.kartu-inventaris-ruangan.dokumen-unit', ['id_unit_kerja' => $idUnitKerja, 'tte' => 1])
+                ->withErrors($e->errors());
+        }
+
+        return redirect()
+            ->route('asset.kartu-inventaris-ruangan.dokumen-unit', ['id_unit_kerja' => $idUnitKerja, 'tte' => 1])
+            ->with('success', 'Tanda tangan elektronik internal untuk peran ini telah dicatat.');
     }
 
     /**

@@ -7,14 +7,17 @@ use App\Models\DataInventory;
 use App\Models\DataStock;
 use App\Models\MasterDataBarang;
 use App\Models\MasterGudang;
+use App\Models\MasterKegiatan;
+use App\Models\MasterProgram;
 use App\Models\MasterSubKegiatan;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class InventoryDataImportController extends Controller
@@ -37,7 +40,7 @@ class InventoryDataImportController extends Controller
             ]);
         }
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
 
         $dataSheet = $spreadsheet->getActiveSheet();
         $dataSheet->setTitle('data_inventory');
@@ -140,6 +143,7 @@ class InventoryDataImportController extends Controller
         $headers = array_map(function ($header) {
             $header = strtolower(trim((string) $header));
             $header = str_replace(['-', ' '], '_', $header);
+
             return preg_replace('/[^a-z0-9_]/', '', $header) ?? '';
         }, $headerRow);
 
@@ -339,13 +343,13 @@ class InventoryDataImportController extends Controller
             });
         } catch (\Throwable $e) {
             return back()->withInput()->withErrors([
-                'file' => 'Import gagal: ' . $e->getMessage(),
+                'file' => 'Import gagal: '.$e->getMessage(),
             ]);
         }
 
         return redirect()
             ->route('inventory.data-inventory.import.index')
-            ->with('success', 'Import berhasil. ASET: ' . $counters['ASET'] . ', PERSEDIAAN: ' . $counters['PERSEDIAAN'] . ', FARMASI: ' . $counters['FARMASI'] . '.');
+            ->with('success', 'Import berhasil. ASET: '.$counters['ASET'].', PERSEDIAAN: '.$counters['PERSEDIAAN'].', FARMASI: '.$counters['FARMASI'].'.');
     }
 
     private function normalizeDateCell(mixed $value): ?string
@@ -365,7 +369,7 @@ class InventoryDataImportController extends Controller
             }
 
             try {
-                return \Carbon\Carbon::parse($value)->format('Y-m-d');
+                return Carbon::parse($value)->format('Y-m-d');
             } catch (\Throwable) {
                 return null;
             }
@@ -374,6 +378,7 @@ class InventoryDataImportController extends Controller
         if (is_numeric($value)) {
             try {
                 $dt = Date::excelToDateTimeObject((float) $value);
+
                 return $dt->format('Y-m-d');
             } catch (\Throwable) {
                 return null;
@@ -395,7 +400,7 @@ class InventoryDataImportController extends Controller
             $programDefaults['kode_program'] = 'SYS-DEFAULT-PROGRAM';
         }
 
-        $program = \App\Models\MasterProgram::query()->firstOrCreate(
+        $program = MasterProgram::query()->firstOrCreate(
             ['nama_program' => 'PROGRAM DEFAULT SISTEM'],
             $programDefaults
         );
@@ -405,7 +410,7 @@ class InventoryDataImportController extends Controller
             $kegiatanDefaults['kode_kegiatan'] = 'SYS-DEFAULT-KEGIATAN';
         }
 
-        $kegiatan = \App\Models\MasterKegiatan::query()->firstOrCreate(
+        $kegiatan = MasterKegiatan::query()->firstOrCreate(
             ['id_program' => $program->id_program, 'nama_kegiatan' => 'KEGIATAN DEFAULT SISTEM'],
             $kegiatanDefaults
         );
@@ -446,4 +451,3 @@ class InventoryDataImportController extends Controller
         $stock->save();
     }
 }
-

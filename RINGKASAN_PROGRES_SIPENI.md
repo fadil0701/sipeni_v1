@@ -1,6 +1,16 @@
 # Ringkasan Progres Pengembangan SIPENI
 
-Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lanjutan yang belum dikerjakan pada sesi pengembangan terbaru.
+Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lanjutan yang belum dikerjakan pada sesi pengembangan terbaru. Bagian teknis diselaraskan dengan perilaku kode di repository SIPENI saat ini (`PermintaanBarangController`, `DataInventoryController`, `DistribusiService`, dll.).
+
+### Status ringkas *(per 2026-05-03)*
+
+| Kategori | Isi singkat |
+|----------|----------------|
+| **Sudah diselesaikan** | TTE dokumen KIR tahap internal: segel (`tte_document_seals`) + hash + QR verifikasi + **tiga slot TTE per peran** (`tte_document_signatures`: Kepala Pusat, Pengurus Barang, Kepala Unit) dengan aksi **Tandatangani** per akun pegawai terpetakan; halaman publik `/verifikasi-dokumen/{token}` menampilkan daftar status per peran; desain di `docs/TTE_DESAIN_TAHAP_1.md`. **Import Data Inventory:** tombol **Import data** di halaman Data Inventory, permission wildcard import untuk role gudang di `PermissionHelper` + entri `PermissionSeeder`, perbaikan **aktif ganda** menu sidebar Data Inventory vs Import (wildcard route). Retur / Kartu Stok / tes terkait sesuai catatan §3 Prioritas Menengah #4–#6 (2026-05-02). |
+| **Sedang / parsial** | TTE: verifikasi dengan **input kode** tanpa URL, log audit akses halaman verifikasi, penyempurnaan metadata. Select2 vs sisa fallback **Choices.js** di beberapa blade (§2.E). UAT manual lintas role untuk modul besar. Hardening test ekstrem maintenance (§4.D). |
+| **Akan dikerjakan / backlog terarah** | Integrasi **PSrE / BSrE** resmi bila kebijakan menghendaki. Opsional: membuka akses role tambahan ke dokumen KIR (mis. **Kepala Pusat** pada middleware route asset) agar penandatangan bisa mengakses dari browser tanpa workaround admin. Prioritas rendah: polish visual select, UX cetak unduhan, notifikasi peminjaman (§4.D). |
+
+---
 
 ## 1) Pekerjaan Yang Sudah Diselesaikan
 
@@ -138,13 +148,14 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
   - toggle field dinamis pada `Master Gudang`,
   - toggle field dinamis pada `Data Inventory`,
   - pencegahan retry loop tidak perlu pada halaman `Permintaan Barang` yang sebelumnya menunggu `Choices` terus-menerus.
-- Sisa: pembersihan penuh blok fallback legacy `new Choices(...)` yang sudah tidak diperlukan agar codebase lebih bersih dan risiko konflik jangka panjang makin kecil.
+- Sisa: pembersihan penuh blok fallback legacy `new Choices(...)` yang masih tersisa di beberapa blade (mis. jalur fallback pada `permintaan-barang/create`) agar codebase lebih bersih dan risiko konflik jangka panjang makin kecil; baris dinamis untuk Satuan/Select2 sudah ditambahkan memakai `initChoicesForSelect` selaras `app-layout.js`.
 
 ### F. Integrasi TTE untuk Dokumen (Cetak/Download)
-- **Status: Backlog (belum mulai implementasi)**
+- **Status: Parsial — tahap 1 internal lanjutan (KIR)**
 - Menambahkan jejak tanda tangan elektronik (TTE) pada dokumen yang dicetak/diunduh (awal fokus: Dokumen KIR).
-- Tahap 1 (internal): kode verifikasi + QR verifikasi + hash dokumen + log metadata penandatangan/waktu.
-- Menyediakan halaman verifikasi dokumen berdasarkan token/kode verifikasi.
+- **Segel dokumen:** tabel `tte_document_seals`, hash snapshot kanonik, kode verifikasi, QR ke `/verifikasi-dokumen/{token}`; aktif saat unduhan (`download=1`) atau **`tte=1`** (cetak dari daftar dokumen KIR menyertakan `tte=1`).
+- **TTE per penandatangan:** tabel `tte_document_signatures` — tiga peran (`kepala_pusat`, `pengurus_barang`, `kepala_unit`) terikat pegawai terpetakan (`resolveKirSignatories`); masing-masing penandatangan memproses **Tandatangani** terpisah (POST `dokumen-sign`); footer cetak dan halaman verifikasi menampilkan status/waktu per peran.
+- Halaman verifikasi berbasis token; verifikasi hanya dengan **input kode** (tanpa membuka URL) dapat ditambahkan sebagai pelengkap.
 - Menyiapkan opsi tahap lanjut integrasi PSrE resmi (untuk kebutuhan legal formal lintas instansi).
 
 ### G. Fitur Pemeliharaan (Permintaan -> Jadwal -> Service -> Riwayat)
@@ -314,10 +325,10 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
    - modul retur berdiri sendiri, tidak lagi menumpang status peminjaman,
    - form retur multi-item berbasis inventory unit (tanpa ketergantungan penerimaan),
    - skema database dan seeder telah diselaraskan.
-8. Koreksi logika stock untuk jenis inventory ASET (bug sinkronisasi observer). ✅
-   - saat input/update `Data Inventory` dengan `jenis_inventory = ASET`, data masih ikut masuk ke `data_stock`,
-   - akar masalah: `DataInventoryObserver` masih memanggil `updateStock()` untuk alur ASET,
-   - target perbaikan: batasi update stock hanya untuk `PERSEDIAAN/FARMASI` agar ASET tidak tercatat sebagai stok kuantitas gudang.
+8. Koreksi logika stock untuk jenis inventory ASET. ✅
+   - gejala lama: kuantitas ASET ikut tercermin di `data_stock` padahal domain ASET mengikuti `inventory_item`/register, bukan stok gudang persediaan/farmasi,
+   - implementasi saat ini: **`DataInventoryController`** hanya memanggil `updateStock()` / sinkron `DataStock` untuk **`PERSEDIAAN`/`FARMASI`**; untuk **`ASET`** dibuat **`InventoryItem`** lewat **`DataInventoryObserver`** (tanpa menulis baris kuantitas ke `data_stock`),
+   - catatan: narasi “observer memanggil updateStock untuk ASET” mengacu ke bug historis; di kode sekarang pemisahan tanggung jawab observer vs kontroller sudah jelas.
 9. Pembersihan menyeluruh konfirmasi bawaan browser (`confirm()`) ke modal konfirmasi custom. ✅
    - migrasi menyeluruh ke atribut `data-confirm` pada form/aksi modul utama telah selesai,
    - pemindaian `resources/views/**/*.blade.php` tidak lagi menemukan pemanggilan `confirm(`.
@@ -330,16 +341,22 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 12. Audit konsistensi data stok vs inventory pasca perubahan logika eligible stok. ✅
    - fokus pada aturan baru: stok menampilkan `PERSEDIAAN/FARMASI` + `ASET` tertentu sesuai kriteria,
    - target: pastikan data historis tidak nyangkut/overcount setelah sinkronisasi aturan terbaru.
+13. Distribusi barang → pengurangan stok gudang asal. ✅ *(sesuai kode terkini)*
+   - pengurangan **`DataStock`** (gudang asal, `qty_keluar`/`qty_akhir`) dilakukan pada saat aksi **`kirim`** distribusi (`DistribusiService::kirim`), untuk baris inventaris **`PERSEDIAAN`/`FARMASI`** dengan guard `StockGuardService`,
+   - tahap **`proses`** hanya mengubah status dokumen ke *Diproses*, belum mengurangi stok,
+   - setelah kirim: status distribusi menyelesai, pembuatan **`PenerimaanBarang`** otomatis jika memenuhi syarat unit/pegawai penerima.
 
 ### Prioritas Menengah
 1. Rapikan istilah menu dan deskripsi halaman (mengurangi ambiguitas user). ✅ (istilah maintenance/service distandarkan ke pemeliharaan/laporan servis pada menu + halaman utama)
 2. Tambahkan test coverage untuk alur utama KIR dan register aset. ✅
    - `KirDokumenFlowTest`: tambah skenario akses ditolak untuk pegawai yang mencoba membuka dokumen KIR unit lain.
    - `RegisterAsetKirFlowTest`: tambah skenario mode route virtual unit (`unit-{id}`) dan proteksi akses lintas unit.
-3. Implementasi TTE tahap 1 pada dokumen cetak/download (kode verifikasi + QR + verifikasi).
-4. Finalisasi konsistensi UI modul retur (`index/show/edit`) agar seluruh label lama berbasis penerimaan/distribusi sudah bersih total.
-5. Tambahkan test terarah untuk alur retur terpisah (create multi-item, approve/tolak, update stok pusat/unit).
-6. Koreksi/penegasan definisi `Qty Awal` pada laporan `Kartu Stok` (saat ini masih bernilai 0 pasca import/adjustment) agar sesuai domain bisnis yang diinginkan.
+3. Implementasi TTE tahap 1 pada dokumen cetak/download (kode verifikasi + QR + verifikasi). **Parsial** — segel KIR + QR/token + **TTE multi-peran** (tiga penandatangan) + halaman verifikasi per peran; **sisa:** verifikasi lewat **input kode** saja, log audit akses, integrasi PSrE bila diperlukan.
+4. Finalisasi konsistensi UI modul retur (`index/show/edit`) agar seluruh label lama berbasis penerimaan/distribusi sudah bersih total. ✅ **(2026-05-02)**
+   - kolom/link **No Penerimaan** dan referensi **penerimaan/distribusi** dihapus dari index & show; form **edit** diselaraskan dengan **create** (detail dari inventory unit, tanpa dropdown penerimaan).
+5. Tambahkan test terarah untuk alur retur terpisah (create multi-item, approve/tolak, update stok pusat/unit). ✅ **`ReturBarangFlowTest`** — create dari inventory unit + **`terima`** (status **DITERIMA**); guest tidak akses index.
+6. Koreksi/penegasan definisi `Qty Awal` pada laporan `Kartu Stok` (saat ini masih bernilai 0 pasca import/adjustment) agar sesuai domain bisnis yang diinginkan. ✅ **(2026-05-02)**
+   - di `ReportController::kartuStok`, untuk baris dengan `qty_awal` ~0 namun ada mutasi, ditampilkan **saldo awal implisit** \(Qty akhir − Qty masuk + Qty keluar\) dengan penanda **implisit** di view `kartu-stok`.
 
 ### Prioritas Rendah
 1. Penyempurnaan visual minor pada selectable/search fields.
@@ -408,11 +425,10 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 ### D. Ringkasan Yang Belum
 - Skenario test ekstrem/concurrency untuk maintenance.
 - Opsi export non-CSV (jika dibutuhkan pemangku kepentingan).
-- Integrasi TTE (masih backlog, sengaja ditunda sesuai arahan).
+- **TTE dokumen:** tahap internal (segel + multi-penandatangan KIR) sudah berjalan; **belum** BSrE/PSrE resmi; pelengkap: verifikasi kode-only, audit log.
 - Hardening notifikasi + dashboard monitoring status lintas role untuk peminjaman barang.
 - Finalisasi UAT manual lintas role untuk alur peminjaman barang (antar unit vs gudang pusat).
-- Penyelarasan akhir UI modul retur agar seluruh wording lama (penerimaan/distribusi) konsisten dengan domain retur terpisah.
-- Penambahan test otomatis khusus modul retur terpisah untuk mencegah regresi lintas migrasi skema baru.
+- *(UI retur + test retur + Kartu Stok Qty awal: terselesaikan 2026-05-02 — lihat Prioritas Menengah #4–#6.)*
 
 ---
 
@@ -474,7 +490,7 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 
 ### A. Hardening Inventory, Stok, dan Konsistensi Data
 - **Status: Selesai**
-- Perbaikan observer inventory agar alur `ASET` tidak lagi tersinkron ke `data_stock`.
+- Pemisahan jelas: **`DataInventoryController`** mengurus sinkron **`DataStock`** hanya untuk **`PERSEDIAAN`/`FARMASI`**; **`DataInventoryObserver`** mengurus pembuatan/penyesuaian **`InventoryItem`** untuk **`ASET`** (bukan penulisan kuantitas ke `data_stock`).
 - Perbaikan deteksi perubahan observer (`isDirty` -> `wasChanged`) pada event update.
 - Penambahan penanganan penurunan qty `ASET`:
   - item berlebih yang belum terikat register dinonaktifkan (`NONAKTIF`) agar sinkron dengan qty terbaru.
@@ -544,12 +560,12 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Penyelarasan UI form operasional:
   - layout posisi form `Permintaan Pemeliharaan` disamakan dengan pola form `Peminjaman Barang` (blok informasi, detail item, keterangan, dan area tombol aksi).
 - Sumber data form berbasis inventory aktif:
-  - `Permintaan Barang` (opsi "Dari master") dipastikan mengambil kandidat barang dari `data_stock` (PUSAT/Persediaan/Farmasi), bukan daftar master murni.
+  - `Permintaan Barang` (opsi "Dari master"): daftar kandidat dibentuk dari **`data_inventory` aktif** (`PERSEDIAAN`/`FARMASI`) → dipetakan ke **`master_data_barang`** (helper `getBarangMasterFromInventory()` di `PermintaanBarangController`), **bukan** seluruh master murni; angka stok untuk validasi/UI tetap mengacu ke **`DataStock`** / helper terpusat sesuai sub jenis.
   - `Peminjaman Barang` daftar barang form create disesuaikan agar kandidat berasal dari `data_inventory` aktif.
   - `Permintaan Pemeliharaan` daftar register aset pada create/edit dibatasi ke register yang memiliki relasi inventory aktif.
 - Hardening UX Permintaan/Approval Barang:
   - Dropdown "Data Barang" tidak lagi menyembunyikan seluruh opsi saat checkbox `jenis_permintaan[]` belum ter-check (agar tidak tampil kosong).
-  - Kolom/field "Stock Tersedia" disembunyikan di form create/edit Permintaan Barang dan tata letak grid detail tidak bergeser.
+  - Kolom/field "Stock Tersedia" disembunyikan di form create/edit Permintaan Barang (wrapper dengan kelas `hidden` pada blok stok; markup kolom tetap ada untuk logika JS bila diperlukan).
   - Di halaman approval Permintaan Barang, "Stock Tersedia" tampil hanya saat step >= 3 (Kepala Subbag/Kasubbag TU).
 - Hardening UX Stock Adjustment:
   - Label dropdown `Data Stock` tidak lagi menampilkan angka stock (dipindahkan ke kolom `Qty Saat Ini` terpisah) dan `Qty Saat Ini` dibaca dari atribut `data-qty-akhir`.
@@ -558,3 +574,43 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Dashboard ringkasan:
   - kartu `Stok Gudang` diganti menjadi metrik nilai,
   - ditambahkan pemisahan `Nilai Persediaan` dan `Nilai Farmasi` agar ringkasan lebih representatif dibanding qty stok gabungan.
+
+---
+
+## 7) Penyesuaian Dokumen dengan Kode (audit 2026-05-02)
+
+Bagian ini mencatat keselarasan dokumen dengan implementasi terbaru tanpa mengubah riwayat sesi di atas.
+
+### A. Permintaan Barang (master & UI)
+- Sumber opsi "Dari master": **`data_inventory` aktif** (lihat §6.H yang telah dikoreksi); validasi kuantitas terhadap stok pusat memakai **`DataStock`** / `PermintaanBarangStock`.
+- Form create/edit: kolom **Stock Tersedia** tidak ditampilkan user (blok `permintaan-detail-stock hidden`); script tetap dapat mengisi `.stock-display` untuk keperluan internal/approval.
+- Baris detail tambahan (**Tambah Item**): kolom **Satuan** diinisialisasi dengan **`window.initChoicesForSelect`** (Select2 via facade layout), konsisten dengan baris pertama; helper **`setPermintaanSatuanValue`** menyelaraskan nilai saat barang dipilih jika Select2 aktif (create & edit).
+
+### B. Distribusi & penerimaan
+- **`DistribusiService::kirim`**: mengurangi stok **`PERSEDIAAN`/`FARMASI`** di gudang asal, menyelesaikan distribusi, memperbarui status permintaan terkait, dan membuat **`PenerimaanBarang`** otomatis bila kriteria terpenuhi.
+- Resource **`penerimaan-barang`** dan endpoint **`distribusi.detail`** mendukung alur lanjutan dari dokumen distribusi.
+
+### C. Yang tetap backlog / parsial
+- **TTE** dokumen: **parsial** — segel + multi-penandatangan internal untuk KIR (§2.F); integrasi **PSrE/BSrE** dan fitur pelengkap (verifikasi kode-only, audit) masih roadmap.
+- **Sisa `new Choices(...)`** di beberapa blade: masih dapat dibersihkan bertahap (sesuai §2.E).
+- **UAT manual** lintas role: masih terbuka untuk beberapa modul (peminjaman, dll.).
+- **Prioritas Menengah #4–#6 (2026-05-02):** UI retur dibersihkan dari referensi penerimaan/distribusi; **`ReturBarangFlowTest`** menambah cakupan retur; **Kartu Stok** menampilkan qty awal implisit bila `qty_awal` di DB nol (lihat §3 Prioritas Menengah).
+- **UX & akses Inventory (2026-05-03):** tombol **Import data** pada halaman Data Inventory; permission `inventory.data-inventory.import.*` di `PermissionHelper` / `PermissionSeeder`; perbaikan highlight sidebar **Data Inventory** vs **Import Data Inventory** (`layouts/app.blade.php`).
+
+---
+
+## 8) Pembaruan dokumentasi & sinkron status (2026-05-03)
+
+### A. Tujuan blok ini
+- Menyatukan narasi dokumen dengan fitur terbaru (TTE multi-peran, import inventory, sidebar) tanpa mengubah riwayat sesi historis di §5–§6.
+
+### B. Referensi teknis cepat (TTE)
+- Migrasi: `tte_document_seals`, `tte_document_signatures`.
+- Layanan: `App\Services\Tte\TteSealService`.
+- Desain: `docs/TTE_DESAIN_TAHAP_1.md`.
+- Route: halaman verifikasi publik `verifikasi-dokumen.show`; aksi tanda tangan `asset.kartu-inventaris-ruangan.dokumen-sign` (POST).
+
+### C. Ringkasan tiga jalur *(sinkron dengan tabel di pembuka dokumen)*
+- **Sudah selesai:** lihat baris pertama tabel **Status ringkas** di atas.
+- **Sedang dikerjakan / parsial:** TTE pelengkap (kode-only, audit), pembersihan Choices, UAT, hardening maintenance.
+- **Akan dikerjakan:** PSrE/BSrE, opsi akses role untuk penandatangan KIR, prioritas rendah UX/notifikasi.

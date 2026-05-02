@@ -224,6 +224,10 @@
             </div>
 
             <!-- Detail Permintaan -->
+            @php
+                $__invPersediaanFlip = array_flip(array_map('strval', $stockPersediaanIds ?? []));
+                $__invFarmasiFlip = array_flip(array_map('strval', $stockFarmasiIds ?? []));
+            @endphp
             <div>
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-medium text-gray-900">Detail Permintaan</h3>
@@ -266,12 +270,15 @@
                                             <div class="wrap-master w-full min-w-0" style="{{ $useLainnya ? 'display:none' : '' }}">
                                                 <select 
                                                     name="detail[{{ $index }}][id_data_barang]" 
+                                                    data-searchable="false"
                                                     class="select-data-barang w-full min-w-0 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('detail.'.$index.'.id_data_barang') border-red-500 @enderror"
                                                 >
                                                     <option value="">Pilih Data Barang</option>
                                                     @foreach($dataBarangs as $dataBarang)
                                                         <option value="{{ $dataBarang->id_data_barang }}" 
                                                             data-satuan="{{ $dataBarang->id_satuan }}"
+                                                            data-in-persediaan="{{ isset($__invPersediaanFlip[(string) $dataBarang->id_data_barang]) ? '1' : '0' }}"
+                                                            data-in-farmasi="{{ isset($__invFarmasiFlip[(string) $dataBarang->id_data_barang]) ? '1' : '0' }}"
                                                             {{ old('detail.'.$index.'.id_data_barang') == $dataBarang->id_data_barang ? 'selected' : '' }}>
                                                             {{ $dataBarang->kode_data_barang }} - {{ $dataBarang->nama_barang }}
                                                         </option>
@@ -320,7 +327,7 @@
                                         <select 
                                             name="detail[{{ $index }}][id_satuan]" 
                                             required
-                                            class="field-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('detail.'.$index.'.id_satuan') border-red-500 @enderror"
+                                            class="field-satuan select-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('detail.'.$index.'.id_satuan') border-red-500 @enderror"
                                         >
                                             <option value="">Pilih Satuan</option>
                                             @foreach($satuans as $satuan)
@@ -414,11 +421,15 @@
                     <div class="wrap-master w-full min-w-0">
                         <select 
                             name="detail[INDEX][id_data_barang]" 
+                            data-searchable="false"
                             class="select-data-barang w-full min-w-0 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         >
                             <option value="">Pilih Data Barang</option>
                             @foreach($dataBarangs as $dataBarang)
-                                <option value="{{ $dataBarang->id_data_barang }}" data-satuan="{{ $dataBarang->id_satuan }}">
+                                <option value="{{ $dataBarang->id_data_barang }}" 
+                                    data-satuan="{{ $dataBarang->id_satuan }}"
+                                    data-in-persediaan="{{ isset($__invPersediaanFlip[(string) $dataBarang->id_data_barang]) ? '1' : '0' }}"
+                                    data-in-farmasi="{{ isset($__invFarmasiFlip[(string) $dataBarang->id_data_barang]) ? '1' : '0' }}">
                                     {{ $dataBarang->kode_data_barang }} - {{ $dataBarang->nama_barang }}
                             </option>
                         @endforeach
@@ -458,7 +469,7 @@
                 <select 
                     name="detail[INDEX][id_satuan]" 
                     required
-                    class="field-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    class="field-satuan select-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
                     <option value="">Pilih Satuan</option>
                     @foreach($satuans as $satuan)
@@ -507,6 +518,121 @@ let itemIndex = {{ old('detail') ? count(old('detail')) : 0 }};
 const stockData = @json($stockData ?? []);
 const stockPersediaanIds = @json(array_map('intval', $stockPersediaanIds ?? []));
 const stockFarmasiIds = @json(array_map('intval', $stockFarmasiIds ?? []));
+
+/** Klasifikasi barang dari data-* pada option (server), fallback ke array ID. */
+function getBarangOptionJenisFlags(option) {
+    if (!option || option.value === '') {
+        return { isFarmasi: false, isPersediaan: false };
+    }
+    if (option.getAttribute('data-in-farmasi') !== null) {
+        return {
+            isFarmasi: option.getAttribute('data-in-farmasi') === '1',
+            isPersediaan: option.getAttribute('data-in-persediaan') === '1',
+        };
+    }
+    const barangId = parseInt(option.value, 10);
+    return {
+        isFarmasi: (stockFarmasiIds || []).map(Number).includes(barangId),
+        isPersediaan: (stockPersediaanIds || []).map(Number).includes(barangId),
+    };
+}
+
+function isBarangAllowedForSubJenisOption(optionEl) {
+    const checkedJenis = Array.from(document.querySelectorAll('input[name="jenis_permintaan[]"]:checked')).map(cb => cb.value);
+    const { isFarmasi, isPersediaan } = getBarangOptionJenisFlags(optionEl);
+    if (checkedJenis.length === 0) {
+        return true;
+    }
+    if (checkedJenis.includes('FARMASI') && checkedJenis.includes('PERSEDIAAN')) {
+        return isFarmasi || isPersediaan;
+    }
+    if (checkedJenis.includes('FARMASI')) {
+        return isFarmasi;
+    }
+    if (checkedJenis.includes('PERSEDIAAN')) {
+        return isPersediaan;
+    }
+    return true;
+}
+
+/** Sinkronkan nilai satuan dengan Select2 (choicesInstance dari app-layout) jika ada. */
+function setPermintaanSatuanValue(selectSatuan, satuanId) {
+    if (!selectSatuan || satuanId == null || satuanId === '') {
+        return;
+    }
+    const v = String(satuanId);
+    if (selectSatuan.choicesInstance && typeof selectSatuan.choicesInstance.setChoiceByValue === 'function') {
+        selectSatuan.choicesInstance.setChoiceByValue(v);
+        return;
+    }
+    selectSatuan.value = v;
+    if (window.jQuery && window.jQuery(selectSatuan).hasClass('select2-hidden-accessible')) {
+        window.jQuery(selectSatuan).val(v).trigger('change');
+    }
+}
+
+/** Select2 dengan matcher sub jenis — mencegah item salah gudang muncul saat cari/ketik. */
+window.initPermintaanSelectDataBarang = function (selectElement) {
+    if (!selectElement || selectElement.tagName !== 'SELECT' || !window.jQuery || typeof window.jQuery.fn.select2 !== 'function') {
+        return null;
+    }
+    const $ = window.jQuery;
+    if (selectElement.choicesInstance) {
+        try {
+            selectElement.choicesInstance.destroy();
+        } catch (e) {}
+        selectElement.choicesInstance = null;
+    }
+    if ($(selectElement).hasClass('select2-hidden-accessible')) {
+        try {
+            $(selectElement).select2('destroy');
+        } catch (e) {}
+    }
+    const placeholderOption = selectElement.querySelector('option[value=""]');
+    const placeholderText = ((placeholderOption && placeholderOption.textContent) || 'Pilih Data Barang').trim();
+    $(selectElement).select2({
+        placeholder: placeholderText,
+        allowClear: !!placeholderOption,
+        width: '100%',
+        minimumResultsForSearch: 0,
+        matcher: function (params, data) {
+            if (data == null) {
+                return null;
+            }
+            if (data.children && data.children.length) {
+                return null;
+            }
+            const el = data.element;
+            if (!el) {
+                return null;
+            }
+            if (el.value === '') {
+                return data;
+            }
+            if (!isBarangAllowedForSubJenisOption(el)) {
+                return null;
+            }
+            const term = (params.term || '').trim().toLowerCase();
+            if (!term) {
+                return data;
+            }
+            const text = ((data.text || '') + '').toLowerCase();
+            return text.indexOf(term) > -1 ? data : null;
+        },
+    });
+    const inst = {
+        destroy: function () {
+            try {
+                $(selectElement).select2('destroy');
+            } catch (e) {}
+        },
+        setChoiceByValue: function (value) {
+            $(selectElement).val(value).trigger('change');
+        },
+    };
+    selectElement.choicesInstance = inst;
+    return inst;
+};
 
 // Helper: lookup stock (kunci di JSON bisa string atau number)
 function getStockForBarang(barangId) {
@@ -708,11 +834,9 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
                     option.removeAttribute('data-hidden-by-filter');
                     return;
                 }
-                const barangId = parseInt(option.value);
+                const barangId = parseInt(option.value, 10);
                 let shouldShow = false;
-                
-                const isFarmasi = stockFarmasiIdsNum.includes(barangId);
-                const isPersediaan = stockPersediaanIdsNum.includes(barangId);
+                const { isFarmasi, isPersediaan } = getBarangOptionJenisFlags(option);
                 
                 // Debug log untuk melihat klasifikasi barang
                 if (option.textContent && (option.textContent.includes('Paracetamol') || option.textContent.includes('Farmasi'))) {
@@ -788,7 +912,7 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
             
             // Re-initialize Choices.js setelah filter jika sebelumnya sudah ada instance
             // Atau jika ini adalah inisialisasi pertama, pastikan filter diterapkan dulu
-            if (typeof window.initChoicesForSelect === 'function') {
+            if (typeof window.initPermintaanSelectDataBarang === 'function' && window.jQuery && window.jQuery.fn.select2) {
                 // Simpan referensi select untuk digunakan di setTimeout
                 const selectRef = select;
                 const savedValueRef = currentValue;
@@ -831,8 +955,8 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
                         // Pastikan select element masih valid sebelum re-initialize
                         if (selectRef && selectRef.tagName === 'SELECT' && selectRef.options && selectRef.options.length > 0) {
                             // Re-initialize dengan opsi yang sudah di-filter (hanya yang masih ada di DOM)
-                            console.log('Calling initChoicesForSelect for:', selectRef.id || selectRef.className || 'unnamed');
-                            window.initChoicesForSelect(selectRef, 0); // Threshold 0 untuk selalu initialize
+                            console.log('Calling initPermintaanSelectDataBarang for:', selectRef.id || selectRef.className || 'unnamed');
+                            window.initPermintaanSelectDataBarang(selectRef);
                             
                             // Set kembali nilai yang dipilih setelah Choices.js di-initialize
                             if (savedValue) {
@@ -940,12 +1064,7 @@ function tambahItem() {
             const satuanId = selectedOption ? selectedOption.getAttribute('data-satuan') : null;
             
             if (satuanId && selectSatuan) {
-                // Set satuan menggunakan Choices.js jika sudah diinisialisasi
-                if (selectSatuan.choicesInstance) {
-                    selectSatuan.choicesInstance.setChoiceByValue(satuanId);
-                } else {
-                    selectSatuan.value = satuanId;
-                }
+                setPermintaanSatuanValue(selectSatuan, satuanId);
             }
         }
         
@@ -987,140 +1106,27 @@ function tambahItem() {
             handleDataBarangChange(this.value);
         });
         
-        // Inisialisasi Choices.js untuk select-data-barang dan select-satuan
-        if (typeof window.initChoicesForSelect === 'function') {
-            setTimeout(function() {
-                // Inisialisasi untuk Data Barang
+        // Inisialisasi Select2: data barang (custom matcher) + satuan (sama dengan app-layout / baris pertama)
+        setTimeout(function() {
+            if (typeof window.initPermintaanSelectDataBarang === 'function' && window.jQuery && window.jQuery.fn.select2) {
                 if (selectBarang && selectBarang.tagName === 'SELECT') {
                     const optionCount = Array.from(selectBarang.options).filter(opt => opt.value !== '').length;
-                    console.log('Initializing Choices.js for select-data-barang, options:', optionCount);
-                    
-                    // Untuk select-data-barang, selalu inisialisasi jika ada minimal 1 opsi
                     if (optionCount > 0) {
-                        window.initChoicesForSelect(selectBarang, 0); // Threshold 0 untuk selalu initialize
-                        
-                        // Event listener untuk Choices.js setelah diinisialisasi
-                        setTimeout(function() {
-                            if (selectBarang.choicesInstance) {
-                                selectBarang.containerOuter.element.addEventListener('choice', function(event) {
-                                    const choice = event.detail.choice;
-                                    if (choice && choice.value) {
-                                        handleDataBarangChange(choice.value);
-                                    }
-                                });
-                            }
-                        }, 150);
-                    } else {
-                        console.warn('select-data-barang has insufficient options:', optionCount);
+                        window.initPermintaanSelectDataBarang(selectBarang);
                     }
                 }
-                
-                // Inisialisasi untuk Satuan dengan styling khusus untuk dropdown kecil
-                if (selectSatuan && selectSatuan.tagName === 'SELECT') {
-                    const optionCount = Array.from(selectSatuan.options).filter(opt => opt.value !== '').length;
-                    console.log('Initializing Choices.js for select-satuan, options:', optionCount);
-                    
-                    // Untuk select-satuan, selalu inisialisasi jika ada minimal 1 opsi
-                    if (optionCount > 0) {
-                        // Inisialisasi dengan konfigurasi khusus untuk dropdown kecil
-                        if (typeof Choices !== 'undefined') {
-                            try {
-                                // Destroy jika sudah ada instance
-                                if (selectSatuan.choicesInstance) {
-                                    try {
-                                        selectSatuan.choicesInstance.destroy();
-                                    } catch (e) {}
-                                    selectSatuan.choicesInstance = null;
-                                }
-                                
-                                // Pastikan semua option memiliki textContent yang benar sebelum inisialisasi
-                                Array.from(selectSatuan.options).forEach(function(option) {
-                                    // Jika textContent kosong atau tidak valid, gunakan innerText atau value
-                                    if (!option.textContent || option.textContent.trim() === '') {
-                                        option.textContent = option.innerText || option.getAttribute('label') || option.value;
-                                    }
-                                    // Pastikan textContent tidak mengandung karakter yang menyebabkan masalah
-                                    const text = option.textContent.trim();
-                                    if (text && text.length > 0) {
-                                        option.textContent = text;
-                                    }
-                                });
-                                
-                                const choicesInstance = new Choices(selectSatuan, {
-                                    searchEnabled: true,
-                                    searchChoices: true,
-                                    itemSelectText: '',
-                                    placeholder: true,
-                                    placeholderValue: 'Pilih Satuan',
-                                    searchPlaceholderValue: 'Ketik minimal 2 karakter...',
-                                    shouldSort: true,
-                                    fuseOptions: {
-                                        threshold: 0.3,
-                                        distance: 100
-                                    },
-                                    shouldSortItems: true,
-                                    removeItemButton: false
-                                });
-                                
-                                console.log('Choices.js initialized for select-satuan in tambahItem');
-                                
-                                selectSatuan.choicesInstance = choicesInstance;
-                                
-                                // Custom search filter untuk satuan juga
-                                setTimeout(function() {
-                                    const searchInput = choicesInstance.input.element;
-                                    const containerOuter = choicesInstance.containerOuter.element;
-                                    
-                                    if (searchInput && containerOuter) {
-                                        searchInput.addEventListener('input', function(e) {
-                                            const searchValue = e.target.value.trim();
-                                            
-                                            setTimeout(function() {
-                                                const dropdown = containerOuter.querySelector('.choices__list--dropdown');
-                                                if (!dropdown) return;
-                                                
-                                                if (searchValue.length < 2) {
-                                                    const items = dropdown.querySelectorAll('.choices__item:not(.choices__item--no-results)');
-                                                    items.forEach(item => {
-                                                        item.style.display = 'none';
-                                                    });
-                                                    
-                                                    let noResults = dropdown.querySelector('.choices__item--no-results');
-                                                    if (!noResults || !noResults.textContent.includes('Ketik minimal 2 karakter')) {
-                                                        if (noResults) noResults.remove();
-                                                        noResults = document.createElement('div');
-                                                        noResults.className = 'choices__item choices__item--no-results';
-                                                        noResults.setAttribute('data-select-text', 'Tekan untuk memilih');
-                                                        noResults.setAttribute('data-choice', '');
-                                                        noResults.setAttribute('data-choice-selectable', '');
-                                                        noResults.textContent = 'Ketik minimal 2 karakter...';
-                                                        dropdown.appendChild(noResults);
-                                                    }
-                                                    dropdown.classList.remove('is-hidden');
-                                                } else {
-                                                    const noResults = dropdown.querySelector('.choices__item--no-results');
-                                                    if (noResults && noResults.textContent.includes('Ketik minimal 2 karakter')) {
-                                                        noResults.remove();
-                                                    }
-                                                    const items = dropdown.querySelectorAll('.choices__item:not(.choices__item--no-results)');
-                                                    items.forEach(item => {
-                                                        item.style.display = '';
-                                                    });
-                                                }
-                                            }, 10);
-                                        });
-                                    }
-                                }, 100);
-                                
-                                console.log('Choices.js initialized for select-satuan');
-                            } catch (error) {
-                                console.error('Error initializing Choices.js for select-satuan:', error);
-                            }
-                        }
-                    }
+            }
+            if (selectSatuan && selectSatuan.tagName === 'SELECT') {
+                Array.from(selectSatuan.options).forEach(function (option) {
+                    const raw = option.textContent || option.innerText || option.value || '';
+                    option.textContent = String(raw).replace(/\s+/g, ' ').trim();
+                });
+                const satuanOptCount = Array.from(selectSatuan.options).filter(opt => opt.value !== '').length;
+                if (satuanOptCount > 0 && typeof window.initChoicesForSelect === 'function') {
+                    window.initChoicesForSelect(selectSatuan, 0);
                 }
-            }, 150);
-        }
+            }
+        }, 150);
     }
     
     // Hapus item
@@ -1142,14 +1148,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Inisialisasi Choices.js untuk field yang sudah ada di halaman
+    // Inisialisasi Select2 (matcher sub jenis) untuk field yang sudah ada di halaman
     function initializeExistingFields() {
-        console.log('Checking for Choices.js initialization...');
-        console.log('Choices available:', typeof Choices !== 'undefined');
-        console.log('initChoicesForSelect available:', typeof window.initChoicesForSelect === 'function');
-        
-        if (typeof window.initChoicesForSelect !== 'function') {
-            console.log('initChoicesForSelect not ready yet, retrying...');
+        if (typeof window.jQuery === 'undefined' || typeof window.jQuery.fn.select2 !== 'function' || typeof window.initPermintaanSelectDataBarang !== 'function') {
             setTimeout(initializeExistingFields, 100);
             return;
         }
@@ -1159,46 +1160,15 @@ document.addEventListener('DOMContentLoaded', function() {
             filterDataBarangByJenisPermintaan();
         }
         
-        if (typeof window.initChoicesForSelect === 'function') {
-            // Inisialisasi untuk semua select-data-barang yang sudah ada
-            document.querySelectorAll('.select-data-barang').forEach(function(selectBarang) {
-                if (selectBarang.tagName === 'SELECT' && !selectBarang.choicesInstance) {
-                    const optionCount = Array.from(selectBarang.options).filter(opt => opt.value !== '').length;
-                    console.log('Found select-data-barang, options:', optionCount, 'element:', selectBarang);
-                    
-                    // Untuk select-data-barang, selalu inisialisasi jika ada minimal 1 opsi
-                    if (optionCount > 0) {
-                        if (typeof window.initChoicesForSelect === 'function') {
-                            console.log('Initializing via initChoicesForSelect...');
-                            window.initChoicesForSelect(selectBarang, 0); // Threshold 0 untuk selalu initialize
-                        } else {
-                            console.log('initChoicesForSelect not available, initializing directly...');
-                            // Inisialisasi langsung jika fungsi helper tidak tersedia
-                            try {
-                                const choicesInstance = new Choices(selectBarang, {
-                                    searchEnabled: true,
-                                    searchChoices: true,
-                                    itemSelectText: '',
-                                    placeholder: true,
-                                    placeholderValue: 'Pilih Data Barang',
-                                    searchPlaceholderValue: 'Ketik minimal 2 karakter untuk mencari...',
-                                    shouldSort: true,
-                                    fuseOptions: {
-                                        threshold: 0.3,
-                                        distance: 100
-                                    },
-                                    shouldSortItems: true,
-                                    removeItemButton: false
-                                });
-                                selectBarang.choicesInstance = choicesInstance;
-                                console.log('Choices.js initialized directly for select-data-barang');
-                            } catch (error) {
-                                console.error('Error initializing Choices.js directly:', error);
-                            }
-                        }
-                    }
-                }
-            });
+        document.querySelectorAll('.select-data-barang').forEach(function(selectBarang) {
+            if (selectBarang.tagName !== 'SELECT') {
+                return;
+            }
+            const optionCount = Array.from(selectBarang.options).filter(opt => opt.value !== '').length;
+            if (optionCount > 0) {
+                window.initPermintaanSelectDataBarang(selectBarang);
+            }
+        });
             
             // Inisialisasi untuk semua select-satuan yang sudah ada dengan styling khusus
             document.querySelectorAll('.select-satuan').forEach(function(selectSatuan) {
@@ -1292,7 +1262,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
-        }
     }
     
     // Coba initialize dengan delay yang lebih lama untuk memastikan Choices.js ter-load
@@ -1306,35 +1275,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Force initialize setelah semua script selesai
     setTimeout(function() {
         console.log('Force initialization check...');
-        if (typeof window.initChoicesForSelect === 'function') {
-            // Force initialize untuk select-data-barang
+        if (typeof window.initPermintaanSelectDataBarang === 'function' && window.jQuery && window.jQuery.fn.select2) {
             document.querySelectorAll('.select-data-barang').forEach(function(select) {
-                if (select.tagName === 'SELECT' && !select.choicesInstance) {
+                if (select.tagName === 'SELECT') {
                     const optionCount = Array.from(select.options).filter(opt => opt.value !== '').length;
-                    console.log('Force init select-data-barang, options:', optionCount);
-                    // Untuk select-data-barang, selalu inisialisasi jika ada minimal 1 opsi
                     if (optionCount > 0) {
                         try {
-                            const instance = new Choices(select, {
-                                searchEnabled: true,
-                                searchChoices: true,
-                                itemSelectText: '',
-                                placeholder: true,
-                                placeholderValue: 'Pilih Data Barang',
-                                searchPlaceholderValue: 'Ketik minimal 2 karakter...',
-                                shouldSort: true,
-                                fuseOptions: { threshold: 0.3, distance: 100 }
-                            });
-                            select.choicesInstance = instance;
-                            console.log('Force initialized select-data-barang');
+                            window.initPermintaanSelectDataBarang(select);
                         } catch (e) {
                             console.error('Force init error for select-data-barang:', e);
                         }
                     }
                 }
             });
-            
-            // Force initialize untuk select-satuan
+        }
+        if (typeof Choices !== 'undefined') {
             document.querySelectorAll('.select-satuan').forEach(function(select) {
                 if (select.tagName === 'SELECT' && !select.choicesInstance) {
                     const optionCount = Array.from(select.options).filter(opt => opt.value !== '').length;
@@ -1401,7 +1356,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const stockDisplay = row.querySelector('.stock-display');
             
             if (satuanId && selectSatuan) {
-                selectSatuan.value = satuanId;
+                setPermintaanSatuanValue(selectSatuan, satuanId);
             }
             
             // Tampilkan stock tersedia (stock gudang pusat Persediaan/Farmasi)
@@ -1468,7 +1423,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const satuanId = selectedOption ? selectedOption.getAttribute('data-satuan') : null;
                     const barangId = this.value;
                     if (satuanId && selectSatuan) {
-                        selectSatuan.value = satuanId;
+                        setPermintaanSatuanValue(selectSatuan, satuanId);
                     }
                     const displayQty = getDisplayStock(barangId);
                     if (barangId && displayQty !== null && stockDisplay) {
@@ -1610,70 +1565,19 @@ document.addEventListener('DOMContentLoaded', function() {
             // Filter awal setelah sub jenis di-render
             filterDataBarangByJenisPermintaan();
             
-            // Re-initialize Choices.js setelah filter selesai
-            // Pastikan filter sudah diterapkan sebelum Choices.js membaca opsi
+            // Re-inisialisasi Select2 setelah filter (matcher sub jenis)
             setTimeout(function() {
-                if (typeof window.initChoicesForSelect === 'function') {
+                if (typeof window.initPermintaanSelectDataBarang === 'function' && window.jQuery && window.jQuery.fn.select2) {
                     document.querySelectorAll('.select-data-barang').forEach(function(select) {
                         if (select.tagName === 'SELECT') {
-                            // Pastikan filter sudah diterapkan
-                            const checkedJenis = Array.from(document.querySelectorAll('input[name="jenis_permintaan[]"]:checked'))
-                                .map(cb => cb.value);
-                            const stockFarmasiIdsNum = (stockFarmasiIds || []).map(id => parseInt(id));
-                            const stockPersediaanIdsNum = (stockPersediaanIds || []).map(id => parseInt(id));
-                            
-                            // Terapkan filter lagi untuk memastikan
-                            Array.from(select.options).forEach(function(option) {
-                                if (option.value === '') {
-                                    option.style.display = '';
-                                    return;
-                                }
-                                const barangId = parseInt(option.value);
-                                const isFarmasi = stockFarmasiIdsNum.includes(barangId);
-                                const isPersediaan = stockPersediaanIdsNum.includes(barangId);
-                                
-                                let shouldShow = false;
-                                if (checkedJenis.length === 0) {
-                                    // Jika belum ada subjenis dipilih, jangan sembunyikan semua opsi.
-                                    shouldShow = true;
-                                } else if (checkedJenis.includes('FARMASI') && checkedJenis.includes('PERSEDIAAN')) {
-                                    shouldShow = isFarmasi || isPersediaan;
-                                } else if (checkedJenis.includes('FARMASI')) {
-                                    shouldShow = isFarmasi;
-                                } else if (checkedJenis.includes('PERSEDIAAN')) {
-                                    shouldShow = isPersediaan;
-                                }
-                                
-                                option.style.display = shouldShow ? '' : 'none';
-                                if (!shouldShow) {
-                                    option.setAttribute('data-hidden-by-filter', 'true');
-                                } else {
-                                    option.removeAttribute('data-hidden-by-filter');
-                                }
-                            });
-                            
-                            const visibleCount = Array.from(select.options).filter(opt => {
-                                if (opt.value === '') return false;
-                                const style = window.getComputedStyle(opt);
-                                return style.display !== 'none' && style.visibility !== 'hidden';
-                            }).length;
-                            
-                            if (visibleCount > 0) {
-                                // Destroy instance lama jika ada
-                                if (select.choicesInstance) {
-                                    try {
-                                        select.choicesInstance.destroy();
-                                    } catch (e) {}
-                                    select.choicesInstance = null;
-                                }
-                                
-                                console.log('Re-initializing select-data-barang after filter, visible options:', visibleCount, 'checkedJenis:', checkedJenis);
-                                window.initChoicesForSelect(select, 0);
+                            const optionCount = Array.from(select.options).filter(opt => opt.value !== '').length;
+                            if (optionCount > 0) {
+                                window.initPermintaanSelectDataBarang(select);
                             }
                         }
                     });
                 }
-            }, 300);
+            }, 350);
         }, 100);
     };
     

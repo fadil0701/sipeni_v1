@@ -1,6 +1,16 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $parsedJenis = $retur->jenis_retur;
+    $parsedAlasan = preg_replace('/^\[(RUSAK|SISA|LAINNYA)\]\s*/', '', (string) $retur->alasan_retur);
+    $editPrefillDetails = $retur->detailRetur->map(fn ($d) => [
+        'id_inventory' => $d->id_inventory,
+        'qty_retur' => (float) $d->qty_retur,
+        'id_satuan' => $d->id_satuan,
+        'alasan_retur_item' => (string) ($d->alasan_retur_item ?? ''),
+    ])->values();
+@endphp
 <div class="mb-4">
     <a href="{{ route('transaction.retur-barang.index') }}" class="text-blue-600 hover:text-blue-900 inline-flex items-center">
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -12,53 +22,26 @@
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200">
     <div class="px-6 py-5 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">Edit Retur Barang (Terpisah dari Peminjaman)</h2>
+        <h2 class="text-xl font-semibold text-gray-900">Edit Retur Barang</h2>
         <p class="text-sm text-gray-600 mt-1">No. Retur: <span class="font-semibold">{{ $retur->no_retur }}</span></p>
     </div>
-    
+
     <form action="{{ route('transaction.retur-barang.update', $retur->id_retur) }}" method="POST" class="p-6" id="formRetur">
         @csrf
         @method('PUT')
-        @php
-            $parsedJenis = $retur->jenis_retur;
-            $parsedAlasan = preg_replace('/^\[(RUSAK|SISA|LAINNYA)\]\s*/', '', (string) $retur->alasan_retur);
-        @endphp
-        
+
         <div class="space-y-6">
-            <!-- Informasi Retur -->
             <div>
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Retur</h3>
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div>
-                        <label for="id_penerimaan" class="block text-sm font-medium text-gray-700 mb-2">
-                            Penerimaan Barang
-                        </label>
-                        <select 
-                            id="id_penerimaan" 
-                            name="id_penerimaan" 
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_penerimaan') border-red-500 @enderror"
-                            onchange="loadPenerimaanDetail(this.value)"
-                        >
-                            <option value="">Pilih Penerimaan Barang</option>
-                            @foreach($penerimaans as $penerimaan)
-                                <option value="{{ $penerimaan->id_penerimaan }}" {{ old('id_penerimaan', $retur->id_penerimaan) == $penerimaan->id_penerimaan ? 'selected' : '' }}>
-                                    {{ $penerimaan->no_penerimaan }} - {{ $penerimaan->unitKerja->nama_unit_kerja ?? '-' }} ({{ $penerimaan->tanggal_penerimaan->format('d/m/Y') }})
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('id_penerimaan')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <div>
                         <label for="tanggal_retur" class="block text-sm font-medium text-gray-700 mb-2">
                             Tanggal Retur <span class="text-red-500">*</span>
                         </label>
-                        <input 
-                            type="date" 
-                            id="tanggal_retur" 
-                            name="tanggal_retur" 
+                        <input
+                            type="date"
+                            id="tanggal_retur"
+                            name="tanggal_retur"
                             required
                             value="{{ old('tanggal_retur', $retur->tanggal_retur->format('Y-m-d')) }}"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('tanggal_retur') border-red-500 @enderror"
@@ -72,9 +55,9 @@
                         <label for="id_unit_kerja" class="block text-sm font-medium text-gray-700 mb-2">
                             Unit Kerja <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            id="id_unit_kerja" 
-                            name="id_unit_kerja" 
+                        <select
+                            id="id_unit_kerja"
+                            name="id_unit_kerja"
                             required
                             onchange="loadByUnitKerja(this.value)"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_unit_kerja') border-red-500 @enderror"
@@ -95,9 +78,9 @@
                         <label for="id_gudang_asal" class="block text-sm font-medium text-gray-700 mb-2">
                             Gudang Asal (Unit) <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            id="id_gudang_asal" 
-                            name="id_gudang_asal" 
+                        <select
+                            id="id_gudang_asal"
+                            name="id_gudang_asal"
                             required
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_gudang_asal') border-red-500 @enderror"
                         >
@@ -117,9 +100,9 @@
                         <label for="id_gudang_tujuan" class="block text-sm font-medium text-gray-700 mb-2">
                             Gudang Tujuan (Pusat) <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            id="id_gudang_tujuan" 
-                            name="id_gudang_tujuan" 
+                        <select
+                            id="id_gudang_tujuan"
+                            name="id_gudang_tujuan"
                             required
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_gudang_tujuan') border-red-500 @enderror"
                         >
@@ -141,9 +124,9 @@
                         <label for="id_pegawai_pengirim" class="block text-sm font-medium text-gray-700 mb-2">
                             Pegawai Pengirim <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            id="id_pegawai_pengirim" 
-                            name="id_pegawai_pengirim" 
+                        <select
+                            id="id_pegawai_pengirim"
+                            name="id_pegawai_pengirim"
                             required
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_pegawai_pengirim') border-red-500 @enderror"
                         >
@@ -163,9 +146,9 @@
                         <label for="status_retur" class="block text-sm font-medium text-gray-700 mb-2">
                             Status Retur <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            id="status_retur" 
-                            name="status_retur" 
+                        <select
+                            id="status_retur"
+                            name="status_retur"
                             required
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('status_retur') border-red-500 @enderror"
                         >
@@ -199,31 +182,51 @@
 
                     <div class="sm:col-span-2">
                         <label for="alasan_retur" class="block text-sm font-medium text-gray-700 mb-2">Alasan Retur</label>
-                        <textarea 
-                            id="alasan_retur" 
-                            name="alasan_retur" 
+                        <textarea
+                            id="alasan_retur"
+                            name="alasan_retur"
                             rows="3"
                             placeholder="Masukkan alasan retur barang (contoh: rusak saat penggunaan)"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         >{{ old('alasan_retur', $parsedAlasan) }}</textarea>
                     </div>
-
                 </div>
             </div>
 
-            <!-- Detail Penerimaan (untuk referensi) -->
-            <div id="penerimaanDetail" style="display: none;">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Detail Penerimaan</h3>
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <div id="penerimaanContent"></div>
-                </div>
-            </div>
-
-            <!-- Detail Retur -->
             <div>
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Detail Retur</h3>
-                <div id="detailContainer" class="space-y-4">
-                    <!-- Item akan ditambahkan di sini via JavaScript atau dari existing data -->
+                <div class="mb-4 flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-900">Detail Retur</h3>
+                    <button
+                        type="button"
+                        id="addDetailRowBtn"
+                        class="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                    >
+                        + Add Row
+                    </button>
+                </div>
+                <p class="mb-3 text-sm text-gray-600">Item diambil dari <strong>inventory aktif</strong> unit kerja (bukan dari dokumen penerimaan/distribusi).</p>
+                <div class="overflow-x-auto rounded-lg border border-gray-200">
+                    <table class="min-w-full table-fixed divide-y divide-gray-200">
+                        <colgroup>
+                            <col class="w-[30%]">
+                            <col class="w-[14%]">
+                            <col class="w-[14%]">
+                            <col class="w-[16%]">
+                            <col class="w-[20%]">
+                            <col class="w-[6%]">
+                        </colgroup>
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Barang</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Qty tersedia</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Qty Retur</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Satuan</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Alasan Item</th>
+                                <th class="px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-600">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailContainer" class="divide-y divide-gray-200 bg-white"></tbody>
+                    </table>
                 </div>
 
                 @error('detail')
@@ -233,117 +236,94 @@
         </div>
 
         <div class="mt-8 flex justify-end space-x-3 border-t border-gray-200 pt-6">
-            <a 
-                href="{{ route('transaction.retur-barang.index') }}" 
+            <a
+                href="{{ route('transaction.retur-barang.index') }}"
                 class="px-5 py-2.5 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
                 Batal
             </a>
-            <button 
-                type="submit" 
+            <button
+                type="submit"
                 class="px-5 py-2.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-                Update
+                Perbarui
             </button>
         </div>
     </form>
 </div>
 
-<!-- Template untuk item detail (hidden) -->
 <template id="itemTemplate">
-    <div class="item-row bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-12">
-            <div class="sm:col-span-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Barang
-                </label>
-                <input 
-                    type="text" 
-                    class="nama-barang block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-700 sm:text-sm"
-                    readonly
-                >
-                <input type="hidden" name="detail[INDEX][id_inventory]" class="id-inventory-input">
-            </div>
-
-            <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Qty Diterima
-                </label>
-                <input 
-                    type="text" 
-                    class="qty-diterima block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-700 sm:text-sm"
-                    readonly
-                >
-            </div>
-
-            <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Qty Retur <span class="text-red-500">*</span>
-                </label>
-                <input 
-                    type="number" 
-                    name="detail[INDEX][qty_retur]" 
-                    required
-                    min="0"
-                    step="0.01"
-                    placeholder="0"
-                    class="qty-retur-input block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-            </div>
-
-            <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Satuan <span class="text-red-500">*</span>
-                </label>
-                <select 
-                    name="detail[INDEX][id_satuan]" 
-                    required
-                    class="select-satuan block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-                    <option value="">Pilih Satuan</option>
-                    @foreach($satuans as $satuan)
-                        <option value="{{ $satuan->id_satuan }}">{{ $satuan->nama_satuan }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Alasan Retur Item</label>
-                <input 
-                    type="text" 
-                    name="detail[INDEX][alasan_retur_item]" 
-                    placeholder="Opsional"
-                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-            </div>
-        </div>
-    </div>
+    <tr class="item-row">
+        <td class="px-3 py-2 align-middle">
+            <select
+                name="detail[INDEX][id_inventory]"
+                required
+                class="select-barang block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+            >
+                <option value="">Pilih Barang</option>
+            </select>
+        </td>
+        <td class="px-3 py-2 align-middle">
+            <input
+                type="text"
+                class="qty-diterima block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+                readonly
+            >
+        </td>
+        <td class="px-3 py-2 align-middle">
+            <input
+                type="number"
+                name="detail[INDEX][qty_retur]"
+                required
+                min="0"
+                step="0.01"
+                placeholder="0"
+                class="qty-retur-input block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+            >
+        </td>
+        <td class="px-3 py-2 align-middle">
+            <select
+                name="detail[INDEX][id_satuan]"
+                required
+                class="select-satuan block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+            >
+                <option value="">Pilih Satuan</option>
+                @foreach($satuans as $satuan)
+                    <option value="{{ $satuan->id_satuan }}">{{ $satuan->nama_satuan }}</option>
+                @endforeach
+            </select>
+        </td>
+        <td class="px-3 py-2 align-middle">
+            <input
+                type="text"
+                name="detail[INDEX][alasan_retur_item]"
+                placeholder="Opsional"
+                class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+            >
+        </td>
+        <td class="px-3 py-2 text-center align-middle">
+            <button
+                type="button"
+                class="remove-row inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                title="Hapus baris"
+            >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </button>
+        </td>
+    </tr>
 </template>
 
 @push('scripts')
-@php
-    $existingDetailsForJs = $retur->detailRetur->map(function ($detail) {
-        return [
-            'id_detail_retur' => $detail->id_detail_retur,
-            'id_inventory' => $detail->id_inventory,
-            'nama_barang' => ($detail->inventory->dataBarang->nama_barang ?? '-'),
-            'qty_retur' => $detail->qty_retur,
-            'id_satuan' => $detail->id_satuan,
-            'alasan_retur_item' => ($detail->alasan_retur_item ?? ''),
-            'keterangan' => ($detail->keterangan ?? ''),
-            'qty_diterima' => null,
-        ];
-    });
-@endphp
 <script>
-let penerimaanDetails = [];
+let inventoryOptions = [];
+const editPrefillDetails = @json($editPrefillDetails);
 const urlPegawaiByUnit = @json(url('/api/master/pegawai-by-unit'));
 const urlGudangByUnit = @json(url('/api/master/gudang-by-unit'));
+const urlInventoryByUnit = @json(url('/api/master/inventory-by-unit'));
 const oldGudangAsal = @json(old('id_gudang_asal', $retur->id_gudang_asal));
 const oldPegawai = @json(old('id_pegawai_pengirim', $retur->id_pegawai_pengirim));
-
-// Existing detail retur data
-const existingDetails = @json($existingDetailsForJs);
 
 function loadByUnitKerja(unitId) {
     const asalSel = document.getElementById('id_gudang_asal');
@@ -382,233 +362,121 @@ function loadByUnitKerja(unitId) {
             });
             if (oldPegawai) pegawaiSel.value = String(oldPegawai);
         });
-}
 
-// Load detail penerimaan
-function loadPenerimaanDetail(penerimaanId) {
-    if (!penerimaanId) {
-        document.getElementById('penerimaanDetail').style.display = 'none';
-        // Load existing detail if no penerimaan selected
-        if (existingDetails && existingDetails.length > 0) {
-            loadExistingDetails();
-        }
-        return;
-    }
-
-    fetch(`{{ url('/') }}/transaction/retur-barang/penerimaan/${penerimaanId}/detail`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
+    fetch(`${urlInventoryByUnit}/${unitId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+        .then(r => r.json())
         .then(data => {
-            if (data.success && data.details && data.details.length > 0) {
-                penerimaanDetails = data.details;
-                
-                // Tampilkan info penerimaan
-                let html = `<p class="text-sm text-gray-700 mb-2"><strong>No Penerimaan:</strong> ${data.penerimaan.no_penerimaan}</p>`;
-                html += `<p class="text-sm text-gray-700 mb-4"><strong>Unit Kerja:</strong> ${data.penerimaan.unit_kerja ? 'Auto-filled' : '-'}</p>`;
-                
-                html += '<table class="min-w-full divide-y divide-gray-200">';
-                html += '<thead class="bg-gray-50"><tr>';
-                html += '<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Barang</th>';
-                html += '<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty Diterima</th>';
-                html += '<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Satuan</th>';
-                html += '</tr></thead><tbody>';
-                
-                data.details.forEach(detail => {
-                    html += '<tr>';
-                    html += `<td>${detail.nama_barang}</td>`;
-                    html += `<td>${detail.qty_diterima}</td>`;
-                    html += `<td>${detail.nama_satuan}</td>`;
-                    html += '</tr>';
+            inventoryOptions = data.data || [];
+            document.getElementById('detailContainer').innerHTML = '';
+            detailRowIndex = 0;
+            if (editPrefillDetails && editPrefillDetails.length > 0) {
+                editPrefillDetails.forEach(function (prefill) {
+                    const row = createDetailRow(prefill);
+                    if (row) document.getElementById('detailContainer').appendChild(row);
                 });
-                
-                html += '</tbody></table>';
-                document.getElementById('penerimaanContent').innerHTML = html;
-                document.getElementById('penerimaanDetail').style.display = 'block';
-
-                // Auto-set unit kerja
-                if (data.penerimaan.unit_kerja) {
-                    document.getElementById('id_unit_kerja').value = data.penerimaan.unit_kerja;
-                    loadByUnitKerja(data.penerimaan.unit_kerja);
-                }
-
-                // Set id_distribusi jika ada
-                if (data.penerimaan.id_distribusi) {
-                    let distribusiInput = document.querySelector('input[name="id_distribusi"]');
-                    if (!distribusiInput) {
-                        distribusiInput = document.createElement('input');
-                        distribusiInput.type = 'hidden';
-                        distribusiInput.name = 'id_distribusi';
-                        document.getElementById('formRetur').appendChild(distribusiInput);
-                    }
-                    distribusiInput.value = data.penerimaan.id_distribusi;
-                }
-
-                // Merge existing detail dengan penerimaan detail
-                loadDetailRetur(data.details, existingDetails);
-            } else {
-                // Load existing detail if no penerimaan details found
-                if (existingDetails && existingDetails.length > 0) {
-                    loadExistingDetails();
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error loading penerimaan detail:', error);
-            // Load existing detail on error
-            if (existingDetails && existingDetails.length > 0) {
-                loadExistingDetails();
+            } else if (inventoryOptions.length > 0) {
+                const row = createDetailRow();
+                if (row) document.getElementById('detailContainer').appendChild(row);
             }
         });
 }
 
-// Load existing details without penerimaan reference
-function loadExistingDetails() {
-    const container = document.getElementById('detailContainer');
-    container.innerHTML = '';
-    
-    if (!existingDetails || existingDetails.length === 0) {
-        return;
-    }
-    
-    let index = 0;
-    existingDetails.forEach(detail => {
-        const template = document.getElementById('itemTemplate');
-        if (!template) {
-            return;
-        }
-        
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = template.innerHTML.replace(/INDEX/g, index);
-        const itemElement = tempDiv.firstElementChild;
-        
-        if (!itemElement) {
-            return;
-        }
-        
-        // Set values from existing detail
-        const namaBarangInput = itemElement.querySelector('.nama-barang');
-        const idInventoryInput = itemElement.querySelector('.id-inventory-input');
-        const qtyDiterimaInput = itemElement.querySelector('.qty-diterima');
-        const qtyReturInput = itemElement.querySelector('.qty-retur-input');
-        const satuanSelect = itemElement.querySelector('.select-satuan');
-        const alasanInput = itemElement.querySelector('[name*="[alasan_retur_item]"]');
-        
-        if (namaBarangInput) namaBarangInput.value = detail.nama_barang || '';
-        if (idInventoryInput) idInventoryInput.value = detail.id_inventory || '';
-        if (qtyDiterimaInput) qtyDiterimaInput.value = detail.qty_diterima || detail.qty_retur || '0';
-        if (qtyReturInput) {
-            qtyReturInput.value = detail.qty_retur || '0';
-            if (detail.qty_diterima) {
-                qtyReturInput.max = detail.qty_diterima;
-            }
-        }
-        if (satuanSelect) satuanSelect.value = detail.id_satuan || '';
-        if (alasanInput) alasanInput.value = detail.alasan_retur_item || '';
-        
-        container.appendChild(itemElement);
-        index++;
-    });
-}
+let detailRowIndex = 0;
 
-// Load detail retur berdasarkan detail penerimaan dengan merge existing
-function loadDetailRetur(details, existing) {
-    const container = document.getElementById('detailContainer');
-    container.innerHTML = '';
-    
-    if (!details || details.length === 0) {
-        if (existing && existing.length > 0) {
-            loadExistingDetails();
-        }
-        return;
-    }
-    
-    // Create a map of existing details by id_inventory
-    const existingMap = {};
-    if (existing && existing.length > 0) {
-        existing.forEach(item => {
-            existingMap[item.id_inventory] = item;
+function createDetailRow(prefill = {}) {
+    const template = document.getElementById('itemTemplate');
+    if (!template) return null;
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = template.innerHTML.replace(/INDEX/g, detailRowIndex++);
+    const row = tempDiv.firstElementChild;
+    if (!row) return null;
+
+    const barangSelect = row.querySelector('.select-barang');
+    const qtyDiterimaInput = row.querySelector('.qty-diterima');
+    const qtyReturInput = row.querySelector('.qty-retur-input');
+    const satuanSelect = row.querySelector('.select-satuan');
+
+    if (barangSelect) {
+        inventoryOptions.forEach((detail) => {
+            const opt = document.createElement('option');
+            opt.value = String(detail.id_inventory);
+            opt.textContent = detail.label || detail.nama_barang;
+            barangSelect.appendChild(opt);
         });
     }
-    
-    let index = 0;
-    details.forEach(detail => {
-        const template = document.getElementById('itemTemplate');
-        if (!template) {
+
+    const syncRowByInventory = (idInventory) => {
+        const selected = inventoryOptions.find((d) => String(d.id_inventory) === String(idInventory));
+        if (!selected) {
+            qtyDiterimaInput.value = '';
+            qtyReturInput.max = '';
+            if (!prefill.id_satuan) satuanSelect.value = '';
             return;
         }
-        
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = template.innerHTML.replace(/INDEX/g, index);
-        const itemElement = tempDiv.firstElementChild;
-        
-        if (!itemElement) {
-            return;
-        }
-        
-        // Check if we have existing data for this inventory
-        const existingDetail = existingMap[detail.id_inventory];
-        
-        // Set values - prefer existing, fallback to penerimaan detail
-        const namaBarangInput = itemElement.querySelector('.nama-barang');
-        const idInventoryInput = itemElement.querySelector('.id-inventory-input');
-        const qtyDiterimaInput = itemElement.querySelector('.qty-diterima');
-        const qtyReturInput = itemElement.querySelector('.qty-retur-input');
-        const satuanSelect = itemElement.querySelector('.select-satuan');
-        const alasanInput = itemElement.querySelector('[name*="[alasan_retur_item]"]');
-        
-        if (namaBarangInput) namaBarangInput.value = detail.nama_barang || '';
-        if (idInventoryInput) idInventoryInput.value = detail.id_inventory || '';
-        if (qtyDiterimaInput) qtyDiterimaInput.value = detail.qty_diterima || '0';
-        if (qtyReturInput) {
-            qtyReturInput.value = existingDetail ? (existingDetail.qty_retur || '0') : '0';
-            qtyReturInput.max = detail.qty_diterima || '0';
-        }
-        if (satuanSelect) satuanSelect.value = existingDetail ? (existingDetail.id_satuan || detail.id_satuan) : (detail.id_satuan || '');
-        if (alasanInput) alasanInput.value = existingDetail ? (existingDetail.alasan_retur_item || '') : '';
-        
-        container.appendChild(itemElement);
-        index++;
+
+        qtyDiterimaInput.value = selected.qty_tersedia ?? '0';
+        qtyReturInput.max = selected.qty_tersedia ?? '0';
+        if (!prefill.id_satuan) satuanSelect.value = selected.id_satuan ?? '';
+    };
+
+    barangSelect?.addEventListener('change', function () {
+        syncRowByInventory(this.value);
     });
+
+    row.querySelector('.remove-row')?.addEventListener('click', function () {
+        row.remove();
+    });
+
+    if (prefill.id_inventory && barangSelect) {
+        barangSelect.value = String(prefill.id_inventory);
+        syncRowByInventory(prefill.id_inventory);
+    }
+    if (prefill.qty_retur != null && prefill.qty_retur !== '' && qtyReturInput) {
+        qtyReturInput.value = prefill.qty_retur;
+    }
+    if (prefill.id_satuan && satuanSelect) satuanSelect.value = String(prefill.id_satuan);
+    const alasanInput = row.querySelector('[name*="[alasan_retur_item]"]');
+    if (prefill.alasan_retur_item != null && prefill.alasan_retur_item !== '' && alasanInput) {
+        alasanInput.value = prefill.alasan_retur_item;
+    }
+
+    return row;
 }
 
-// Load on page load
 document.addEventListener('DOMContentLoaded', function() {
     const unitId = document.getElementById('id_unit_kerja').value;
     if (unitId) loadByUnitKerja(unitId);
 
-    const penerimaanId = document.getElementById('id_penerimaan').value;
-    if (penerimaanId) {
-        loadPenerimaanDetail(penerimaanId);
-    } else if (existingDetails && existingDetails.length > 0) {
-        loadExistingDetails();
-    }
-    
-    // Validasi form sebelum submit
+    document.getElementById('addDetailRowBtn')?.addEventListener('click', function () {
+        if (!inventoryOptions.length) {
+            alert('Pilih unit kerja terlebih dahulu.');
+            return;
+        }
+        const row = createDetailRow();
+        if (row) document.getElementById('detailContainer').appendChild(row);
+    });
+
     const formRetur = document.getElementById('formRetur');
     if (formRetur) {
         formRetur.addEventListener('submit', function(e) {
             const detailContainer = document.getElementById('detailContainer');
             const detailRows = detailContainer.querySelectorAll('.item-row');
-            
+
             if (detailRows.length === 0) {
                 e.preventDefault();
-                alert('Detail retur tidak ditemukan. Silakan pilih penerimaan barang terlebih dahulu.');
+                alert('Detail retur belum diisi. Tambahkan minimal 1 baris item.');
                 return false;
             }
-            
-            // Validasi setiap item
+
             let isValid = true;
-            let emptyFields = [];
+            const emptyFields = [];
             detailRows.forEach((row, index) => {
                 const idInventory = row.querySelector('[name*="[id_inventory]"]');
                 const qtyRetur = row.querySelector('[name*="[qty_retur]"]');
                 const idSatuan = row.querySelector('[name*="[id_satuan]"]');
                 const qtyDiterima = parseFloat(row.querySelector('.qty-diterima').value || 0);
-                
+
                 if (!idInventory || !idInventory.value) {
                     isValid = false;
                     emptyFields.push(`Item ${index + 1}: Inventory`);
@@ -618,14 +486,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     emptyFields.push(`Item ${index + 1}: Qty Retur`);
                 } else if (parseFloat(qtyRetur.value) > qtyDiterima) {
                     isValid = false;
-                    emptyFields.push(`Item ${index + 1}: Qty Retur tidak boleh lebih dari Qty Diterima (${qtyDiterima})`);
+                    emptyFields.push(`Item ${index + 1}: Qty Retur tidak boleh lebih dari qty tersedia (${qtyDiterima})`);
                 }
                 if (!idSatuan || !idSatuan.value) {
                     isValid = false;
                     emptyFields.push(`Item ${index + 1}: Satuan`);
                 }
             });
-            
+
             if (!isValid) {
                 e.preventDefault();
                 alert('Mohon lengkapi semua field yang wajib diisi:\n' + emptyFields.join('\n'));
@@ -637,4 +505,3 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endpush
 @endsection
-

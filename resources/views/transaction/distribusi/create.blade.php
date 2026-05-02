@@ -251,6 +251,7 @@
                 <select 
                     name="detail[INDEX][id_satuan]" 
                     required
+                    data-searchable="false"
                     class="select-satuan block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
                     <option value="">Pilih Satuan</option>
@@ -481,7 +482,7 @@ function updateHargaSatuan(select) {
             hargaInput.value = harga;
         }
         if (satuanId) {
-            satuanSelect.value = satuanId;
+            setSatuanSelectValue(satuanSelect, satuanId);
         }
         
         calculateSubtotal(hargaInput);
@@ -506,7 +507,20 @@ function syncDerivedFieldsFromInventory(row) {
         hargaInput.value = harga;
     }
     if (satuanId && !satuanSelect.value) {
-        satuanSelect.value = satuanId;
+        setSatuanSelectValue(satuanSelect, satuanId);
+    }
+}
+
+/** Set nilai satuan: native + Select2 bila elemen sudah di-wrap (layout). */
+function setSatuanSelectValue(selectEl, value) {
+    if (!selectEl) {
+        return;
+    }
+    const v = value != null ? String(value) : '';
+    selectEl.value = v;
+    if (window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function' &&
+        window.jQuery(selectEl).hasClass('select2-hidden-accessible')) {
+        window.jQuery(selectEl).val(v).trigger('change');
     }
 }
 

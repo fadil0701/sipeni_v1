@@ -199,6 +199,10 @@
                     </button>
                 </div>
 
+                @php
+                    $__invPersediaanFlip = array_flip(array_map('strval', $stockPersediaanIds ?? []));
+                    $__invFarmasiFlip = array_flip(array_map('strval', $stockFarmasiIds ?? []));
+                @endphp
                 <div id="detailContainer" class="space-y-3">
                     @foreach(old('detail', $permintaan->detailPermintaan) as $index => $detail)
                     <div class="item-row permintaan-detail-row">
@@ -224,12 +228,15 @@
                                     <div class="wrap-master w-full min-w-0" style="{{ $useLainnyaEdit ? 'display:none' : '' }}">
                                         <select 
                                             name="detail[{{ $index }}][id_data_barang]" 
+                                            data-searchable="false"
                                             class="select-data-barang w-full min-w-0 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error("detail.{$index}.id_data_barang") border-red-500 @enderror"
                                         >
                                             <option value="">Pilih Data Barang</option>
                                             @foreach($dataBarangs as $dataBarang)
                                                 <option value="{{ $dataBarang->id_data_barang }}" 
                                                     data-satuan="{{ $dataBarang->id_satuan }}"
+                                                    data-in-persediaan="{{ isset($__invPersediaanFlip[(string) $dataBarang->id_data_barang]) ? '1' : '0' }}"
+                                                    data-in-farmasi="{{ isset($__invFarmasiFlip[(string) $dataBarang->id_data_barang]) ? '1' : '0' }}"
                                                     {{ old("detail.{$index}.id_data_barang", is_object($detail) ? $detail->id_data_barang : ($detail['id_data_barang'] ?? '')) == $dataBarang->id_data_barang ? 'selected' : '' }}>
                                                     {{ $dataBarang->kode_data_barang }} - {{ $dataBarang->nama_barang }}
                                                 </option>
@@ -278,7 +285,7 @@
                                 <select 
                                     name="detail[{{ $index }}][id_satuan]" 
                                     required
-                                    class="field-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error("detail.{$index}.id_satuan") border-red-500 @enderror"
+                                    class="field-satuan select-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error("detail.{$index}.id_satuan") border-red-500 @enderror"
                                 >
                                     <option value="">Pilih Satuan</option>
                                     @foreach($satuans as $satuan)
@@ -374,11 +381,15 @@
                     <div class="wrap-master w-full min-w-0">
                         <select 
                             name="detail[INDEX][id_data_barang]" 
+                            data-searchable="false"
                             class="select-data-barang w-full min-w-0 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         >
                             <option value="">Pilih Data Barang</option>
                             @foreach($dataBarangs as $dataBarang)
-                                <option value="{{ $dataBarang->id_data_barang }}" data-satuan="{{ $dataBarang->id_satuan }}">
+                                <option value="{{ $dataBarang->id_data_barang }}" 
+                                    data-satuan="{{ $dataBarang->id_satuan }}"
+                                    data-in-persediaan="{{ isset($__invPersediaanFlip[(string) $dataBarang->id_data_barang]) ? '1' : '0' }}"
+                                    data-in-farmasi="{{ isset($__invFarmasiFlip[(string) $dataBarang->id_data_barang]) ? '1' : '0' }}">
                                     {{ $dataBarang->kode_data_barang }} - {{ $dataBarang->nama_barang }}
                                 </option>
                             @endforeach
@@ -418,7 +429,7 @@
                 <select 
                     name="detail[INDEX][id_satuan]" 
                     required
-                    class="field-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    class="field-satuan select-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
                     <option value="">Pilih Satuan</option>
                     @foreach($satuans as $satuan)
@@ -467,6 +478,129 @@ let itemIndex = {{ count(old('detail', $permintaan->detailPermintaan)) }};
 const stockData = @json($stockData ?? []);
 const stockPersediaanIds = @json(array_map('intval', $stockPersediaanIds ?? []));
 const stockFarmasiIds = @json(array_map('intval', $stockFarmasiIds ?? []));
+
+function getBarangOptionJenisFlags(option) {
+    if (!option || option.value === '') {
+        return { isFarmasi: false, isPersediaan: false };
+    }
+    if (option.getAttribute('data-in-farmasi') !== null) {
+        return {
+            isFarmasi: option.getAttribute('data-in-farmasi') === '1',
+            isPersediaan: option.getAttribute('data-in-persediaan') === '1',
+        };
+    }
+    const barangId = parseInt(option.value, 10);
+    return {
+        isFarmasi: (stockFarmasiIds || []).map(Number).includes(barangId),
+        isPersediaan: (stockPersediaanIds || []).map(Number).includes(barangId),
+    };
+}
+
+function isBarangAllowedForSubJenisOption(optionEl) {
+    const checkedJenis = Array.from(document.querySelectorAll('input[name="jenis_permintaan[]"]:checked')).map(cb => cb.value);
+    const { isFarmasi, isPersediaan } = getBarangOptionJenisFlags(optionEl);
+    if (checkedJenis.length === 0) {
+        return true;
+    }
+    if (checkedJenis.includes('FARMASI') && checkedJenis.includes('PERSEDIAAN')) {
+        return isFarmasi || isPersediaan;
+    }
+    if (checkedJenis.includes('FARMASI')) {
+        return isFarmasi;
+    }
+    if (checkedJenis.includes('PERSEDIAAN')) {
+        return isPersediaan;
+    }
+    return true;
+}
+
+function setPermintaanSatuanValue(selectSatuan, satuanId) {
+    if (!selectSatuan || satuanId == null || satuanId === '') {
+        return;
+    }
+    const v = String(satuanId);
+    if (selectSatuan.choicesInstance && typeof selectSatuan.choicesInstance.setChoiceByValue === 'function') {
+        selectSatuan.choicesInstance.setChoiceByValue(v);
+        return;
+    }
+    selectSatuan.value = v;
+    if (window.jQuery && window.jQuery(selectSatuan).hasClass('select2-hidden-accessible')) {
+        window.jQuery(selectSatuan).val(v).trigger('change');
+    }
+}
+
+window.initPermintaanSelectDataBarang = function (selectElement) {
+    if (!selectElement || selectElement.tagName !== 'SELECT' || !window.jQuery || typeof window.jQuery.fn.select2 !== 'function') {
+        return null;
+    }
+    const $ = window.jQuery;
+    if (selectElement.choicesInstance) {
+        try {
+            selectElement.choicesInstance.destroy();
+        } catch (e) {}
+        selectElement.choicesInstance = null;
+    }
+    if ($(selectElement).hasClass('select2-hidden-accessible')) {
+        try {
+            $(selectElement).select2('destroy');
+        } catch (e) {}
+    }
+    const placeholderOption = selectElement.querySelector('option[value=""]');
+    const placeholderText = ((placeholderOption && placeholderOption.textContent) || 'Pilih Data Barang').trim();
+    $(selectElement).select2({
+        placeholder: placeholderText,
+        allowClear: !!placeholderOption,
+        width: '100%',
+        minimumResultsForSearch: 0,
+        matcher: function (params, data) {
+            if (data == null) {
+                return null;
+            }
+            if (data.children && data.children.length) {
+                return null;
+            }
+            const el = data.element;
+            if (!el) {
+                return null;
+            }
+            if (el.value === '') {
+                return data;
+            }
+            if (!isBarangAllowedForSubJenisOption(el)) {
+                return null;
+            }
+            const term = (params.term || '').trim().toLowerCase();
+            if (!term) {
+                return data;
+            }
+            const text = ((data.text || '') + '').toLowerCase();
+            return text.indexOf(term) > -1 ? data : null;
+        },
+    });
+    const inst = {
+        destroy: function () {
+            try {
+                $(selectElement).select2('destroy');
+            } catch (e) {}
+        },
+        setChoiceByValue: function (value) {
+            $(selectElement).val(value).trigger('change');
+        },
+    };
+    selectElement.choicesInstance = inst;
+    return inst;
+};
+
+function refreshSelectDataBarangInits() {
+    if (typeof window.initPermintaanSelectDataBarang !== 'function' || !window.jQuery || !window.jQuery.fn.select2) {
+        return;
+    }
+    document.querySelectorAll('.select-data-barang').forEach(function (sel) {
+        if (sel.tagName === 'SELECT' && Array.from(sel.options).filter(function (o) { return o.value !== ''; }).length > 0) {
+            window.initPermintaanSelectDataBarang(sel);
+        }
+    });
+}
 
 // Helper function untuk format number
 function number_format(number, decimals, dec_point, thousands_sep) {
@@ -615,8 +749,8 @@ function tambahItem() {
             const satuanId = selectedOption.getAttribute('data-satuan');
             const barangId = this.value;
             
-            if (satuanId) {
-                selectSatuan.value = satuanId;
+            if (satuanId && selectSatuan) {
+                setPermintaanSatuanValue(selectSatuan, satuanId);
             }
             
             // Tampilkan stock tersedia
@@ -648,6 +782,27 @@ function tambahItem() {
                 }
             }
         });
+
+        setTimeout(function () {
+            if (typeof window.initPermintaanSelectDataBarang === 'function' && window.jQuery && window.jQuery.fn.select2) {
+                if (selectBarang && selectBarang.tagName === 'SELECT') {
+                    const optionCount = Array.from(selectBarang.options).filter(opt => opt.value !== '').length;
+                    if (optionCount > 0) {
+                        window.initPermintaanSelectDataBarang(selectBarang);
+                    }
+                }
+            }
+            if (selectSatuan && selectSatuan.tagName === 'SELECT') {
+                Array.from(selectSatuan.options).forEach(function (option) {
+                    const raw = option.textContent || option.innerText || option.value || '';
+                    option.textContent = String(raw).replace(/\s+/g, ' ').trim();
+                });
+                const satuanOptCount = Array.from(selectSatuan.options).filter(opt => opt.value !== '').length;
+                if (satuanOptCount > 0 && typeof window.initChoicesForSelect === 'function') {
+                    window.initChoicesForSelect(selectSatuan, 0);
+                }
+            }
+        }, 150);
     }
     
     // Hapus item
@@ -669,8 +824,25 @@ window.updateSubJenis = function() {
     subJenisContainer.classList.remove('hidden');
 };
 
+function scheduleRefreshSelectDataBarang() {
+    let tries = 0;
+    function attempt() {
+        tries++;
+        if (typeof window.jQuery !== 'undefined' && typeof window.jQuery.fn.select2 === 'function' && typeof window.initPermintaanSelectDataBarang === 'function') {
+            refreshSelectDataBarangInits();
+            return;
+        }
+        if (tries < 80) {
+            setTimeout(attempt, 100);
+        }
+    }
+    attempt();
+}
+
 // Event listener untuk button tambah item
 document.addEventListener('DOMContentLoaded', function() {
+    scheduleRefreshSelectDataBarang();
+
     const btnTambahItem = document.getElementById('btnTambahItem');
     if (btnTambahItem) {
         btnTambahItem.addEventListener('click', function(e) {
@@ -699,7 +871,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const stockDisplay = row.querySelector('.stock-display');
             
             if (satuanId && selectSatuan) {
-                selectSatuan.value = satuanId;
+                setPermintaanSatuanValue(selectSatuan, satuanId);
             }
             
             // Tampilkan stock tersedia
@@ -755,13 +927,21 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSubJenis();
     }
     
-    // Update stock display saat sub jenis checkbox berubah
+    // Update stock display + Select2 filter saat sub jenis checkbox berubah
     document.querySelectorAll('input[name="jenis_permintaan[]"]').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
-            // Trigger change pada semua select data barang untuk update stock display
             document.querySelectorAll('.select-data-barang').forEach(select => {
                 if (select.value) {
-                    setTimeout(() => select.dispatchEvent(new Event('change')), 50);
+                    const opt = select.options[select.selectedIndex];
+                    if (opt && !isBarangAllowedForSubJenisOption(opt)) {
+                        select.value = '';
+                    }
+                }
+            });
+            setTimeout(function () { refreshSelectDataBarangInits(); }, 50);
+            document.querySelectorAll('.select-data-barang').forEach(select => {
+                if (select.value) {
+                    setTimeout(() => select.dispatchEvent(new Event('change')), 80);
                 }
             });
         });

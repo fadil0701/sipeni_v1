@@ -193,6 +193,7 @@ class PermissionHelper
                 'inventory.data-inventory.store',
                 'inventory.data-inventory.edit',
                 'inventory.data-inventory.update',
+                'inventory.data-inventory.import.*',
                 // Tidak termasuk destroy, delete - harus di-checklist secara eksplisit
                 'transaction.distribusi.index',
                 'transaction.distribusi.show',
@@ -237,6 +238,7 @@ class PermissionHelper
             'admin_gudang_aset' => [
                 'inventory.data-stock.index', 'inventory.data-stock.show', 'inventory.data-stock.create', 'inventory.data-stock.store', 'inventory.data-stock.edit', 'inventory.data-stock.update',
                 'inventory.data-inventory.index', 'inventory.data-inventory.show', 'inventory.data-inventory.create', 'inventory.data-inventory.store', 'inventory.data-inventory.edit', 'inventory.data-inventory.update',
+                'inventory.data-inventory.import.*',
                 'transaction.distribusi.index', 'transaction.distribusi.show', 'transaction.penerimaan-barang.index', 'transaction.penerimaan-barang.show', 'transaction.penerimaan-barang.create', 'transaction.penerimaan-barang.store', 'transaction.penerimaan-barang.edit', 'transaction.penerimaan-barang.update',
                 'transaction.approval.index', 'transaction.approval.show', 'transaction.approval.disposisi',
                 'asset.register-aset.index', 'asset.register-aset.show', 'asset.register-aset.create', 'asset.register-aset.store', 'asset.register-aset.edit', 'asset.register-aset.update',
@@ -246,6 +248,7 @@ class PermissionHelper
             'admin_gudang_persediaan' => [
                 'inventory.data-stock.index', 'inventory.data-stock.show', 'inventory.data-stock.create', 'inventory.data-stock.store', 'inventory.data-stock.edit', 'inventory.data-stock.update',
                 'inventory.data-inventory.index', 'inventory.data-inventory.show', 'inventory.data-inventory.create', 'inventory.data-inventory.store', 'inventory.data-inventory.edit', 'inventory.data-inventory.update',
+                'inventory.data-inventory.import.*',
                 'transaction.distribusi.index', 'transaction.distribusi.show', 'transaction.penerimaan-barang.index', 'transaction.penerimaan-barang.show', 'transaction.penerimaan-barang.create', 'transaction.penerimaan-barang.store', 'transaction.penerimaan-barang.edit', 'transaction.penerimaan-barang.update',
                 'transaction.approval.index', 'transaction.approval.show', 'transaction.approval.disposisi',
                 'asset.register-aset.index', 'asset.register-aset.show', 'asset.register-aset.create', 'asset.register-aset.store', 'asset.register-aset.edit', 'asset.register-aset.update',
@@ -255,6 +258,7 @@ class PermissionHelper
             'admin_gudang_farmasi' => [
                 'inventory.data-stock.index', 'inventory.data-stock.show', 'inventory.data-stock.create', 'inventory.data-stock.store', 'inventory.data-stock.edit', 'inventory.data-stock.update',
                 'inventory.data-inventory.index', 'inventory.data-inventory.show', 'inventory.data-inventory.create', 'inventory.data-inventory.store', 'inventory.data-inventory.edit', 'inventory.data-inventory.update',
+                'inventory.data-inventory.import.*',
                 'transaction.distribusi.index', 'transaction.distribusi.show', 'transaction.penerimaan-barang.index', 'transaction.penerimaan-barang.show', 'transaction.penerimaan-barang.create', 'transaction.penerimaan-barang.store', 'transaction.penerimaan-barang.edit', 'transaction.penerimaan-barang.update',
                 'transaction.approval.index', 'transaction.approval.show', 'transaction.approval.disposisi',
                 'asset.register-aset.index', 'asset.register-aset.show', 'asset.register-aset.create', 'asset.register-aset.store', 'asset.register-aset.edit', 'asset.register-aset.update',

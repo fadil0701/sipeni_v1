@@ -144,6 +144,28 @@
             .kir-sign .name-space {
                 margin-top: 26px;
             }
+            .tte-seal {
+                margin: 8px 0 10px;
+                padding: 8px 10px;
+                border: 1px solid #94a3b8;
+                border-radius: 6px;
+                font-size: 8px;
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+                background: #f8fafc;
+            }
+            .tte-seal .tte-qr { flex-shrink: 0; }
+            .tte-seal .tte-qr svg { display: block; }
+            .tte-seal .tte-meta { line-height: 1.35; }
+            .tte-seal .tte-hash { font-family: ui-monospace, monospace; font-size: 7px; word-break: break-all; }
+            .kir-tta-line {
+                margin-top: 6px;
+                font-size: 7px;
+                color: #374151;
+                line-height: 1.3;
+            }
+            .kir-tta-line.muted { color: #9ca3af; font-style: italic; }
         }
     </style>
 </head>
@@ -155,11 +177,34 @@
     $kepalaPusat = $signatories['kepala_pusat'] ?? null;
     $pengurusBarang = $signatories['pengurus_barang'] ?? null;
     $kepalaUnit = $signatories['kepala_unit'] ?? null;
+    $tteSignaturesByRole = $tteSignaturesByRole ?? collect();
+    $tteCanSignRoles = $tteCanSignRoles ?? [];
+    $kirSignerLabels = [
+        'kepala_pusat' => 'Kepala Pusat (Mengetahui)',
+        'pengurus_barang' => 'Pengurus Barang',
+        'kepala_unit' => 'Kepala Ruangan/Unit Kerja',
+    ];
 @endphp
 
 <div class="toolbar print-hidden">
     <a href="{{ route('asset.kartu-inventaris-ruangan.index') }}" class="btn">Kembali ke Daftar Dokumen KIR</a>
     <button onclick="window.print()" class="btn btn-primary">Cetak Dokumen</button>
+    @if(session('success'))
+        <span style="margin-left:8px;font-size:12px;color:#047857;">{{ session('success') }}</span>
+    @endif
+    @if($errors->any())
+        <span style="margin-left:8px;font-size:12px;color:#b91c1c;">{{ $errors->first() }}</span>
+    @endif
+    @if(!empty($tteSeal) && !empty($tteCanSignRoles))
+        @foreach($tteCanSignRoles as $role)
+            <form method="post" action="{{ route('asset.kartu-inventaris-ruangan.dokumen-sign', $unitKerja->id_unit_kerja) }}" style="display:inline;">
+                @csrf
+                <input type="hidden" name="public_token" value="{{ $tteSeal->public_token }}">
+                <input type="hidden" name="signer_role" value="{{ $role }}">
+                <button type="submit" class="btn btn-primary">Tandatangani — {{ $kirSignerLabels[$role] ?? $role }}</button>
+            </form>
+        @endforeach
+    @endif
 </div>
 
 @forelse($rowsByRuangan as $groupRows)
@@ -188,6 +233,20 @@
                 </div>
             </div>
         </div>
+
+        @if($loop->first && !empty($tteSeal) && !empty($tteVerificationUrl))
+            <div class="tte-seal">
+                <div class="tte-qr" aria-hidden="true">
+                    {!! \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(96)->generate($tteVerificationUrl) !!}
+                </div>
+                <div class="tte-meta">
+                    <div><strong>Verifikasi dokumen (internal)</strong></div>
+                    <div>Kode: <strong>{{ $tteSeal->verification_code }}</strong></div>
+                    <div class="tte-hash">SHA-256: {{ $tteSeal->content_hash_sha256 }}</div>
+                    <div style="margin-top:4px;">Pindai QR atau buka: {{ $tteVerificationUrl }}</div>
+                </div>
+            </div>
+        @endif
 
         <table class="kir-table">
             <colgroup>
@@ -272,6 +331,14 @@
                 <div>PROVINSI DKI JAKARTA</div>
                 <div class="name-space">{{ $kepalaPusat?->nama_pegawai ?? '(Belum diatur)' }}</div>
                 <div class="nip">NIP. {{ $kepalaPusat?->nip_pegawai ?? '-' }}</div>
+                @if(!empty($tteSeal))
+                    @php $sigKp = $tteSignaturesByRole->get('kepala_pusat'); @endphp
+                    @if($sigKp && $sigKp->signed_at)
+                        <div class="kir-tta-line">TTE (internal): {{ $sigKp->signed_at->timezone(config('app.timezone'))->format('d M Y H:i') }}</div>
+                    @else
+                        <div class="kir-tta-line muted">Menunggu tanda tangan elektronik</div>
+                    @endif
+                @endif
             </div>
             <div>
                 <div>PENGURUS BARANG</div>
@@ -279,6 +346,14 @@
                 <div>PROVINSI DKI JAKARTA</div>
                 <div class="name-space">{{ $pengurusBarang?->nama_pegawai ?? '(Belum diatur)' }}</div>
                 <div class="nip">NIP. {{ $pengurusBarang?->nip_pegawai ?? '-' }}</div>
+                @if(!empty($tteSeal))
+                    @php $sigPb = $tteSignaturesByRole->get('pengurus_barang'); @endphp
+                    @if($sigPb && $sigPb->signed_at)
+                        <div class="kir-tta-line">TTE (internal): {{ $sigPb->signed_at->timezone(config('app.timezone'))->format('d M Y H:i') }}</div>
+                    @else
+                        <div class="kir-tta-line muted">Menunggu tanda tangan elektronik</div>
+                    @endif
+                @endif
             </div>
             <div>
                 <div>Jakarta, {{ now()->format('d F Y') }}</div>
@@ -286,6 +361,14 @@
                 <div>&nbsp;</div>
                 <div class="name-space">{{ $kepalaUnit?->nama_pegawai ?? '(Belum diatur)' }}</div>
                 <div class="nip">NIP. {{ $kepalaUnit?->nip_pegawai ?? '-' }}</div>
+                @if(!empty($tteSeal))
+                    @php $sigKu = $tteSignaturesByRole->get('kepala_unit'); @endphp
+                    @if($sigKu && $sigKu->signed_at)
+                        <div class="kir-tta-line">TTE (internal): {{ $sigKu->signed_at->timezone(config('app.timezone'))->format('d M Y H:i') }}</div>
+                    @else
+                        <div class="kir-tta-line muted">Menunggu tanda tangan elektronik</div>
+                    @endif
+                @endif
             </div>
         </div>
     </div>

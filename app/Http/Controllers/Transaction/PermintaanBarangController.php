@@ -2,22 +2,23 @@
 
 namespace App\Http\Controllers\Transaction;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\PermintaanBarang;
-use App\Models\MasterUnitKerja;
-use App\Models\MasterPegawai;
-use App\Models\MasterDataBarang;
-use App\Models\MasterSatuan;
-use App\Models\DataStock;
-use App\Models\DataInventory;
-use App\Models\MasterGudang;
-use App\Models\ApprovalFlowDefinition;
-use Illuminate\Support\Facades\Auth;
 use App\Enums\PermintaanBarangStatus;
-use App\Services\PermintaanService;
+use App\Helpers\PaginationHelper;
+use App\Http\Controllers\Controller;
+use App\Models\ApprovalFlowDefinition;
+use App\Models\DataInventory;
+use App\Models\DataStock;
+use App\Models\MasterDataBarang;
+use App\Models\MasterPegawai;
+use App\Models\MasterSatuan;
+use App\Models\MasterUnitKerja;
+use App\Models\PermintaanBarang;
 use App\Services\ApprovalService;
+use App\Services\PermintaanService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class PermintaanBarangController extends Controller
 {
@@ -31,11 +32,11 @@ class PermintaanBarangController extends Controller
         $user = Auth::user();
         $query = PermintaanBarang::with([
             'unitKerja.gudang', // Load gudang unit melalui unit kerja
-            'pemohon.jabatan' // Load jabatan pemohon
+            'pemohon.jabatan', // Load jabatan pemohon
         ]);
 
         // Filter berdasarkan unit kerja user yang login untuk pegawai/kepala_unit
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && ! $user->hasRole('admin')) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 // Hanya tampilkan permintaan dari unit kerja user yang login
@@ -68,11 +69,11 @@ class PermintaanBarangController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('no_permintaan', 'like', "%{$search}%")
-                  ->orWhereHas('pemohon', function($q) use ($search) {
-                      $q->where('nama_pegawai', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('pemohon', function ($q) use ($search) {
+                        $q->where('nama_pegawai', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -86,7 +87,7 @@ class PermintaanBarangController extends Controller
             $query->whereDate('tanggal_permintaan', '<=', $request->tanggal_akhir);
         }
 
-        $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
+        $perPage = PaginationHelper::getPerPage($request, 10);
         $permintaans = $query->latest('tanggal_permintaan')->paginate($perPage)->appends($request->query());
 
         return view('transaction.permintaan-barang.index', [
@@ -99,9 +100,9 @@ class PermintaanBarangController extends Controller
     public function create()
     {
         $user = Auth::user();
-        
+
         // Filter unit kerja dan pegawai berdasarkan unit kerja user yang login
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && ! $user->hasRole('admin')) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 // Hanya tampilkan unit kerja user yang login
@@ -117,7 +118,7 @@ class PermintaanBarangController extends Controller
             $unitKerjas = MasterUnitKerja::all();
             $pegawais = MasterPegawai::all();
         }
-        
+
         $satuans = MasterSatuan::all();
         [
             'dataBarangs' => $dataBarangs,
@@ -146,10 +147,10 @@ class PermintaanBarangController extends Controller
         }
 
         return view('transaction.permintaan-barang.create', compact(
-            'unitKerjas', 
-            'pegawais', 
-            'dataBarangs', 
-            'satuans', 
+            'unitKerjas',
+            'pegawais',
+            'dataBarangs',
+            'satuans',
             'stockData',
             'stockPersediaanIds',
             'stockFarmasiIds'
@@ -195,27 +196,28 @@ class PermintaanBarangController extends Controller
                 'detail.*.qty_diminta.min' => 'Jumlah yang diminta minimal 0.01.',
                 'detail.*.id_satuan.required' => 'Satuan harus dipilih.',
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             \Log::error('Validation failed:', [
                 'errors' => $e->errors(),
                 'request' => $request->all(),
             ]);
+
             return back()->withInput()->withErrors($e->errors());
         }
 
         // Setiap baris detail: wajib salah satu — dari master (id_data_barang) atau permintaan lainnya (deskripsi_barang)
         $detailErrors = [];
         foreach ($validated['detail'] as $index => $detail) {
-            $hasMaster = !empty($detail['id_data_barang']);
-            $hasLainnya = !empty(trim((string) ($detail['deskripsi_barang'] ?? '')));
-            if (!$hasMaster && !$hasLainnya) {
+            $hasMaster = ! empty($detail['id_data_barang']);
+            $hasLainnya = ! empty(trim((string) ($detail['deskripsi_barang'] ?? '')));
+            if (! $hasMaster && ! $hasLainnya) {
                 $detailErrors["detail.{$index}.id_data_barang"] = 'Pilih data barang dari master atau isi deskripsi untuk permintaan lainnya.';
             }
             if ($hasMaster && $hasLainnya) {
                 $detailErrors["detail.{$index}.id_data_barang"] = 'Pilih salah satu: data barang dari master ATAU isi deskripsi permintaan lainnya, jangan keduanya.';
             }
         }
-        if (!empty($detailErrors)) {
+        if (! empty($detailErrors)) {
             return back()->withInput()->withErrors($detailErrors);
         }
 
@@ -244,8 +246,13 @@ class PermintaanBarangController extends Controller
             }
         }
 
-        if (!empty($stockErrors)) {
+        if (! empty($stockErrors)) {
             return back()->withInput()->withErrors($stockErrors);
+        }
+
+        $jenisErrors = $this->validateDetailBarangMatchesSubJenis($validated['detail'], $validated['jenis_permintaan'], $stockPersediaanIds, $stockFarmasiIds);
+        if (! empty($jenisErrors)) {
+            return back()->withInput()->withErrors($jenisErrors);
         }
 
         try {
@@ -254,8 +261,9 @@ class PermintaanBarangController extends Controller
             return redirect()->route('transaction.permintaan-barang.index')
                 ->with('success', 'Permintaan barang berhasil dibuat.');
         } catch (\Exception $e) {
-            \Log::error('Error creating permintaan barang: ' . $e->getMessage());
-            return back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage());
+            \Log::error('Error creating permintaan barang: '.$e->getMessage());
+
+            return back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan data: '.$e->getMessage());
         }
     }
 
@@ -277,7 +285,7 @@ class PermintaanBarangController extends Controller
     {
         $user = Auth::user();
         $permintaan = PermintaanBarang::with('detailPermintaan')->findOrFail($id);
-        
+
         // Hanya bisa edit jika status DRAFT
         if ($permintaan->status !== PermintaanBarangStatus::Draft) {
             return redirect()->route('transaction.permintaan-barang.show', $id)
@@ -285,7 +293,7 @@ class PermintaanBarangController extends Controller
         }
 
         // Filter unit kerja dan pegawai berdasarkan unit kerja user yang login
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && ! $user->hasRole('admin')) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 // Hanya tampilkan unit kerja user yang login
@@ -330,10 +338,10 @@ class PermintaanBarangController extends Controller
         $satuans = MasterSatuan::all();
 
         return view('transaction.permintaan-barang.edit', compact(
-            'permintaan', 
-            'unitKerjas', 
-            'pegawais', 
-            'dataBarangs', 
+            'permintaan',
+            'unitKerjas',
+            'pegawais',
+            'dataBarangs',
             'satuans',
             'stockData',
             'stockPersediaanIds',
@@ -370,16 +378,16 @@ class PermintaanBarangController extends Controller
         // Setiap baris detail: wajib salah satu — dari master atau permintaan lainnya
         $detailErrors = [];
         foreach ($validated['detail'] as $index => $detail) {
-            $hasMaster = !empty($detail['id_data_barang']);
-            $hasLainnya = !empty(trim((string) ($detail['deskripsi_barang'] ?? '')));
-            if (!$hasMaster && !$hasLainnya) {
+            $hasMaster = ! empty($detail['id_data_barang']);
+            $hasLainnya = ! empty(trim((string) ($detail['deskripsi_barang'] ?? '')));
+            if (! $hasMaster && ! $hasLainnya) {
                 $detailErrors["detail.{$index}.id_data_barang"] = 'Pilih data barang dari master atau isi deskripsi untuk permintaan lainnya.';
             }
             if ($hasMaster && $hasLainnya) {
                 $detailErrors["detail.{$index}.id_data_barang"] = 'Pilih salah satu: data barang dari master ATAU isi deskripsi permintaan lainnya, jangan keduanya.';
             }
         }
-        if (!empty($detailErrors)) {
+        if (! empty($detailErrors)) {
             return back()->withInput()->withErrors($detailErrors);
         }
 
@@ -407,8 +415,13 @@ class PermintaanBarangController extends Controller
                 $stockErrors["detail.{$index}.qty_diminta"] = "Jumlah yang diminta ({$qtyDiminta}) melebihi stock di {$labelGudang} ({$stockPusat}) untuk barang {$dataBarang->nama_barang}.";
             }
         }
-        if (!empty($stockErrors)) {
+        if (! empty($stockErrors)) {
             return back()->withInput()->withErrors($stockErrors);
+        }
+
+        $jenisErrors = $this->validateDetailBarangMatchesSubJenis($validated['detail'], $validated['jenis_permintaan'], $stockPersediaanIds, $stockFarmasiIds);
+        if (! empty($jenisErrors)) {
+            return back()->withInput()->withErrors($jenisErrors);
         }
 
         try {
@@ -417,8 +430,9 @@ class PermintaanBarangController extends Controller
             return redirect()->route('transaction.permintaan-barang.index')
                 ->with('success', 'Permintaan barang berhasil diperbarui.');
         } catch (\Exception $e) {
-            \Log::error('Error updating permintaan barang: ' . $e->getMessage());
-            return back()->withInput()->with('error', 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage());
+            \Log::error('Error updating permintaan barang: '.$e->getMessage());
+
+            return back()->withInput()->with('error', 'Terjadi kesalahan saat memperbarui data: '.$e->getMessage());
         }
     }
 
@@ -453,12 +467,13 @@ class PermintaanBarangController extends Controller
             return redirect()->route('transaction.permintaan-barang.show', $id)
                 ->with('success', 'Permintaan berhasil diajukan untuk persetujuan.');
         } catch (\Exception $e) {
-            \Log::error('Error mengajukan permintaan: ' . $e->getMessage(), [
+            \Log::error('Error mengajukan permintaan: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'permintaan_id' => $id,
             ]);
+
             return redirect()->route('transaction.permintaan-barang.show', $id)
-                ->with('error', 'Terjadi kesalahan saat mengajukan permintaan: ' . $e->getMessage());
+                ->with('error', 'Terjadi kesalahan saat mengajukan permintaan: '.$e->getMessage());
         }
     }
 
@@ -475,47 +490,32 @@ class PermintaanBarangController extends Controller
      */
     private function getBarangMasterFromInventory(): array
     {
-        // Source of truth dropdown adalah data_stock (karena stok yang ditampilkan di UI
-        // juga bersumber dari data_stock / getStockGudangPusat()).
-        // Sebelumnya dropdown diambil dari data_inventory dengan status_inventory='AKTIF'
-        // sehingga jika inventory belum AKTIF, dropdown bisa kosong.
-        $gudangPusatPersediaanIds = MasterGudang::query()
-            ->where('jenis_gudang', 'PUSAT')
-            ->where('kategori_gudang', 'PERSEDIAAN')
-            ->pluck('id_gudang')
-            ->toArray();
+        // Klasifikasi Persediaan vs Farmasi mengikuti data_inventory (AKTIF), sama seperti
+        // validasi simpan & filter UI — bukan deduplikasi dari data_stock per gudang
+        // (satu id bisa punya baris stok di banyak gudang sehingga salah klasifikasi).
+        $stockPersediaanIds = DataInventory::query()
+            ->where('jenis_inventory', 'PERSEDIAAN')
+            ->where('status_inventory', 'AKTIF')
+            ->whereNotNull('id_data_barang')
+            ->distinct()
+            ->pluck('id_data_barang')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
 
-        $gudangPusatFarmasiIds = MasterGudang::query()
-            ->where('jenis_gudang', 'PUSAT')
-            ->where('kategori_gudang', 'FARMASI')
-            ->pluck('id_gudang')
-            ->toArray();
-
-        $stockPersediaanIds = empty($gudangPusatPersediaanIds)
-            ? []
-            : DataStock::query()
-                ->whereIn('id_gudang', $gudangPusatPersediaanIds)
-                ->whereNotNull('id_data_barang')
-                ->distinct()
-                ->pluck('id_data_barang')
-                ->map(fn ($id) => (int) $id)
-                ->values()
-                ->all();
-
-        $stockFarmasiIds = empty($gudangPusatFarmasiIds)
-            ? []
-            : DataStock::query()
-                ->whereIn('id_gudang', $gudangPusatFarmasiIds)
-                ->whereNotNull('id_data_barang')
-                ->distinct()
-                ->pluck('id_data_barang')
-                ->map(fn ($id) => (int) $id)
-                ->values()
-                ->all();
+        $stockFarmasiIds = DataInventory::query()
+            ->where('jenis_inventory', 'FARMASI')
+            ->where('status_inventory', 'AKTIF')
+            ->whereNotNull('id_data_barang')
+            ->distinct()
+            ->pluck('id_data_barang')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
 
         $inventoryBarangIds = array_values(array_unique(array_merge($stockPersediaanIds, $stockFarmasiIds)));
 
-        $dataBarangs = empty($inventoryBarangIds)
+        $dataBarangs = $inventoryBarangIds === []
             ? collect()
             : MasterDataBarang::query()
                 ->with(['subjenisBarang', 'satuan'])
@@ -528,5 +528,48 @@ class PermintaanBarangController extends Controller
             'stockPersediaanIds' => $stockPersediaanIds,
             'stockFarmasiIds' => $stockFarmasiIds,
         ];
+    }
+
+    /**
+     * Pastikan barang dari master cocok dengan centang sub jenis (Persediaan/Farmasi).
+     *
+     * @param  array<int, array<string, mixed>>  $details
+     * @param  array<int, string>  $jenisPermintaan
+     * @param  array<int, int>  $stockPersediaanIds
+     * @param  array<int, int>  $stockFarmasiIds
+     * @return array<string, string>
+     */
+    private function validateDetailBarangMatchesSubJenis(array $details, array $jenisPermintaan, array $stockPersediaanIds, array $stockFarmasiIds): array
+    {
+        $jenis = array_values(array_unique($jenisPermintaan));
+        $pSet = array_map('intval', $stockPersediaanIds);
+        $fSet = array_map('intval', $stockFarmasiIds);
+        $errors = [];
+
+        foreach ($details as $index => $detail) {
+            if (empty($detail['id_data_barang'])) {
+                continue;
+            }
+            $id = (int) $detail['id_data_barang'];
+            $inP = in_array($id, $pSet, true);
+            $inF = in_array($id, $fSet, true);
+
+            $allowed = false;
+            if (in_array('PERSEDIAAN', $jenis, true) && in_array('FARMASI', $jenis, true)) {
+                $allowed = $inP || $inF;
+            } elseif (in_array('FARMASI', $jenis, true)) {
+                $allowed = $inF;
+            } elseif (in_array('PERSEDIAAN', $jenis, true)) {
+                $allowed = $inP;
+            }
+
+            if (! $allowed) {
+                $barang = MasterDataBarang::find($id);
+                $nama = $barang ? $barang->nama_barang : (string) $id;
+                $errors["detail.{$index}.id_data_barang"] = 'Barang "'.$nama.'" tidak sesuai sub jenis permintaan yang dipilih (Persediaan / Farmasi).';
+            }
+        }
+
+        return $errors;
     }
 }

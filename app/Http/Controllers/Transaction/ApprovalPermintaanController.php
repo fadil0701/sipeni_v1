@@ -2,24 +2,22 @@
 
 namespace App\Http\Controllers\Transaction;
 
+use App\Enums\PermintaanBarangStatus;
+use App\Helpers\PaginationHelper;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use App\Models\ApprovalFlowDefinition;
 use App\Models\ApprovalLog;
 use App\Models\PermintaanBarang;
-use App\Models\DetailPermintaanBarang;
-use App\Models\MasterPegawai;
 use App\Models\Role;
-use App\Models\DataInventory;
-use App\Models\DataStock;
-use App\Enums\PermintaanBarangStatus;
-use App\Services\ApprovalService;
 use App\Services\ApprovalPermintaanService;
+use App\Services\ApprovalService;
 use App\Services\PengadaanService;
 use App\Services\PermintaanBarangStatusService;
+use App\Support\PermintaanBarangStock;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ApprovalPermintaanController extends Controller
 {
@@ -40,19 +38,19 @@ class ApprovalPermintaanController extends Controller
         // Pastikan setiap permintaan berstatus diajukan memiliki log approval awal (step 2).
         // Ini menangani data lama yang status-nya sudah diajukan tetapi belum punya approval_log.
         $this->syncInitialApprovalLogsForSubmittedRequests();
-        
+
         // Pastikan roles ter-load
-        if (!$user->relationLoaded('roles')) {
+        if (! $user->relationLoaded('roles')) {
             $user->load('roles');
         }
-        
+
         $userRoles = $user->roles->pluck('id')->toArray();
-        
+
         // Ambil flow definition yang sesuai dengan role user saat ini
         $flowDefinitions = ApprovalFlowDefinition::where('modul_approval', 'PERMINTAAN_BARANG')
             ->whereIn('role_id', $userRoles)
             ->pluck('id');
-        
+
         // Ambil approval log yang menunggu persetujuan
         // Jika user adalah admin, tampilkan semua approval log
         // Jika tidak, tampilkan hanya yang sesuai dengan role user
@@ -75,41 +73,41 @@ class ApprovalPermintaanController extends Controller
                     ->whereIn('status', ['MENUNGGU', 'DIKETAHUI', 'DIVERIFIKASI', 'DIDISPOSISIKAN']);
             }
         }
-        
+
         // Filter berdasarkan status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        
+
         // Filter hanya yang menunggu
         if ($request->filled('menunggu')) {
             $query->where('status', 'MENUNGGU');
         }
-        
+
         // Filter berdasarkan tanggal mulai (berdasarkan tanggal permintaan)
         if ($request->filled('tanggal_mulai')) {
-            $query->whereHas('permintaan', function($q) use ($request) {
+            $query->whereHas('permintaan', function ($q) use ($request) {
                 $q->whereDate('tanggal_permintaan', '>=', $request->tanggal_mulai);
             });
         }
-        
+
         // Filter berdasarkan tanggal akhir (berdasarkan tanggal permintaan)
         if ($request->filled('tanggal_akhir')) {
-            $query->whereHas('permintaan', function($q) use ($request) {
+            $query->whereHas('permintaan', function ($q) use ($request) {
                 $q->whereDate('tanggal_permintaan', '<=', $request->tanggal_akhir);
             });
         }
-        
+
         // Ambil semua approval log untuk menentukan status per permintaan
-        $allApprovals = $query->with(['approvalFlow' => function($q) {
+        $allApprovals = $query->with(['approvalFlow' => function ($q) {
             $q->with('role');
         }, 'permintaan'])->get();
-        
+
         // Kelompokkan berdasarkan id_referensi (permintaan)
         $permintaanGroups = [];
         foreach ($allApprovals as $approval) {
             $idReferensi = $approval->id_referensi;
-            if (!isset($permintaanGroups[$idReferensi])) {
+            if (! isset($permintaanGroups[$idReferensi])) {
                 $permintaanGroups[$idReferensi] = [
                     'permintaan_id' => $idReferensi,
                     'approvals' => [],
@@ -119,30 +117,31 @@ class ApprovalPermintaanController extends Controller
                 ];
             }
             $permintaanGroups[$idReferensi]['approvals'][] = $approval;
-            
+
             // Tentukan approval terakhir berdasarkan created_at
-            if (!$permintaanGroups[$idReferensi]['latest_approval'] || 
+            if (! $permintaanGroups[$idReferensi]['latest_approval'] ||
                 $approval->created_at > $permintaanGroups[$idReferensi]['latest_approval']->created_at) {
                 $permintaanGroups[$idReferensi]['latest_approval'] = $approval;
             }
         }
-        
+
         // Tentukan status dan step untuk setiap permintaan berdasarkan progress approval
         foreach ($permintaanGroups as $idReferensi => &$group) {
             // Urutkan approvals berdasarkan step_order
-            usort($group['approvals'], function($a, $b) {
+            usort($group['approvals'], function ($a, $b) {
                 $stepA = $a->approvalFlow->step_order ?? 999;
                 $stepB = $b->approvalFlow->step_order ?? 999;
+
                 return $stepA <=> $stepB;
             });
-            
+
             // Tentukan step terakhir yang sudah diselesaikan
             $lastCompletedStep = null;
             $currentStep = null;
             $currentStatus = 'MENUNGGU';
             $maxCompletedStep = 0;
             $rejectedApproval = null;
-            
+
             // PRIORITAS 1: Cek apakah ada yang ditolak - jika ada, status harus DITOLAK
             foreach ($group['approvals'] as $approval) {
                 if ($approval->status === 'DITOLAK') {
@@ -152,19 +151,20 @@ class ApprovalPermintaanController extends Controller
                     break; // Setelah ditemukan DITOLAK, langsung keluar
                 }
             }
-            
+
             // Jika tidak ada yang ditolak, lanjutkan pengecekan normal
-            if (!$rejectedApproval) {
+            if (! $rejectedApproval) {
                 // Urutkan approvals berdasarkan step_order untuk memastikan urutan yang benar
-                usort($group['approvals'], function($a, $b) {
+                usort($group['approvals'], function ($a, $b) {
                     $stepA = $a->approvalFlow->step_order ?? 999;
                     $stepB = $b->approvalFlow->step_order ?? 999;
+
                     return $stepA <=> $stepB;
                 });
-                
+
                 foreach ($group['approvals'] as $approval) {
                     $stepOrder = $approval->approvalFlow->step_order ?? 999;
-                    
+
                     // Jika status sudah diselesaikan (bukan MENUNGGU), update last completed step
                     if (in_array($approval->status, ['DIKETAHUI', 'DIVERIFIKASI', 'DISETUJUI', 'DIDISPOSISIKAN', 'DIPROSES'])) {
                         if ($stepOrder > $maxCompletedStep) {
@@ -173,10 +173,10 @@ class ApprovalPermintaanController extends Controller
                         }
                     }
                 }
-                
+
                 // Cari current step berdasarkan urutan step_order (prioritas step yang lebih tinggi)
                 // Step 4 (disposisi) harus ditampilkan sebagai DIDISPOSISIKAN meskipun status approval lognya MENUNGGU
-                
+
                 // Cek apakah step 3 sudah diverifikasi
                 $step3Verified = false;
                 $step3Approval = null;
@@ -188,7 +188,7 @@ class ApprovalPermintaanController extends Controller
                         break;
                     }
                 }
-                
+
                 // Cek apakah ada step 4 (disposisi)
                 $step4Approval = null;
                 foreach ($group['approvals'] as $approval) {
@@ -198,7 +198,7 @@ class ApprovalPermintaanController extends Controller
                         break;
                     }
                 }
-                
+
                 // Prioritas 1: Cek step 4 (disposisi) dulu - ini adalah step terpenting untuk ditampilkan
                 if ($step4Approval) {
                     if ($step4Approval->status === 'MENUNGGU') {
@@ -211,9 +211,9 @@ class ApprovalPermintaanController extends Controller
                         $currentStatus = 'DIPROSES';
                     }
                 }
-                
+
                 // Prioritas 2: Jika belum ada step 4, cek step 3 (verifikasi Kasubbag TU)
-                if (!$currentStep) {
+                if (! $currentStep) {
                     foreach ($group['approvals'] as $approval) {
                         $stepOrder = $approval->approvalFlow->step_order ?? 999;
                         if ($stepOrder == 3) {
@@ -229,9 +229,9 @@ class ApprovalPermintaanController extends Controller
                         }
                     }
                 }
-                
+
                 // Prioritas 3: Jika belum ada step 3, cek step 2 (mengetahui Kepala Unit)
-                if (!$currentStep) {
+                if (! $currentStep) {
                     foreach ($group['approvals'] as $approval) {
                         $stepOrder = $approval->approvalFlow->step_order ?? 999;
                         if ($stepOrder == 2 && $approval->status === 'MENUNGGU') {
@@ -241,9 +241,9 @@ class ApprovalPermintaanController extends Controller
                         }
                     }
                 }
-                
+
                 // Jika masih belum ada yang menunggu, gunakan approval terakhir
-                if (!$currentStep) {
+                if (! $currentStep) {
                     $currentStep = $group['latest_approval'];
                     if ($currentStep) {
                         // Jika approval terakhir adalah DIVERIFIKASI dan sudah ada step 4, status = DISETUJUI
@@ -267,25 +267,25 @@ class ApprovalPermintaanController extends Controller
                     }
                 }
             }
-            
+
             $group['current_step'] = $currentStep;
             $group['current_status'] = $currentStatus;
             $group['last_completed_step'] = $lastCompletedStep;
         }
-        
+
         // Ambil data permintaan untuk setiap group
         $permintaanIds = array_keys($permintaanGroups);
         $permintaans = PermintaanBarang::with([
             'unitKerja.gudang', // Load gudang unit melalui unit kerja
             'pemohon.jabatan', // Load jabatan pemohon
-            'detailPermintaan.dataBarang'
+            'detailPermintaan.dataBarang',
         ])
             ->whereIn('id_permintaan', $permintaanIds)
             ->get()
             ->keyBy('id_permintaan');
-        
+
         // Convert ke collection untuk pagination
-        $permintaanList = collect($permintaanGroups)->map(function($group) use ($permintaans) {
+        $permintaanList = collect($permintaanGroups)->map(function ($group) use ($permintaans) {
             return [
                 'permintaan' => $permintaans[$group['permintaan_id']] ?? null,
                 'current_step' => $group['current_step'],
@@ -293,25 +293,25 @@ class ApprovalPermintaanController extends Controller
                 'last_completed_step' => $group['last_completed_step'],
                 'approvals' => $group['approvals'],
             ];
-        })->filter(function($item) {
+        })->filter(function ($item) {
             return $item['permintaan'] !== null;
         });
-        
+
         // Pagination manual
         $page = $request->get('page', 1);
-        $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
+        $perPage = PaginationHelper::getPerPage($request, 10);
         $total = $permintaanList->count();
         $items = $permintaanList->slice(($page - 1) * $perPage, $perPage)->values();
-        
+
         // Buat paginator manual
-        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+        $paginator = new LengthAwarePaginator(
             $items,
             $total,
             $perPage,
             $page,
             ['path' => $request->url(), 'query' => $request->query()]
         );
-        
+
         return view('transaction.approval.index', compact('paginator', 'permintaans'));
     }
 
@@ -376,71 +376,59 @@ class ApprovalPermintaanController extends Controller
     {
         $approval = ApprovalLog::with(['approvalFlow.role', 'user', 'role'])
             ->findOrFail($id);
-        
+
         // Pastikan user yang login memiliki hak akses untuk approval ini
         $user = Auth::user();
-        
+
         // Pastikan roles ter-load
-        if (!$user->relationLoaded('roles')) {
+        if (! $user->relationLoaded('roles')) {
             $user->load('roles');
         }
-        
+
         $userRoles = $user->roles->pluck('id')->toArray();
-        
+
         // Admin bisa melihat semua approval
-        if (!$user->hasRole('admin')) {
+        if (! $user->hasRole('admin')) {
             $allowedFlowIds = ApprovalFlowDefinition::where('modul_approval', 'PERMINTAAN_BARANG')
                 ->whereIn('role_id', $userRoles)
                 ->pluck('id')
                 ->toArray();
-            
-            if (!in_array($approval->id_approval_flow, $allowedFlowIds)) {
+
+            if (! in_array($approval->id_approval_flow, $allowedFlowIds)) {
                 abort(403, 'Anda tidak memiliki hak akses untuk melihat approval ini.');
             }
         }
-        
+
         // Load permintaan
         $permintaan = PermintaanBarang::with([
-            'unitKerja', 
-            'pemohon.jabatan', 
-            'detailPermintaan.dataBarang', 
-            'detailPermintaan.satuan'
+            'unitKerja',
+            'pemohon.jabatan',
+            'detailPermintaan.dataBarang',
+            'detailPermintaan.satuan',
         ])->find($approval->id_referensi);
-        
-        if (!$permintaan) {
+
+        if (! $permintaan) {
             abort(404, 'Permintaan tidak ditemukan.');
         }
-        
-        // Get stock data hanya gudang pusat (untuk detail yang dari master). Permintaan lainnya tidak punya stock.
-        $stockData = [];
-        foreach ($permintaan->detailPermintaan as $detail) {
-            if ($detail->id_data_barang) {
-                $perGudangPusat = DataStock::getStockPerGudangPusat($detail->id_data_barang);
-                $stockData[$detail->id_detail_permintaan] = [
-                    'total' => $perGudangPusat->sum('qty_akhir'),
-                    'per_gudang' => $perGudangPusat,
-                ];
-            } else {
-                $stockData[$detail->id_detail_permintaan] = ['total' => 0, 'per_gudang' => collect()];
-            }
-        }
-        
+
+        $stockData = PermintaanBarangStock::stockDataForDetails($permintaan);
+
         // Load approval history from centralized service
         $approvalHistory = $this->approvalService->history('PERMINTAAN_BARANG', (int) $approval->id_referensi);
-        
+
         // Cek apakah ada approval yang ditolak untuk permintaan ini
         $rejectedApproval = ApprovalLog::where('modul_approval', 'PERMINTAAN_BARANG')
             ->where('id_referensi', $approval->id_referensi)
             ->where('status', 'DITOLAK')
             ->first();
-        
+
         // Jika ada yang ditolak, gunakan status DITOLAK untuk display
         $displayStatus = $rejectedApproval ? 'DITOLAK' : $approval->status;
-        
+
         // Load current flow definition
         $currentFlow = $approval->approvalFlow;
         $nextFlow = $currentFlow ? $currentFlow->getNextStep() : null;
-        
+
         // Cek apakah step 3 (Kasubbag TU) sudah diverifikasi untuk menentukan apakah bisa disposisi
         $step3Verified = false;
         $step3Flow = ApprovalFlowDefinition::where('modul_approval', 'PERMINTAAN_BARANG')
@@ -453,7 +441,7 @@ class ApprovalPermintaanController extends Controller
                 ->first();
             $step3Verified = $step3Log && $step3Log->status === 'DIVERIFIKASI';
         }
-        
+
         return view('transaction.approval.show', compact('approval', 'permintaan', 'approvalHistory', 'currentFlow', 'nextFlow', 'step3Verified', 'displayStatus', 'rejectedApproval', 'stockData'));
     }
 
@@ -532,7 +520,7 @@ class ApprovalPermintaanController extends Controller
         string $successRoute = 'transaction.approval.show',
         array $messages = []
     ) {
-        $validated = !empty($rules) ? $request->validate($rules, $messages) : [];
+        $validated = ! empty($rules) ? $request->validate($rules, $messages) : [];
         $user = Auth::user();
 
         try {
@@ -543,9 +531,10 @@ class ApprovalPermintaanController extends Controller
                 ? redirect()->route($successRoute, $routeId)->with('success', $successMessage)
                 : redirect()->route($successRoute)->with('success', $successMessage);
         } catch (\Exception $e) {
-            Log::error("Error {$action} approval: " . $e->getMessage());
+            Log::error("Error {$action} approval: ".$e->getMessage());
+
             return redirect()->route('transaction.approval.show', $id)
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+                ->with('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
 }

@@ -107,8 +107,8 @@ class ReturBarangController extends Controller
 
         $satuans = MasterSatuan::all();
         $jenisReturOptions = ReturBarang::jenisReturOptions();
-        $penerimaans = collect();
-        return view('transaction.retur-barang.create', compact('penerimaans', 'unitKerjas', 'gudangs', 'pegawais', 'satuans', 'jenisReturOptions'));
+
+        return view('transaction.retur-barang.create', compact('unitKerjas', 'gudangs', 'pegawais', 'satuans', 'jenisReturOptions'));
     }
 
     public function store(Request $request)
@@ -209,7 +209,10 @@ class ReturBarangController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
-        $retur = ReturBarang::with('detailRetur')->findOrFail($id);
+        $retur = ReturBarang::with([
+            'detailRetur.inventory.dataBarang',
+            'detailRetur.satuan',
+        ])->findOrFail($id);
         
         // Hanya bisa edit jika status DRAFT atau DIAJUKAN
         if (!in_array($retur->status_retur, ['DRAFT', 'DIAJUKAN'])) {
@@ -241,8 +244,8 @@ class ReturBarangController extends Controller
 
         $satuans = MasterSatuan::all();
         $jenisReturOptions = ReturBarang::jenisReturOptions();
-        $penerimaans = collect();
-        return view('transaction.retur-barang.edit', compact('retur', 'penerimaans', 'unitKerjas', 'gudangs', 'pegawais', 'satuans', 'jenisReturOptions'));
+
+        return view('transaction.retur-barang.edit', compact('retur', 'unitKerjas', 'gudangs', 'pegawais', 'satuans', 'jenisReturOptions'));
     }
 
     public function update(Request $request, $id)

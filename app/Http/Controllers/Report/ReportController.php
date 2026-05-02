@@ -136,6 +136,20 @@ class ReportController extends Controller
         $stocks = $query->latest('last_updated')->paginate($perPage)->appends($request->query());
         $gudangs = MasterGudang::all();
 
+        // Qty awal di DB sering 0 untuk baris yang tercipta dari pemasukan pertama; tampilkan saldo awal implisit:
+        // qty_akhir = qty_awal + qty_masuk - qty_keluar  =>  qty_awal_implied = qty_akhir - qty_masuk + qty_keluar
+        $stocks->getCollection()->transform(function ($stock) {
+            $qa = (float) $stock->qty_awal;
+            $qm = (float) $stock->qty_masuk;
+            $qk = (float) $stock->qty_keluar;
+            $qak = (float) $stock->qty_akhir;
+            $implied = $qak - $qm + $qk;
+            $stock->qty_awal_laporan = ($qa > 0.00001) ? $qa : max(0, $implied);
+            $stock->qty_awal_terderivasi = ($qa <= 0.00001) && ($qm > 0.00001 || $qk > 0.00001);
+
+            return $stock;
+        });
+
         $stockMetaMap = collect();
         $stockRows = $stocks->getCollection();
         if ($stockRows->isNotEmpty()) {

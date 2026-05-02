@@ -433,6 +433,9 @@ function initChoicesHelpers() {
         });
 
         document.querySelectorAll('select[data-searchable="true"], select.select-searchable, select.select-data-barang, select.select-satuan').forEach(function (select) {
+            if (select.getAttribute('data-searchable') === 'false') {
+                return;
+            }
             if (select.choicesInstance) return;
             Array.from(select.options).forEach(function (option) {
                 var rawText = option.textContent || option.innerText || option.getAttribute('label') || option.value || '';

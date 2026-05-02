@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class PenerimaanBarang extends Model
 {
     protected $table = 'penerimaan_barang';
+
     protected $primaryKey = 'id_penerimaan';
+
     public $timestamps = true;
 
     protected $fillable = [
@@ -26,6 +28,11 @@ class PenerimaanBarang extends Model
         'tanggal_penerimaan' => 'date',
         'status_penerimaan' => 'string',
     ];
+
+    public function getRouteKeyName(): string
+    {
+        return 'id_penerimaan';
+    }
 
     // Relationships
     public function distribusi(): BelongsTo

@@ -208,7 +208,7 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Barang</th>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Qty Diterima</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Qty tersedia</th>
                                 <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Qty Retur</th>
                                 <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Satuan</th>
                                 <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Alasan Item</th>
@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     emptyFields.push(`Item ${index + 1}: Qty Retur`);
                 } else if (parseFloat(qtyRetur.value) > qtyDiterima) {
                     isValid = false;
-                    emptyFields.push(`Item ${index + 1}: Qty Retur tidak boleh lebih dari Qty Diterima (${qtyDiterima})`);
+                    emptyFields.push(`Item ${index + 1}: Qty Retur tidak boleh lebih dari qty tersedia (${qtyDiterima})`);
                 }
                 if (!idSatuan || !idSatuan.value) {
                     isValid = false;

@@ -187,6 +187,7 @@
                                 <select 
                                     name="detail[{{ $index }}][id_inventory]" 
                                     required
+                                    data-selected-inventory="{{ old("detail.{$index}.id_inventory", is_object($detail) ? $detail->id_inventory : ($detail['id_inventory'] ?? '')) }}"
                                     class="select-inventory block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                     onchange="updateHargaSatuan(this)"
                                 >
@@ -218,6 +219,7 @@
                                 <select 
                                     name="detail[{{ $index }}][id_satuan]" 
                                     required
+                                    data-searchable="false"
                                     class="select-satuan block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                 >
                                     <option value="">Pilih Satuan</option>
@@ -334,6 +336,7 @@
                 <select 
                     name="detail[INDEX][id_satuan]" 
                     required
+                    data-searchable="false"
                     class="select-satuan block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
                     <option value="">Pilih Satuan</option>
@@ -385,13 +388,34 @@
 let itemIndex = {{ count(old('detail', $distribusi->detailDistribusi)) }};
 let inventoryData = {};
 
+function getSelectedInventoryIds() {
+    return Array.from(document.querySelectorAll('.select-inventory'))
+        .map((el) => parseInt(el.value, 10))
+        .filter((id) => !Number.isNaN(id) && id > 0);
+}
+
+function setSatuanSelectValue(selectEl, value) {
+    if (!selectEl) {
+        return;
+    }
+    const v = value != null ? String(value) : '';
+    selectEl.value = v;
+    if (window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function' &&
+        window.jQuery(selectEl).hasClass('select2-hidden-accessible')) {
+        window.jQuery(selectEl).val(v).trigger('change');
+    }
+}
+
 // Load inventory dari gudang
 function loadInventoryFromGudang(gudangId) {
     if (!gudangId) {
         return;
     }
 
-    fetch(`/api/gudang/${gudangId}/inventory`)
+    const includeIds = getSelectedInventoryIds();
+    const query = includeIds.length ? `?${new URLSearchParams(includeIds.map((id) => ['include_ids[]', String(id)])).toString()}` : '';
+
+    fetch(`/api/gudang/${gudangId}/inventory${query}`)
         .then(response => response.json())
         .then(data => {
             inventoryData = {};
@@ -406,7 +430,7 @@ function loadInventoryFromGudang(gudangId) {
 
             // Update semua select inventory
             document.querySelectorAll('.select-inventory').forEach(select => {
-                const currentValue = select.value;
+                const currentValue = select.value || select.getAttribute('data-selected-inventory') || '';
                 select.innerHTML = '<option value="">Pilih Inventory</option>';
                 
                 data.inventory.forEach(inv => {
@@ -419,7 +443,10 @@ function loadInventoryFromGudang(gudangId) {
                 });
 
                 if (currentValue) {
-                    select.value = currentValue;
+                    select.value = String(currentValue);
+                    if (select.value === String(currentValue)) {
+                        updateHargaSatuan(select);
+                    }
                 }
             });
         })
@@ -441,7 +468,7 @@ function updateHargaSatuan(select) {
             hargaInput.value = harga;
         }
         if (satuanId) {
-            satuanSelect.value = satuanId;
+            setSatuanSelectValue(satuanSelect, satuanId);
         }
         
         calculateSubtotal(hargaInput);
@@ -494,15 +521,6 @@ document.addEventListener('DOMContentLoaded', function() {
         loadInventoryFromGudang(gudangAsal);
     }
     
-    // Set nilai inventory yang sudah ada untuk item yang sudah ada
-    @foreach($distribusi->detailDistribusi as $index => $detail)
-        const select{{ $index }} = document.querySelector('select[name="detail[{{ $index }}][id_inventory]"]');
-        if (select{{ $index }}) {
-            setTimeout(() => {
-                select{{ $index }}.value = {{ $detail->id_inventory }};
-            }, 500);
-        }
-    @endforeach
 });
 </script>
 @endpush

@@ -485,7 +485,18 @@ function loadDetailPenerimaan(details) {
 
 // Load distribusi detail jika sudah dipilih
 document.addEventListener('DOMContentLoaded', function() {
-    const distribusiId = document.getElementById('id_distribusi').value;
+    const distribusiSelect = document.getElementById('id_distribusi');
+    let distribusiId = distribusiSelect ? distribusiSelect.value : '';
+
+    // Jika hanya ada 1 SBBK tersedia, pilih otomatis agar detail barang langsung muncul.
+    if (distribusiSelect && !distribusiId) {
+        const availableOptions = Array.from(distribusiSelect.options).filter(opt => opt.value);
+        if (availableOptions.length === 1) {
+            distribusiSelect.value = availableOptions[0].value;
+            distribusiId = distribusiSelect.value;
+        }
+    }
+
     if (distribusiId) {
         loadDistribusiDetail(distribusiId);
     }

@@ -12,8 +12,9 @@
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200">
     <div class="px-6 py-5 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">Edit Penerimaan Barang</h2>
+        <h2 class="text-xl font-semibold text-gray-900">Koreksi Penerimaan Barang</h2>
         <p class="text-sm text-gray-600 mt-1">No. Penerimaan: <span class="font-semibold">{{ $penerimaan->no_penerimaan }}</span></p>
+        <p class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3">Form ini untuk memperbaiki data setelah verifikasi <strong>tidak sesuai</strong>. Setelah disimpan sebagai <strong>Diterima</strong>, data tidak dapat diubah lagi.</p>
     </div>
     
     <form action="{{ route('transaction.penerimaan-barang.update', $penerimaan->id_penerimaan) }}" method="POST" class="p-6" id="formPenerimaan">

@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Transaction;
 
 use App\Enums\DistribusiStatus;
 use App\Enums\PermintaanBarangStatus;
+use App\Helpers\PaginationHelper;
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalLog;
-use App\Models\DetailDistribusi;
 use App\Models\DataInventory;
+use App\Models\DetailDistribusi;
 use App\Models\MasterGudang;
 use App\Models\MasterPegawai;
 use App\Models\MasterSatuan;
@@ -50,7 +51,7 @@ class DistribusiController extends Controller
             });
         }
 
-        $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
+        $perPage = PaginationHelper::getPerPage($request, 10);
         $distribusis = $query->latest('tanggal_distribusi')->paginate($perPage)->appends($request->query());
         $gudangs = MasterGudang::all();
 
@@ -60,7 +61,7 @@ class DistribusiController extends Controller
     public function create(Request $request)
     {
         // Jika dibuka dari "Proses Disposisi", resolve permintaan dari approval_log.
-        if ($request->filled('approval_log') && !$request->filled('permintaan_id')) {
+        if ($request->filled('approval_log') && ! $request->filled('permintaan_id')) {
             $approvalLog = ApprovalLog::query()
                 ->where('modul_approval', 'PERMINTAAN_BARANG')
                 ->find($request->approval_log);
@@ -208,6 +209,7 @@ class DistribusiController extends Controller
         }
 
         $this->distribusiService->deleteDraft($distribusi);
+
         return redirect()->route('transaction.distribusi.index')->with('success', 'Distribusi dihapus.');
     }
 
@@ -219,6 +221,7 @@ class DistribusiController extends Controller
         }
 
         $this->distribusiService->markDiproses($distribusi);
+
         return redirect()->route('transaction.distribusi.show', $id)->with('success', 'Distribusi diproses.');
     }
 
@@ -227,12 +230,12 @@ class DistribusiController extends Controller
         $distribusi = TransaksiDistribusi::with('detailDistribusi')->findOrFail($id);
         $fromIndex = $request->input('kirim_from') === 'index';
 
-        if (!in_array($distribusi->status_distribusi?->value, [DistribusiStatus::Draft->value, DistribusiStatus::Diproses->value], true)) {
+        if (! in_array($distribusi->status_distribusi?->value, [DistribusiStatus::Draft->value, DistribusiStatus::Diproses->value], true)) {
             return $fromIndex
                 ? redirect()->route('transaction.distribusi.index')->with('error', 'Status tidak valid untuk dikirim.')
                 : redirect()->route('transaction.distribusi.show', $id)->with('error', 'Status tidak valid untuk dikirim.');
         }
-        if (!$distribusi->id_pegawai_pengirim) {
+        if (! $distribusi->id_pegawai_pengirim) {
             return redirect()->route('transaction.distribusi.edit', $id)
                 ->with('error', 'Pilih pegawai pengirim terlebih dahulu sebelum mengirim distribusi.');
         }
@@ -267,7 +270,7 @@ class DistribusiController extends Controller
             $selectedKategori = $roleKategoriMap[$roleName] ?? null;
         }
 
-        if (!$selectedKategori) {
+        if (! $selectedKategori) {
             $jenisPermintaan = is_array($permintaan->jenis_permintaan)
                 ? $permintaan->jenis_permintaan
                 : (json_decode($permintaan->jenis_permintaan, true) ?? []);
@@ -311,6 +314,11 @@ class DistribusiController extends Controller
     public function getInventoryByGudang($gudangId)
     {
         $gudang = MasterGudang::findOrFail($gudangId);
+        $includeIds = collect((array) request()->input('include_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->values()
+            ->all();
 
         $query = DataInventory::query()
             ->where('id_gudang', $gudangId)
@@ -341,7 +349,7 @@ class DistribusiController extends Controller
                 'id_satuan' => $resolvedSatuanId,
                 'qty_available' => max(0, $inv->qty_input - $qtyDistributed),
             ];
-        })->filter(fn ($inv) => $inv['qty_available'] > 0);
+        })->filter(fn ($inv) => $inv['qty_available'] > 0 || in_array((int) $inv['id_inventory'], $includeIds, true));
 
         return response()->json(['inventory' => $result->values()]);
     }

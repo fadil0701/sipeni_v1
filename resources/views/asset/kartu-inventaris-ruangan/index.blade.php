@@ -96,7 +96,7 @@
                             Download Dokumen
                         </a>
                         <a 
-                            href="{{ route('asset.kartu-inventaris-ruangan.dokumen-unit', ['id_unit_kerja' => $summary->id_unit_kerja, 'print' => 1]) }}" 
+                            href="{{ route('asset.kartu-inventaris-ruangan.dokumen-unit', ['id_unit_kerja' => $summary->id_unit_kerja, 'print' => 1, 'tte' => 1]) }}" 
                             target="_blank"
                             class="text-indigo-600 hover:text-indigo-900"
                         >

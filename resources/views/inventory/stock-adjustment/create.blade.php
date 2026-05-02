@@ -151,7 +151,9 @@
             $stocksPayload = $stocks->map(function ($stock) {
                 return [
                     'id' => $stock->id_stock,
-                    'label' => ($stock->dataBarang->nama_barang ?? '-') . ' (' . ($stock->gudang->nama_gudang ?? '-') . ') - Stock: ' . number_format((float) $stock->qty_akhir, 2),
+                    // Qty Saat Ini ditampilkan di kolom terpisah,
+                    // jadi label dropdown jangan ikut membawa angka stock.
+                    'label' => ($stock->dataBarang->nama_barang ?? '-') . ' (' . ($stock->gudang->nama_gudang ?? '-') . ')',
                     'qty_akhir' => (float) $stock->qty_akhir,
                 ];
             })->values()->toArray();
@@ -212,9 +214,12 @@
 
             function syncStockMeta() {
                 const selectedOption = stockSelect.options[stockSelect.selectedIndex];
-                const qtyAkhir = selectedOption ? parseFloat(selectedOption.dataset.qtyAkhir || '0') : 0;
+                // Ambil langsung dari atribut agar kebal terhadap transform camelCase dataset
+                const qtyAkhirRaw = selectedOption ? (selectedOption.getAttribute('data-qty-akhir') ?? '0') : '0';
+                const qtyAkhir = parseFloat(qtyAkhirRaw);
                 if (stockSelect.value) {
-                    qtyAkhirLabel.textContent = qtyAkhir.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const safeQty = Number.isFinite(qtyAkhir) ? qtyAkhir : 0;
+                    qtyAkhirLabel.textContent = safeQty.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                     if (!qtySesudahInput.value) qtySesudahInput.value = qtyAkhir;
                 } else {
                     qtyAkhirLabel.textContent = '-';

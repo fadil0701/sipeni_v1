@@ -155,6 +155,14 @@ class PermissionSeeder extends Seeder
                 'sort_order' => 113,
             ],
             [
+                'name' => 'inventory.data-inventory.import.*',
+                'display_name' => 'Import Data Inventory',
+                'module' => 'inventory',
+                'group' => 'inventory.data-inventory',
+                'description' => 'Mengunggah data inventory melalui berkas (Excel)',
+                'sort_order' => 114,
+            ],
+            [
                 'name' => 'inventory.inventory-item.*',
                 'display_name' => 'Inventory Item (All)',
                 'module' => 'inventory',

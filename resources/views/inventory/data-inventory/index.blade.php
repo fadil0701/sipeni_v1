@@ -11,6 +11,7 @@
         use App\Helpers\PermissionHelper;
         $user = auth()->user();
     @endphp
+    <div class="flex flex-wrap items-center gap-2">
     @if(PermissionHelper::canAccess($user, 'inventory.data-inventory.create'))
     <a 
         href="{{ route('inventory.data-inventory.create') }}" 
@@ -22,6 +23,18 @@
         Tambah Inventory
     </a>
     @endif
+    @if(PermissionHelper::canAccess($user, 'inventory.data-inventory.import.index'))
+    <a
+        href="{{ route('inventory.data-inventory.import.index') }}"
+        class="inline-flex items-center px-4 py-2.5 border border-emerald-600 text-sm font-medium rounded-md text-emerald-700 bg-white hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
+    >
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        </svg>
+        Import data
+    </a>
+    @endif
+    </div>
 </div>
 
 <x-index.filter-toolbar

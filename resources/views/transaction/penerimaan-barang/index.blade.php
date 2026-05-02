@@ -5,17 +5,8 @@
 <div class="mb-6 flex justify-between items-center">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Penerimaan Barang</h1>
-        <p class="mt-1 text-sm text-gray-600">Daftar semua penerimaan barang dari distribusi</p>
+        <p class="mt-1 text-sm text-gray-600">Daftar penerimaan dari distribusi (SBBK). Setelah pengiriman, verifikasi barang di halaman detail.</p>
     </div>
-    <a 
-        href="{{ route('transaction.penerimaan-barang.create') }}" 
-        class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-    >
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Tambah Penerimaan
-    </a>
 </div>
 
 <!-- Filters -->
@@ -45,8 +36,9 @@
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             >
                 <option value="">Semua Status</option>
-                <option value="DITERIMA" {{ request('status') == 'DITERIMA' ? 'selected' : '' }}>Diterima</option>
-                <option value="DITOLAK" {{ request('status') == 'DITOLAK' ? 'selected' : '' }}>Ditolak</option>
+                <option value="MENUNGGU_VERIFIKASI" {{ request('status') == 'MENUNGGU_VERIFIKASI' ? 'selected' : '' }}>Menunggu verifikasi</option>
+                <option value="DITERIMA" {{ request('status') == 'DITERIMA' ? 'selected' : '' }}>Diterima (sesuai)</option>
+                <option value="DITOLAK" {{ request('status') == 'DITOLAK' ? 'selected' : '' }}>Ditolak (tidak sesuai)</option>
             </select>
         </div>
 
@@ -137,61 +129,85 @@
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table
-            class="min-w-full divide-y divide-gray-200"
+            class="w-full min-w-[920px] table-fixed divide-y divide-gray-200"
             @if($penerimaans instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $penerimaans->firstItem() }}" @endif
         >
+            <colgroup>
+                <col style="width:3rem">
+                <col style="width:12%">
+                <col style="width:11%">
+                <col style="width:20%">
+                <col style="width:17%">
+                <col style="width:9%">
+                <col style="width:13%">
+                <col style="width:15%">
+            </colgroup>
             <thead class="bg-gray-50">
                 <tr>
-                    <x-table.num-th />
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Penerimaan</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No SBBK</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Kerja</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pegawai Penerima</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                    <x-table.num-th class="!px-3" />
+                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Penerimaan</th>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No SBBK</th>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Kerja</th>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pegawai Penerima</th>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($penerimaans as $penerimaan)
                     <tr class="hover:bg-gray-50 transition-colors">
-                        <x-table.num-td :paginator="$penerimaans" />
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">{{ $penerimaan->no_penerimaan }}</div>
+                        <x-table.num-td class="!px-3" :paginator="$penerimaans" />
+                        <td class="px-3 py-3 align-top">
+                            <div class="text-sm font-medium text-gray-900 truncate" title="{{ $penerimaan->no_penerimaan }}">{{ $penerimaan->no_penerimaan }}</div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">
+                        <td class="px-3 py-3 align-top">
+                            <div class="text-sm text-gray-900 truncate" title="{{ $penerimaan->distribusi->no_sbbk ?? '-' }}">
                                 <a href="{{ route('transaction.distribusi.show', $penerimaan->distribusi->id_distribusi) }}" class="text-blue-600 hover:text-blue-900">
                                     {{ $penerimaan->distribusi->no_sbbk ?? '-' }}
                                 </a>
                             </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ $penerimaan->unitKerja->nama_unit_kerja ?? '-' }}</div>
+                        <td class="px-3 py-3 align-top">
+                            <div class="text-sm text-gray-900 truncate" title="{{ $penerimaan->unitKerja->nama_unit_kerja ?? '-' }}">{{ $penerimaan->unitKerja->nama_unit_kerja ?? '-' }}</div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ $penerimaan->pegawaiPenerima->nama_pegawai ?? '-' }}</div>
+                        <td class="px-3 py-3 align-top">
+                            <div class="text-sm text-gray-900 truncate" title="{{ $penerimaan->pegawaiPenerima->nama_pegawai ?? '-' }}">{{ $penerimaan->pegawaiPenerima->nama_pegawai ?? '-' }}</div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900 tabular-nums align-top">
                             {{ $penerimaan->tanggal_penerimaan->format('d/m/Y') }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
+                        <td class="px-3 py-3 align-top">
                             @php
                                 $statusColor = match($penerimaan->status_penerimaan) {
+                                    'MENUNGGU_VERIFIKASI' => 'bg-amber-100 text-amber-900',
                                     'DITERIMA' => 'bg-green-100 text-green-800',
                                     'DITOLAK' => 'bg-red-100 text-red-800',
                                     default => 'bg-gray-100 text-gray-800',
                                 };
+                                $statusLabel = match($penerimaan->status_penerimaan) {
+                                    'MENUNGGU_VERIFIKASI' => 'Menunggu verifikasi',
+                                    default => $penerimaan->status_penerimaan,
+                                };
                             @endphp
-                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">
-                                {{ $penerimaan->status_penerimaan }}
+                            <span class="inline-block max-w-full truncate px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}" title="{{ $statusLabel }}">
+                                {{ $statusLabel }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td class="px-3 py-3 text-right text-sm font-medium align-top">
                             @php
                                 $user = auth()->user();
                             @endphp
-                            <div class="flex items-center justify-end space-x-2">
+                            <div class="flex items-center justify-end space-x-2 flex-wrap gap-1">
+                                @if($penerimaan->status_penerimaan === 'MENUNGGU_VERIFIKASI' && (\App\Helpers\PermissionHelper::canAccess($user, 'transaction.penerimaan-barang.update') || \App\Helpers\PermissionHelper::canAccess($user, 'transaction.penerimaan-barang.store')))
+                                <a
+                                    href="{{ route('transaction.penerimaan-barang.show', $penerimaan->id_penerimaan) }}#verifikasi"
+                                    class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-amber-900 bg-amber-100 rounded-md hover:bg-amber-200 transition-colors"
+                                    title="Verifikasi barang"
+                                >
+                                    Verifikasi
+                                </a>
+                                @endif
                                 <a 
                                     href="{{ route('transaction.penerimaan-barang.show', $penerimaan->id_penerimaan) }}" 
                                     class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
@@ -203,18 +219,18 @@
                                     </svg>
 
                                 </a>
-                                @if(\App\Helpers\PermissionHelper::canAccess($user, 'transaction.penerimaan-barang.edit'))
+                                @if($penerimaan->status_penerimaan === 'DITOLAK' && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.penerimaan-barang.edit'))
                                 <a 
                                     href="{{ route('transaction.penerimaan-barang.edit', $penerimaan->id_penerimaan) }}" 
                                     class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200 transition-colors"
-                                    title="Edit"
+                                    title="Koreksi (penerimaan tidak sesuai)"
                                 >
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                 </a>
                                 @endif
-                                @if(\App\Helpers\PermissionHelper::canAccess($user, 'transaction.penerimaan-barang.destroy'))
+                                @if($penerimaan->status_penerimaan !== 'DITERIMA' && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.penerimaan-barang.destroy'))
                                 <form 
                                     action="{{ route('transaction.penerimaan-barang.destroy', $penerimaan->id_penerimaan) }}" 
                                     method="POST" 
@@ -244,7 +260,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data</h3>
-                            <p class="mt-1 text-sm text-gray-500">Belum ada penerimaan barang.</p>
+                            <p class="mt-1 text-sm text-gray-500">Belum ada data. Penerimaan dibuat otomatis setelah distribusi dikirim.</p>
                         </td>
                     </tr>
                 @endforelse

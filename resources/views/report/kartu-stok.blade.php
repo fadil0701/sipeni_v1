@@ -38,7 +38,7 @@
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barang</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Awal</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" title="Jika 0 di database, ditampilkan saldo awal implisit (Qty akhir − Qty masuk + Qty keluar)">Qty Awal</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Masuk</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Keluar</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Akhir</th>
@@ -61,7 +61,12 @@
                             <div class="text-xs text-gray-500">{{ $stock->dataBarang->kode_data_barang ?? '-' }}</div>
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-900">{{ $stock->gudang->nama_gudang ?? '-' }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-900">{{ number_format((float) $stock->qty_awal, 2, ',', '.') }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                            {{ number_format((float) ($stock->qty_awal_laporan ?? $stock->qty_awal), 2, ',', '.') }}
+                            @if(!empty($stock->qty_awal_terderivasi))
+                                <span class="block text-xs text-gray-500 font-normal" title="Disamakan dengan saldo sebelum mutasi tercatat">implisit</span>
+                            @endif
+                        </td>
                         <td class="px-6 py-4 text-sm text-gray-900">{{ number_format((float) $stock->qty_masuk, 2, ',', '.') }}</td>
                         <td class="px-6 py-4 text-sm text-gray-900">{{ number_format((float) $stock->qty_keluar, 2, ',', '.') }}</td>
                         <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ number_format((float) $stock->qty_akhir, 2, ',', '.') }}</td>

@@ -234,6 +234,7 @@
                 <select 
                     name="detail[INDEX][id_satuan]" 
                     required
+                    data-searchable="false"
                     class="select-satuan block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
                     <option value="">Pilih Satuan</option>
@@ -329,6 +330,18 @@ let itemIndex = 0;
 let inventoryData = {};
 const kategoriGudang = '{{ $kategoriGudang }}';
 
+function setSatuanSelectValue(selectEl, value) {
+    if (!selectEl) {
+        return;
+    }
+    const v = value != null ? String(value) : '';
+    selectEl.value = v;
+    if (window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function' &&
+        window.jQuery(selectEl).hasClass('select2-hidden-accessible')) {
+        window.jQuery(selectEl).val(v).trigger('change');
+    }
+}
+
 // Pre-populate inventory data dari controller
 @php
     $inventoriesData = $inventories->map(function($inv) use ($detailPermintaan) {
@@ -410,7 +423,7 @@ function updateInventoryDetails(select) {
                 hargaInput.value = harga;
             }
             if (satuanId) {
-                satuanSelect.value = satuanId;
+                setSatuanSelectValue(satuanSelect, satuanId);
             }
             
             // Update qty disetujui
