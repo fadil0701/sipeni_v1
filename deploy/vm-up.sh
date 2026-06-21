@@ -19,11 +19,23 @@ docker compose build
 echo "==> Start containers (mysql + app + web + queue)"
 docker compose up -d
 
-echo "==> Tunggu healthcheck..."
-sleep 8
+echo "==> Tunggu entrypoint app selesai (migrate + cache)..."
+for i in $(seq 1 90); do
+  if docker compose exec -T app sh -c 'pgrep -f "php-fpm: master" >/dev/null 2>&1'; then
+    echo "   App siap (php-fpm aktif)."
+    break
+  fi
+  if [ "$i" -eq 90 ]; then
+    echo "ERROR: timeout menunggu app — cek log:"
+    docker compose logs app --tail 80
+    exit 1
+  fi
+  sleep 2
+done
 
-echo "==> Post-deploy"
-docker compose exec -T app php artisan db:seed --force 2>/dev/null || true
+echo "==> Post-deploy (migrate + sync permission + seed)"
+chmod +x deploy/vm-post-deploy.sh
+./deploy/vm-post-deploy.sh all
 
 echo ""
 echo "Selesai."
