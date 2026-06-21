@@ -38,20 +38,6 @@
         </div>
     @endif
 
-    @if(session('error'))
-        <div class="mx-6 mt-4 bg-red-50 border-l-4 border-red-400 p-4 rounded">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
-                </div>
-            </div>
-        </div>
-    @endif
     
     <form action="{{ route('transaction.permintaan-barang.store') }}" method="POST" class="p-6" id="formPermintaan" onsubmit="return validateForm()">
         @csrf
@@ -590,11 +576,9 @@ window.initPermintaanSelectDataBarang = function (selectElement) {
     }
     const placeholderOption = selectElement.querySelector('option[value=""]');
     const placeholderText = ((placeholderOption && placeholderOption.textContent) || 'Pilih Data Barang').trim();
-    $(selectElement).select2({
+    $(selectElement).select2(Object.assign({}, (typeof window.sipeniSelect2BaseOptions === 'function' ? window.sipeniSelect2BaseOptions() : {}), {
         placeholder: placeholderText,
         allowClear: !!placeholderOption,
-        width: '100%',
-        minimumResultsForSearch: 0,
         matcher: function (params, data) {
             if (data == null) {
                 return null;
@@ -619,7 +603,7 @@ window.initPermintaanSelectDataBarang = function (selectElement) {
             const text = ((data.text || '') + '').toLowerCase();
             return text.indexOf(term) > -1 ? data : null;
         },
-    });
+    }));
     const inst = {
         destroy: function () {
             try {
@@ -733,12 +717,6 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
         allSelects = Array.from(nodeList);
     }
     
-    console.log('=== FILTER DATA BARANG ===');
-    console.log('Checked jenis:', checkedJenis);
-    console.log('Farmasi IDs count:', stockFarmasiIdsNum.length);
-    console.log('Persediaan IDs count:', stockPersediaanIdsNum.length);
-    console.log('Total selects to filter:', allSelects.length);
-    console.log('Target select:', targetSelect ? 'specific' : 'all');
 
     // Simpan nilai yang sudah dipilih di semua select sebelum restore
     const selectedValues = new Map();
@@ -754,7 +732,6 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
         allSelects.forEach(function(select) {
             // Pastikan select masih valid
             if (!select || select.tagName !== 'SELECT') {
-                console.warn('Invalid select element, skipping');
                 return;
             }
             
@@ -767,7 +744,6 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
                     select.choicesInstance.destroy();
                     select.choicesInstance = null;
                 } catch (e) {
-                    console.warn('Error destroying Choices instance:', e);
                 }
             }
             
@@ -779,7 +755,6 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
                     cloned.style.display = '';
                     return cloned;
                 });
-                console.log('Saved original options:', select._allOriginalOptions.length);
             }
             
             // Restore semua opsi asli sebelum filter baru diterapkan
@@ -817,7 +792,6 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
                     select.insertBefore(placeholder, select.firstChild);
                 }
                 
-                console.log('Restored all original options:', select.options.length, 'checkedJenis:', checkedJenis, 'needsRestore:', needsRestore);
             }
             
             // Simpan checkedJenis terakhir untuk perbandingan di filter berikutnya
@@ -838,17 +812,6 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
                 let shouldShow = false;
                 const { isFarmasi, isPersediaan } = getBarangOptionJenisFlags(option);
                 
-                // Debug log untuk melihat klasifikasi barang
-                if (option.textContent && (option.textContent.includes('Paracetamol') || option.textContent.includes('Farmasi'))) {
-                    console.log('Filtering item:', {
-                        text: option.textContent.substring(0, 30),
-                        barangId: barangId,
-                        isFarmasi: isFarmasi,
-                        isPersediaan: isPersediaan,
-                        checkedJenis: checkedJenis
-                    });
-                }
-                
                 if (checkedJenis.length === 0) {
                     // Jika belum ada subjenis dipilih, jangan sembunyikan semua opsi.
                     // Kalau disembunyikan total, field "Data Barang" akan terlihat kosong.
@@ -862,11 +825,6 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
                 } else if (checkedJenis.includes('PERSEDIAAN')) {
                     // Hanya Persediaan ter-check: tampilkan HANYA yang Persediaan
                     shouldShow = isPersediaan;
-                }
-                
-                // Update log untuk item yang relevan
-                if (option.textContent && (option.textContent.includes('Paracetamol') || option.textContent.includes('Farmasi'))) {
-                    console.log('Item shouldShow:', shouldShow, 'for', option.textContent.substring(0, 30));
                 }
                 
                 if (shouldShow) {
@@ -890,12 +848,6 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
             });
             
             const remainingOptions = Array.from(select.options).filter(opt => opt.value !== '');
-            console.log('Filter applied:', {
-                removedCount: optionsToRemove.length,
-                remainingCount: remainingOptions.length,
-                checkedJenis: checkedJenis,
-                remainingOptions: remainingOptions.slice(0, 5).map(opt => opt.textContent).join(', ') + '...'
-            });
 
             // Set kembali nilai yang sudah dipilih sebelum restore (jika masih ada di DOM setelah filter)
             if (currentValue) {
@@ -921,7 +873,6 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
                 setTimeout(function() {
                     // Pastikan select masih valid
                     if (!selectRef || selectRef.tagName !== 'SELECT') {
-                        console.warn('Select element invalid in timeout, skipping');
                         return;
                     }
                     
@@ -933,7 +884,6 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
                         try {
                             selectRef.choicesInstance.destroy();
                         } catch (e) {
-                            console.warn('Error destroying Choices instance in timeout:', e);
                         }
                         selectRef.choicesInstance = null;
                     }
@@ -941,48 +891,25 @@ function filterDataBarangByJenisPermintaan(targetSelect = null) {
                     // Hitung opsi yang masih ada di DOM (setelah filter)
                     const remainingOptions = selectRef.options ? Array.from(selectRef.options).filter(opt => opt && opt.value !== '') : [];
                     const visibleCount = remainingOptions.length;
-                    
-                    console.log('Re-initializing Choices.js after filter:', {
-                        selectId: selectRef.id || 'unnamed',
-                        visibleCount: visibleCount,
-                        checkedJenis: checkedJenisRef,
-                        savedValue: savedValue,
-                        totalOptionsInDOM: selectRef.options ? selectRef.options.length : 0,
-                        firstFewOptions: remainingOptions.slice(0, 5).map(opt => opt ? opt.textContent : '').join(', ')
-                    });
-                    
-                    if (visibleCount > 0) {
-                        // Pastikan select element masih valid sebelum re-initialize
-                        if (selectRef && selectRef.tagName === 'SELECT' && selectRef.options && selectRef.options.length > 0) {
-                            // Re-initialize dengan opsi yang sudah di-filter (hanya yang masih ada di DOM)
-                            console.log('Calling initPermintaanSelectDataBarang for:', selectRef.id || selectRef.className || 'unnamed');
-                            window.initPermintaanSelectDataBarang(selectRef);
-                            
-                            // Set kembali nilai yang dipilih setelah Choices.js di-initialize
-                            if (savedValue) {
-                                setTimeout(function() {
-                                    if (selectRef && selectRef.querySelector) {
-                                        const selectedOption = selectRef.querySelector(`option[value="${savedValue}"]`);
-                                        if (selectedOption) {
-                                            selectRef.value = savedValue;
-                                            // Trigger change event untuk update satuan dan stock
-                                            selectRef.dispatchEvent(new Event('change', { bubbles: true }));
-                                            console.log('Restored selected value after Choices.js init:', savedValue);
-                                        }
+
+                    if (visibleCount > 0 && selectRef.tagName === 'SELECT' && selectRef.options && selectRef.options.length > 0) {
+                        window.initPermintaanSelectDataBarang(selectRef);
+
+                        if (savedValue) {
+                            setTimeout(function() {
+                                if (selectRef && selectRef.querySelector) {
+                                    const selectedOption = selectRef.querySelector(`option[value="${savedValue}"]`);
+                                    if (selectedOption) {
+                                        selectRef.value = savedValue;
+                                        selectRef.dispatchEvent(new Event('change', { bubbles: true }));
                                     }
-                                }, 150);
-                            }
-                        } else {
-                            console.warn('Select element invalid or has no options, skipping Choices.js initialization');
+                                }
+                            }, 150);
                         }
-                    } else {
-                        console.warn('No visible options after filter, skipping Choices.js initialization');
                     }
                 }, 250);
             }
-        }); // End forEach // End forEach
-    } else {
-        console.warn('No selects found to filter');
+        });
     }
 }
 
@@ -1170,115 +1097,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
             
-            // Inisialisasi untuk semua select-satuan yang sudah ada dengan styling khusus
-            document.querySelectorAll('.select-satuan').forEach(function(selectSatuan) {
-                if (selectSatuan.tagName === 'SELECT' && !selectSatuan.choicesInstance) {
-                    const optionCount = Array.from(selectSatuan.options).filter(opt => opt.value !== '').length;
-                    console.log('Initializing Choices.js for existing select-satuan, options:', optionCount);
-                    
-                    // Untuk select-satuan, selalu inisialisasi jika ada minimal 1 opsi
-                    if (optionCount > 0 && typeof Choices !== 'undefined') {
-                        try {
-                            // Pastikan semua option memiliki textContent yang benar sebelum inisialisasi
-                            Array.from(selectSatuan.options).forEach(function(option) {
-                                // Jika textContent kosong atau tidak valid, gunakan innerText atau value
-                                if (!option.textContent || option.textContent.trim() === '') {
-                                    option.textContent = option.innerText || option.getAttribute('label') || option.value;
-                                }
-                                // Pastikan textContent tidak mengandung karakter yang menyebabkan masalah
-                                const text = option.textContent.trim();
-                                if (text && text.length > 0) {
-                                    option.textContent = text;
-                                }
-                            });
-                            
-                            const choicesInstance = new Choices(selectSatuan, {
-                                searchEnabled: true,
-                                searchChoices: true,
-                                itemSelectText: '',
-                                placeholder: true,
-                                placeholderValue: 'Pilih Satuan',
-                                searchPlaceholderValue: 'Ketik minimal 2 karakter...',
-                                shouldSort: true,
-                                fuseOptions: {
-                                    threshold: 0.3,
-                                    distance: 100
-                                },
-                                shouldSortItems: true,
-                                removeItemButton: false
-                            });
-                            
-                            selectSatuan.choicesInstance = choicesInstance;
-                            console.log('Choices.js initialized successfully for select-satuan');
-                            
-                            // Custom search filter untuk satuan
-                            setTimeout(function() {
-                                const searchInput = choicesInstance.input.element;
-                                const containerOuter = choicesInstance.containerOuter.element;
-                                
-                                if (searchInput && containerOuter) {
-                                    searchInput.addEventListener('input', function(e) {
-                                        const searchValue = e.target.value.trim();
-                                        
-                                        setTimeout(function() {
-                                            const dropdown = containerOuter.querySelector('.choices__list--dropdown');
-                                            if (!dropdown) return;
-                                            
-                                            if (searchValue.length < 2) {
-                                                const items = dropdown.querySelectorAll('.choices__item:not(.choices__item--no-results)');
-                                                items.forEach(item => {
-                                                    item.style.display = 'none';
-                                                });
-                                                
-                                                let noResults = dropdown.querySelector('.choices__item--no-results');
-                                                if (!noResults || !noResults.textContent.includes('Ketik minimal 2 karakter')) {
-                                                    if (noResults) noResults.remove();
-                                                    noResults = document.createElement('div');
-                                                    noResults.className = 'choices__item choices__item--no-results';
-                                                    noResults.setAttribute('data-select-text', 'Tekan untuk memilih');
-                                                    noResults.setAttribute('data-choice', '');
-                                                    noResults.setAttribute('data-choice-selectable', '');
-                                                    noResults.textContent = 'Ketik minimal 2 karakter...';
-                                                    dropdown.appendChild(noResults);
-                                                }
-                                                dropdown.classList.remove('is-hidden');
-                                            } else {
-                                                const noResults = dropdown.querySelector('.choices__item--no-results');
-                                                if (noResults && noResults.textContent.includes('Ketik minimal 2 karakter')) {
-                                                    noResults.remove();
-                                                }
-                                                const items = dropdown.querySelectorAll('.choices__item:not(.choices__item--no-results)');
-                                                items.forEach(item => {
-                                                    item.style.display = '';
-                                                });
-                                            }
-                                        }, 10);
-                                    });
-                                }
-                            }, 100);
-                        } catch (error) {
-                            console.error('Error initializing Choices.js for select-satuan:', error);
-                        }
-                    }
-                }
-            });
+        document.querySelectorAll('.select-satuan').forEach(function (selectSatuan) {
+            if (selectSatuan.tagName !== 'SELECT' || selectSatuan.choicesInstance) {
+                return;
+            }
+            const optionCount = Array.from(selectSatuan.options).filter(function (opt) { return opt.value !== ''; }).length;
+            if (optionCount > 0 && typeof window.initChoicesForSelect === 'function') {
+                window.initChoicesForSelect(selectSatuan, 0);
+            }
+        });
     }
     
-    // Coba initialize dengan delay yang lebih lama untuk memastikan Choices.js ter-load
     setTimeout(initializeExistingFields, 500);
     
-    // Juga coba lagi setelah window load
-    window.addEventListener('load', function() {
+    window.addEventListener('load', function () {
         setTimeout(initializeExistingFields, 300);
     });
     
-    // Force initialize setelah semua script selesai
-    setTimeout(function() {
-        console.log('Force initialization check...');
+    setTimeout(function () {
         if (typeof window.initPermintaanSelectDataBarang === 'function' && window.jQuery && window.jQuery.fn.select2) {
-            document.querySelectorAll('.select-data-barang').forEach(function(select) {
+            document.querySelectorAll('.select-data-barang').forEach(function (select) {
                 if (select.tagName === 'SELECT') {
-                    const optionCount = Array.from(select.options).filter(opt => opt.value !== '').length;
+                    const optionCount = Array.from(select.options).filter(function (opt) { return opt.value !== ''; }).length;
                     if (optionCount > 0) {
                         try {
                             window.initPermintaanSelectDataBarang(select);
@@ -1289,41 +1129,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
-        if (typeof Choices !== 'undefined') {
-            document.querySelectorAll('.select-satuan').forEach(function(select) {
-                if (select.tagName === 'SELECT' && !select.choicesInstance) {
-                    const optionCount = Array.from(select.options).filter(opt => opt.value !== '').length;
-                    console.log('Force init select-satuan, options:', optionCount);
-                    
-                    // Pastikan semua option memiliki textContent yang benar
-                    Array.from(select.options).forEach(function(option) {
-                        if (!option.textContent || option.textContent.trim() === '') {
-                            option.textContent = option.innerText || option.value;
-                        }
-                    });
-                    
-                    // Untuk select-satuan, selalu inisialisasi jika ada minimal 1 opsi
-                    if (optionCount > 0) {
-                        try {
-                            const instance = new Choices(select, {
-                                searchEnabled: true,
-                                searchChoices: true,
-                                itemSelectText: '',
-                                placeholder: true,
-                                placeholderValue: 'Pilih Satuan',
-                                searchPlaceholderValue: 'Ketik minimal 2 karakter...',
-                                shouldSort: true,
-                                fuseOptions: { threshold: 0.3, distance: 100 }
-                            });
-                            select.choicesInstance = instance;
-                            console.log('Force initialized select-satuan');
-                        } catch (e) {
-                            console.error('Force init error for select-satuan:', e);
-                        }
-                    }
+        document.querySelectorAll('.select-satuan').forEach(function (select) {
+            if (select.tagName === 'SELECT' && !select.choicesInstance && typeof window.initChoicesForSelect === 'function') {
+                const optionCount = Array.from(select.options).filter(function (opt) { return opt.value !== ''; }).length;
+                if (optionCount > 0) {
+                    window.initChoicesForSelect(select, 0);
                 }
-            });
-        }
+            }
+        });
     }, 1000);
 
     // Pesan validasi qty (max) dalam bahasa Indonesia saat user mengetik
@@ -1677,162 +1490,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
-@push('styles')
-<style>
-    /* Styling khusus untuk Choices.js pada field satuan yang lebih kecil */
-    .select-satuan + .choices,
-    .select-satuan ~ .choices {
-        width: 100% !important;
-    }
-    
-    /* Perbaiki tampilan dropdown Choices.js secara umum */
-    .choices__list--dropdown {
-        z-index: 9999 !important;
-        max-height: 200px !important;
-        overflow-y: auto !important;
-        border: 1px solid #e5e7eb !important;
-        border-radius: 0.375rem !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-        background: white !important;
-    }
-    
-    .choices__list--dropdown .choices__item {
-        padding: 8px 12px !important;
-        font-size: 14px !important;
-        line-height: 1.5 !important;
-        border-bottom: 1px solid #f3f4f6 !important;
-    }
-    
-    .choices__list--dropdown .choices__item:last-child {
-        border-bottom: none !important;
-    }
-    
-    .choices__list--dropdown .choices__item--selectable.is-highlighted {
-        background-color: #eff6ff !important;
-        color: #1e40af !important;
-    }
-    
-    .choices__list--dropdown .choices__item--no-results {
-        white-space: normal !important;
-        word-wrap: break-word !important;
-        padding: 12px !important;
-        text-align: center !important;
-        line-height: 1.5 !important;
-        font-size: 13px !important;
-        color: #6b7280 !important;
-        border-bottom: none !important;
-    }
-    
-    /* Perbaiki untuk field satuan yang lebih kecil */
-    .select-satuan + .choices .choices__list--dropdown,
-    .select-satuan ~ .choices .choices__list--dropdown {
-        max-height: 180px !important;
-        font-size: 13px !important;
-    }
-    
-    .select-satuan + .choices .choices__item,
-    .select-satuan ~ .choices .choices__item {
-        padding: 6px 10px !important;
-        font-size: 13px !important;
-    }
-    
-    .select-satuan + .choices .choices__item--no-results,
-    .select-satuan ~ .choices .choices__item--no-results {
-        padding: 10px !important;
-        font-size: 12px !important;
-    }
-    
-    /* Pastikan dropdown tidak terpotong */
-    .choices.is-open .choices__list--dropdown {
-        position: absolute !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        margin-top: 4px !important;
-    }
-    
-    /* Perbaiki input search */
-    .choices__input {
-        font-size: 14px !important;
-        padding: 6px 8px !important;
-    }
-    
-    .select-satuan + .choices .choices__input,
-    .select-satuan ~ .choices .choices__input {
-        font-size: 13px !important;
-        padding: 4px 8px !important;
-    }
-    
-    /* Perbaiki inner container - pastikan height sama dengan input Qty (38px = py-2) */
-    .choices__inner {
-        min-height: 38px !important;
-        padding: 0 8px !important;
-        display: flex !important;
-        align-items: center !important;
-        border: 1px solid #d1d5db !important;
-        border-radius: 0.375rem !important;
-    }
-    
-    /* Pastikan field Satuan memiliki height yang sama dengan Qty */
-    .select-satuan + .choices,
-    .select-satuan ~ .choices {
-        height: 38px !important;
-    }
-    
-    .select-satuan + .choices .choices__inner,
-    .select-satuan ~ .choices .choices__inner {
-        min-height: 38px !important;
-        height: 38px !important;
-        padding: 0 8px !important;
-        display: flex !important;
-        align-items: center !important;
-        line-height: 1.5 !important;
-    }
-    
-    /* Pastikan placeholder text sejajar vertikal */
-    .select-satuan + .choices .choices__inner .choices__placeholder,
-    .select-satuan ~ .choices .choices__inner .choices__placeholder {
-        line-height: 1.5 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        color: #9ca3af !important;
-        display: flex !important;
-        align-items: center !important;
-        height: 100% !important;
-    }
-    
-    /* Pastikan selected item sejajar vertikal */
-    .select-satuan + .choices .choices__inner .choices__item--selectable,
-    .select-satuan ~ .choices .choices__inner .choices__item--selectable {
-        line-height: 1.5 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        height: 100% !important;
-    }
-    
-    /* Pastikan dropdown arrow sejajar vertikal dan center */
-    .select-satuan + .choices .choices__inner .choices__arrow,
-    .select-satuan ~ .choices .choices__inner .choices__arrow {
-        height: 100% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0 4px 0 8px !important;
-        margin-left: auto !important;
-    }
-    
-    /* Pastikan input search juga sejajar */
-    .select-satuan + .choices .choices__inner .choices__input,
-    .select-satuan ~ .choices .choices__inner .choices__input {
-        line-height: 1.5 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        height: auto !important;
-        display: flex !important;
-        align-items: center !important;
-    }
-</style>
-@endpush
 @endsection
-

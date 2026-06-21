@@ -139,6 +139,12 @@
             <!-- Integrasi User -->
             <div>
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Integrasi User (Opsional)</h3>
+                <p class="mb-3 text-xs text-gray-600">Hubungkan atau perbarui akun login pegawai. <strong>Pengelolaan role</strong> dilakukan melalui User &amp; Account Directory.</p>
+                @if($pegawai->user)
+                    <p class="mb-3 text-sm">
+                        <a href="{{ route('admin.users.edit', $pegawai->user->id) }}" class="font-medium text-blue-600 hover:text-blue-900">Kelola akun &amp; role pegawai ini</a>
+                    </p>
+                @endif
                 <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <div class="space-y-4">
                         <div>
@@ -147,9 +153,8 @@
                                     type="radio" 
                                     name="user_option" 
                                     value="none" 
-                                    {{ !$pegawai->user_id ? 'checked' : '' }}
+                                    {{ old('user_option', $pegawai->user_id ? 'existing' : 'none') === 'none' ? 'checked' : '' }}
                                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                                    onchange="toggleUserOptions()"
                                 >
                                 <span class="ml-2 text-sm text-gray-700">Tidak membuat user</span>
                             </label>
@@ -161,13 +166,12 @@
                                     type="radio" 
                                     name="user_option" 
                                     value="existing" 
-                                    {{ $pegawai->user_id ? 'checked' : '' }}
+                                    {{ old('user_option', $pegawai->user_id ? 'existing' : 'none') === 'existing' ? 'checked' : '' }}
                                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                                    onchange="toggleUserOptions()"
                                 >
                                 <span class="ml-2 text-sm text-gray-700">Gunakan user yang sudah ada</span>
                             </label>
-                            <div id="existingUserOption" style="display: {{ $pegawai->user_id ? 'block' : 'none' }};" class="mt-2 ml-6">
+                            <div id="existingUserOption" style="display: none;" class="mt-2 ml-6">
                                 <select 
                                     id="user_id" 
                                     name="user_id" 
@@ -189,8 +193,8 @@
                                     type="radio" 
                                     name="user_option" 
                                     value="new" 
+                                    {{ old('user_option') === 'new' ? 'checked' : '' }}
                                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                                    onchange="toggleUserOptions()"
                                 >
                                 <span class="ml-2 text-sm text-gray-700">Buat user baru</span>
                             </label>
@@ -243,16 +247,12 @@
                                     >
                                 </div>
 
-                                <div id="roleInfo" class="bg-blue-50 border border-blue-200 rounded-md p-3">
-                                    <p class="text-sm text-blue-800">
-                                        <strong>Info:</strong> Role user akan otomatis mengikuti jabatan yang dipilih.
-                                    </p>
-                                    <div id="selectedRoleInfo" class="mt-2 text-sm text-blue-700">
-                                        <span class="font-medium">Role yang akan di-assign:</span>
-                                        <span id="roleName" class="ml-2">Pilih jabatan terlebih dahulu</span>
-                                    </div>
-                                </div>
                             </div>
+                        </div>
+
+                        <div class="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900" id="userRoleNotice" style="display: none;">
+                            <p class="font-medium">Pengelolaan role dilakukan melalui User &amp; Account Directory.</p>
+                            <p class="mt-1 text-xs text-blue-800">Setelah akun dibuat atau dihubungkan, buka <a href="{{ route('admin.users.index') }}" class="font-semibold underline">User &amp; Account Directory</a> untuk menetapkan role.</p>
                         </div>
                     </div>
                 </div>
@@ -278,8 +278,13 @@
 
 @push('scripts')
 <script>
-// Data jabatan dengan role (dari backend)
-const jabatanData = @json($jabatanData);
+function refreshUserRoleNotice() {
+    const userOption = document.querySelector('input[name="user_option"]:checked')?.value || 'none';
+    const section = document.getElementById('userRoleNotice');
+    if (section) {
+        section.style.display = (userOption === 'existing' || userOption === 'new') ? 'block' : 'none';
+    }
+}
 
 function toggleUserOptions() {
     const userOption = document.querySelector('input[name="user_option"]:checked').value;
@@ -293,7 +298,6 @@ function toggleUserOptions() {
         newUserOption.style.display = 'none';
         createUserInput.value = '0';
         userIdInput.required = true;
-        // Clear new user fields
         document.getElementById('user_name').required = false;
         document.getElementById('user_email').required = false;
         document.getElementById('user_password').required = false;
@@ -302,56 +306,27 @@ function toggleUserOptions() {
         newUserOption.style.display = 'block';
         createUserInput.value = '1';
         userIdInput.required = false;
-        // Set required for new user fields
         document.getElementById('user_name').required = true;
         document.getElementById('user_email').required = true;
-        document.getElementById('user_password').required = true;
+        document.getElementById('user_password').required = {{ $pegawai->user_id ? 'false' : 'true' }};
     } else {
         existingUserOption.style.display = 'none';
         newUserOption.style.display = 'none';
         createUserInput.value = '0';
         userIdInput.required = false;
-        // Clear new user fields
+        if (userIdInput) userIdInput.value = '';
         document.getElementById('user_name').required = false;
         document.getElementById('user_email').required = false;
         document.getElementById('user_password').required = false;
     }
-    
-    // Update role info when user option changes
-    updateRoleInfo();
+    refreshUserRoleNotice();
 }
 
-function updateRoleInfo() {
-    const jabatanId = document.getElementById('id_jabatan').value;
-    const roleNameElement = document.getElementById('roleName');
-    const roleInfoDiv = document.getElementById('roleInfo');
-    
-    if (jabatanId && jabatanData[jabatanId]) {
-        const jabatan = jabatanData[jabatanId];
-        if (jabatan.role_name) {
-            roleNameElement.textContent = jabatan.role_name;
-            if (jabatan.role_description) {
-                roleNameElement.innerHTML = `<strong>${jabatan.role_name}</strong> - ${jabatan.role_description}`;
-            }
-            roleInfoDiv.classList.remove('bg-yellow-50', 'border-yellow-200');
-            roleInfoDiv.classList.add('bg-blue-50', 'border-blue-200');
-        } else {
-            roleNameElement.textContent = 'Jabatan ini belum memiliki role';
-            roleInfoDiv.classList.remove('bg-blue-50', 'border-blue-200');
-            roleInfoDiv.classList.add('bg-yellow-50', 'border-yellow-200');
-        }
-    } else {
-        roleNameElement.textContent = 'Pilih jabatan terlebih dahulu';
-        roleInfoDiv.classList.remove('bg-yellow-50', 'border-yellow-200');
-        roleInfoDiv.classList.add('bg-blue-50', 'border-blue-200');
-    }
-}
+document.querySelectorAll('input[name="user_option"]').forEach(el => {
+    el.addEventListener('change', toggleUserOptions);
+});
 
-// Listen to jabatan change
-document.getElementById('id_jabatan').addEventListener('change', updateRoleInfo);
-
-// Initial update
-updateRoleInfo();
+toggleUserOptions();
 </script>
 @endpush
 @endsection

@@ -15,10 +15,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Seed roles first, then permissions, then modules, then jabatan, then admin user, then approval flow
+        // Urutan: role & permission → master data → jabatan (gelar organisasi) → admin → pegawai+user (role per akun) → approval flow
         $this->call([
             RoleSeeder::class,
             PermissionSeeder::class,
+            WorkflowStatusSeeder::class,
+            RolePermissionBaselineSeeder::class,
+            RbacPhase1Seeder::class,
+            RolePermissionCorrectionSeeder::class,
             ModuleSeeder::class,
             MasterSatuanSeeder::class,
             MasterSumberAnggaranSeeder::class,
@@ -26,9 +30,10 @@ class DatabaseSeeder extends Seeder
             MasterGudangSeeder::class,
             MasterRuanganSeeder::class,
             MasterJabatanSeeder::class,
-            AdminUserSeeder::class,
+            //AdminUserSeeder::class,
             PegawaiUserPerJabatanSeeder::class,
             ApprovalFlowDefinitionSeeder::class,
+            SbbkPrintTemplateSeeder::class,
             // ComprehensiveDummySeeder::class,
         ]);
     }

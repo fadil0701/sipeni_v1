@@ -2,8 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Permission;
+use Illuminate\Database\Seeder;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionSeeder extends Seeder
 {
@@ -121,6 +122,30 @@ class PermissionSeeder extends Seeder
                 'group' => 'inventory.data-stock',
                 'description' => 'Melihat data stock gudang',
                 'sort_order' => 100,
+            ],
+            [
+                'name' => 'inventory.data-stock.merk-breakdown',
+                'display_name' => 'Rincian Stok per Merk',
+                'module' => 'inventory',
+                'group' => 'inventory.data-stock',
+                'description' => 'Melihat pecahan stok per merk untuk satu barang dan gudang',
+                'sort_order' => 101,
+            ],
+            [
+                'name' => 'inventory.farmasi-kedaluwarsa.index',
+                'display_name' => 'Reminder Kedaluwarsa Farmasi',
+                'module' => 'inventory',
+                'group' => 'inventory.farmasi-kedaluwarsa',
+                'description' => 'Melihat KPI dan daftar batch farmasi berdasarkan tanggal kedaluwarsa',
+                'sort_order' => 102,
+            ],
+            [
+                'name' => 'inventory.farmasi-kedaluwarsa.export',
+                'display_name' => 'Ekspor Reminder Kedaluwarsa Farmasi (CSV)',
+                'module' => 'inventory',
+                'group' => 'inventory.farmasi-kedaluwarsa',
+                'description' => 'Mengunduh daftar reminder kedaluwarsa farmasi sebagai CSV',
+                'sort_order' => 103,
             ],
             [
                 'name' => 'inventory.data-inventory.index',
@@ -372,6 +397,184 @@ class PermissionSeeder extends Seeder
                 'description' => 'Melihat laporan stock gudang',
                 'sort_order' => 401,
             ],
+            [
+                'name' => 'reports.kartu-stok',
+                'display_name' => 'View Kartu Stok',
+                'module' => 'reports',
+                'group' => 'reports',
+                'description' => 'Melihat laporan kartu stok',
+                'sort_order' => 402,
+            ],
+            [
+                'name' => 'reports.kartu-stok.merk-breakdown',
+                'display_name' => 'Rincian Kartu Stok per Merk',
+                'module' => 'reports',
+                'group' => 'reports',
+                'description' => 'Melihat pecahan stok per merk dari kartu stok',
+                'sort_order' => 403,
+            ],
+
+            // Planning - RKU
+            [
+                'name' => 'planning.rku.index',
+                'display_name' => 'View RKU List',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Melihat daftar RKU',
+                'sort_order' => 200,
+            ],
+            [
+                'name' => 'planning.rku.view_all',
+                'display_name' => 'View All RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Melihat semua RKU dari semua unit kerja',
+                'sort_order' => 201,
+            ],
+            [
+                'name' => 'planning.rku.create',
+                'display_name' => 'Create RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Membuat RKU baru',
+                'sort_order' => 202,
+            ],
+            [
+                'name' => 'planning.rku.update',
+                'display_name' => 'Update RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Mengedit RKU',
+                'sort_order' => 203,
+            ],
+            [
+                'name' => 'planning.rku.update_all',
+                'display_name' => 'Update All RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Mengedit semua RKU dari semua unit kerja',
+                'sort_order' => 204,
+            ],
+            [
+                'name' => 'planning.rku.delete',
+                'display_name' => 'Delete RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Menghapus RKU',
+                'sort_order' => 205,
+            ],
+            [
+                'name' => 'planning.rku.delete_all',
+                'display_name' => 'Delete All RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Menghapus semua RKU dari semua unit kerja',
+                'sort_order' => 206,
+            ],
+            [
+                'name' => 'planning.rku.submit',
+                'display_name' => 'Submit RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Mengajukan RKU untuk approval',
+                'sort_order' => 207,
+            ],
+            [
+                'name' => 'planning.rku.submit_all',
+                'display_name' => 'Submit All RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Mengajukan semua RKU untuk approval',
+                'sort_order' => 208,
+            ],
+            [
+                'name' => 'planning.rku.approve',
+                'display_name' => 'Approve RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Menyetujui/mereview RKU',
+                'sort_order' => 209,
+            ],
+            [
+                'name' => 'planning.rku.approve_all',
+                'display_name' => 'Approve All RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Menyetujui semua RKU',
+                'sort_order' => 210,
+            ],
+            [
+                'name' => 'planning.rku.reject',
+                'display_name' => 'Reject RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Menolak RKU',
+                'sort_order' => 211,
+            ],
+            [
+                'name' => 'planning.rku.cancel',
+                'display_name' => 'Cancel RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Membatalkan pengajuan RKU',
+                'sort_order' => 212,
+            ],
+            [
+                'name' => 'planning.rku.cancel_all',
+                'display_name' => 'Cancel All RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Membatalkan semua pengajuan RKU',
+                'sort_order' => 213,
+            ],
+            [
+                'name' => 'planning.rku.lock',
+                'display_name' => 'Lock RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Mengunci RKU',
+                'sort_order' => 214,
+            ],
+            [
+                'name' => 'planning.rku.unlock',
+                'display_name' => 'Unlock RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Membuka kunci RKU',
+                'sort_order' => 215,
+            ],
+            [
+                'name' => 'planning.rku.unapprove',
+                'display_name' => 'Unapprove RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Membatalkan persetujuan RKU',
+                'sort_order' => 216,
+            ],
+            [
+                'name' => 'planning.rku.rekap',
+                'display_name' => 'View Rekap RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Melihat rekap perencanaan tahunan',
+                'sort_order' => 217,
+            ],
+            [
+                'name' => 'planning.rku.export',
+                'display_name' => 'Export RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Mengekspor data RKU',
+                'sort_order' => 218,
+            ],
+            [
+                'name' => 'planning.rku.manage',
+                'display_name' => 'Manage RKU',
+                'module' => 'planning',
+                'group' => 'planning.rku',
+                'description' => 'Pengelolaan lengkap RKU',
+                'sort_order' => 219,
+            ],
 
             // Admin
             [
@@ -390,12 +593,21 @@ class PermissionSeeder extends Seeder
                 'description' => 'Akses penuh ke manajemen user',
                 'sort_order' => 510,
             ],
+            [
+                'name' => 'admin.print-templates.*',
+                'display_name' => 'Template Cetak (All)',
+                'module' => 'admin',
+                'group' => 'admin.print-templates',
+                'description' => 'Mengelola template HTML untuk dokumen cetak',
+                'sort_order' => 520,
+            ],
         ];
 
         foreach ($permissions as $permission) {
+            $row = array_merge(['guard_name' => 'web'], $permission);
             Permission::updateOrCreate(
-                ['name' => $permission['name']],
-                $permission
+                ['name' => $permission['name'], 'guard_name' => 'web'],
+                $row
             );
         }
 
@@ -419,5 +631,7 @@ class PermissionSeeder extends Seeder
                 }
             }
         }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

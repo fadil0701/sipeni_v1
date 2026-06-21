@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Asset;
 
+use App\Support\Rbac\RbacRoles;
+use App\Support\Rbac\UserScope;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\MutasiAset;
@@ -34,7 +37,7 @@ class MutasiAsetController extends Controller
         ]);
         
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $query->where(function($q) use ($pegawai) {
@@ -77,7 +80,7 @@ class MutasiAsetController extends Controller
         $user = Auth::user();
 
         // Hanya admin dan admin_gudang yang bisa create
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         
@@ -102,7 +105,7 @@ class MutasiAsetController extends Controller
         $user = Auth::user();
 
         // Hanya admin dan admin_gudang yang bisa store
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         
@@ -210,7 +213,7 @@ class MutasiAsetController extends Controller
         $user = Auth::user();
         
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $idUkAsal = $mutasiAset->ruanganAsal?->id_unit_kerja;
@@ -237,7 +240,7 @@ class MutasiAsetController extends Controller
         $user = Auth::user();
         
         // Hanya admin dan admin_gudang yang bisa edit
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         
@@ -256,7 +259,7 @@ class MutasiAsetController extends Controller
         $user = Auth::user();
         
         // Hanya admin dan admin_gudang yang bisa update
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         
@@ -341,7 +344,7 @@ class MutasiAsetController extends Controller
         $user = Auth::user();
 
         // Hanya admin yang bisa delete
-        if (!$user->hasRole('admin')) {
+        if (!UserScope::canViewCrossUnitData($user)) {
             abort(403, 'Unauthorized');
         }
         

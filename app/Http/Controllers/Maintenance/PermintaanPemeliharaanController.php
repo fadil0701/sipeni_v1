@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers\Maintenance;
 
+use App\Support\Rbac\RbacRoles;
+use App\Support\Rbac\UserScope;
+
+use App\Helpers\PaginationHelper;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use App\Models\PermintaanPemeliharaan;
-use App\Models\RegisterAset;
-use App\Models\MasterUnitKerja;
-use App\Models\MasterPegawai;
 use App\Models\ApprovalFlowDefinition;
 use App\Models\ApprovalLog;
+use App\Models\MasterPegawai;
+use App\Models\MasterUnitKerja;
+use App\Models\PermintaanPemeliharaan;
+use App\Models\RegisterAset;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class PermintaanPemeliharaanController extends Controller
 {
@@ -22,7 +25,7 @@ class PermintaanPemeliharaanController extends Controller
         $query = PermintaanPemeliharaan::with(['registerAset.inventory.dataBarang', 'unitKerja', 'pemohon']);
 
         // Filter berdasarkan unit kerja user yang login untuk pegawai/kepala_unit
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $query->where('id_unit_kerja', $pegawai->id_unit_kerja);
@@ -54,18 +57,18 @@ class PermintaanPemeliharaanController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('no_permintaan_pemeliharaan', 'like', "%{$search}%")
-                  ->orWhereHas('pemohon', function($q) use ($search) {
-                      $q->where('nama_pegawai', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('registerAset', function($q) use ($search) {
-                      $q->where('nomor_register', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('pemohon', function ($q) use ($search) {
+                        $q->where('nama_pegawai', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('registerAset', function ($q) use ($search) {
+                        $q->where('nomor_register', 'like', "%{$search}%");
+                    });
             });
         }
 
-        $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
+        $perPage = PaginationHelper::getPerPage($request, 10);
         $permintaans = $query->latest('tanggal_permintaan')->paginate($perPage)->appends($request->query());
 
         return view('maintenance.permintaan-pemeliharaan.index', compact('permintaans', 'unitKerjas'));
@@ -74,9 +77,9 @@ class PermintaanPemeliharaanController extends Controller
     public function create()
     {
         $user = Auth::user();
-        
+
         // Filter unit kerja dan pegawai berdasarkan unit kerja user yang login
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $unitKerjas = MasterUnitKerja::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
@@ -134,7 +137,7 @@ class PermintaanPemeliharaanController extends Controller
 
             // Generate nomor permintaan berurutan secara aman untuk request paralel.
             $tahun = date('Y');
-            $urutan = $this->nextUrutanPermintaan($tahun);
+            $urutan = PermintaanPemeliharaan::nextUrutanNomorUntukTahun($tahun);
             $statusPermintaan = $validated['status_permintaan'] ?? 'DRAFT';
 
             foreach ($validated['rows'] as $row) {
@@ -147,7 +150,7 @@ class PermintaanPemeliharaanController extends Controller
                     throw new \RuntimeException('Aset belum ditempatkan di KIR, silakan lengkapi penempatan terlebih dahulu.');
                 }
 
-                $noPermintaan = 'PMH/' . $tahun . '/' . str_pad((string) $urutan, 4, '0', STR_PAD_LEFT);
+                $noPermintaan = 'PMH/'.$tahun.'/'.str_pad((string) $urutan, 4, '0', STR_PAD_LEFT);
                 $urutan++;
 
                 $permintaan = PermintaanPemeliharaan::create([
@@ -169,36 +172,14 @@ class PermintaanPemeliharaanController extends Controller
             }
 
             DB::commit();
+
             return redirect()->route('maintenance.permintaan-pemeliharaan.index')
                 ->with('success', 'Permintaan pemeliharaan berhasil dibuat.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error', 'Gagal membuat permintaan pemeliharaan: ' . $e->getMessage());
+
+            return back()->withInput()->with('error', 'Gagal membuat permintaan pemeliharaan: '.$e->getMessage());
         }
-    }
-
-    private function nextUrutanPermintaan(string $tahun): int
-    {
-        $prefix = 'PMH/' . $tahun . '/';
-
-        $lastNoPermintaan = PermintaanPemeliharaan::query()
-            ->where('no_permintaan_pemeliharaan', 'like', $prefix . '%')
-            ->orderByDesc('id_permintaan_pemeliharaan')
-            ->lockForUpdate()
-            ->value('no_permintaan_pemeliharaan');
-
-        $next = 1;
-        if ($lastNoPermintaan && preg_match('/(\d{4})$/', $lastNoPermintaan, $matches)) {
-            $next = ((int) $matches[1]) + 1;
-        }
-
-        while (PermintaanPemeliharaan::query()
-            ->where('no_permintaan_pemeliharaan', $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT))
-            ->exists()) {
-            $next++;
-        }
-
-        return $next;
     }
 
     public function show($id)
@@ -221,7 +202,7 @@ class PermintaanPemeliharaanController extends Controller
     public function edit($id)
     {
         $permintaan = PermintaanPemeliharaan::with(['registerAset', 'unitKerja', 'pemohon'])->findOrFail($id);
-        
+
         // Hanya bisa edit jika status DRAFT
         if ($permintaan->status_permintaan !== 'DRAFT') {
             return redirect()->route('maintenance.permintaan-pemeliharaan.show', $id)
@@ -229,7 +210,7 @@ class PermintaanPemeliharaanController extends Controller
         }
 
         $user = Auth::user();
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $unitKerjas = MasterUnitKerja::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
@@ -265,7 +246,7 @@ class PermintaanPemeliharaanController extends Controller
     public function update(Request $request, $id)
     {
         $permintaan = PermintaanPemeliharaan::findOrFail($id);
-        
+
         // Hanya bisa edit jika status DRAFT
         if ($permintaan->status_permintaan !== 'DRAFT') {
             return redirect()->route('maintenance.permintaan-pemeliharaan.show', $id)
@@ -299,7 +280,7 @@ class PermintaanPemeliharaanController extends Controller
             }
 
             $oldStatus = $permintaan->status_permintaan;
-            
+
             $permintaan->update([
                 'id_register_aset' => $request->id_register_aset,
                 'id_unit_kerja' => $request->id_unit_kerja,
@@ -318,18 +299,20 @@ class PermintaanPemeliharaanController extends Controller
             }
 
             DB::commit();
+
             return redirect()->route('maintenance.permintaan-pemeliharaan.index')
                 ->with('success', 'Permintaan pemeliharaan berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error', 'Gagal memperbarui permintaan pemeliharaan: ' . $e->getMessage());
+
+            return back()->withInput()->with('error', 'Gagal memperbarui permintaan pemeliharaan: '.$e->getMessage());
         }
     }
 
     public function destroy($id)
     {
         $permintaan = PermintaanPemeliharaan::findOrFail($id);
-        
+
         // Hanya bisa hapus jika status DRAFT
         if ($permintaan->status_permintaan !== 'DRAFT') {
             return redirect()->route('maintenance.permintaan-pemeliharaan.index')
@@ -340,11 +323,13 @@ class PermintaanPemeliharaanController extends Controller
         try {
             $permintaan->delete();
             DB::commit();
+
             return redirect()->route('maintenance.permintaan-pemeliharaan.index')
                 ->with('success', 'Permintaan pemeliharaan berhasil dihapus.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal menghapus permintaan pemeliharaan: ' . $e->getMessage());
+
+            return back()->with('error', 'Gagal menghapus permintaan pemeliharaan: '.$e->getMessage());
         }
     }
 
@@ -354,7 +339,7 @@ class PermintaanPemeliharaanController extends Controller
     public function ajukan($id)
     {
         $permintaan = PermintaanPemeliharaan::findOrFail($id);
-        
+
         if ($permintaan->status_permintaan !== 'DRAFT') {
             return back()->with('error', 'Hanya permintaan dengan status DRAFT yang dapat diajukan.');
         }
@@ -363,13 +348,15 @@ class PermintaanPemeliharaanController extends Controller
         try {
             $permintaan->update(['status_permintaan' => 'DIAJUKAN']);
             $this->createApprovalLogs($permintaan->id_permintaan_pemeliharaan);
-            
+
             DB::commit();
+
             return redirect()->route('maintenance.permintaan-pemeliharaan.show', $id)
                 ->with('success', 'Permintaan pemeliharaan berhasil diajukan.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal mengajukan permintaan: ' . $e->getMessage());
+
+            return back()->with('error', 'Gagal mengajukan permintaan: '.$e->getMessage());
         }
     }
 
@@ -397,5 +384,3 @@ class PermintaanPemeliharaanController extends Controller
         }
     }
 }
-
-

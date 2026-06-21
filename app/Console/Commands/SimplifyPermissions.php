@@ -3,8 +3,6 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\Permission;
-use Illuminate\Support\Facades\DB;
 
 class SimplifyPermissions extends Command
 {
@@ -28,7 +26,8 @@ class SimplifyPermissions extends Command
         ];
 
         // Ambil semua permission yang perlu disederhanakan
-        $permissions = Permission::all();
+        $database = $this->getLaravel()->make('db');
+        $permissions = $database->table('permissions')->get();
         $groups = [];
 
         // Group permission berdasarkan resource
@@ -74,12 +73,15 @@ class SimplifyPermissions extends Command
         $simplified = 0;
         $deleted = 0;
 
-        DB::beginTransaction();
+        $database->beginTransaction();
         try {
             foreach ($groups as $resourceName => $items) {
                 // Cek apakah sudah ada wildcard permission
                 $wildcardName = $resourceName . '.*';
-                $wildcardPermission = Permission::where('name', $wildcardName)->first();
+                $wildcardPermission = $database
+                    ->table('permissions')
+                    ->where('name', $wildcardName)
+                    ->first();
 
                 // Hitung berapa permission yang akan digabungkan
                 $actionsToSimplify = ['create', 'store', 'edit', 'update', 'destroy', 'delete'];
@@ -103,22 +105,28 @@ class SimplifyPermissions extends Command
                         
                         $module = explode('.', $resourceName)[0] ?? 'general';
                         
-                        $wildcardPermission = Permission::create([
+                        $timestamp = date('Y-m-d H:i:s');
+                        $wildcardPermissionId = $database
+                            ->table('permissions')
+                            ->insertGetId([
                             'name' => $wildcardName,
                             'display_name' => $displayName . ' (All)',
                             'module' => $module,
                             'group' => $resourceName,
                             'description' => 'Akses penuh ke ' . str_replace('.', ' ', $resourceName),
                             'sort_order' => 999,
-                        ]);
+                            'created_at' => $timestamp,
+                            'updated_at' => $timestamp,
+                            ]);
+                        $wildcardPermission = (object) ['id' => $wildcardPermissionId];
                         $this->line("  ✓ Created: {$wildcardName}");
                     }
 
                     // Hapus permission yang duplikat
                     foreach ($permissionsToDelete as $perm) {
                         // Hapus dari role_permission terlebih dahulu
-                        DB::table('permission_role')->where('permission_id', $perm->id)->delete();
-                        $perm->delete();
+                        $database->table('permission_role')->where('permission_id', $perm->id)->delete();
+                        $database->table('permissions')->where('id', $perm->id)->delete();
                         $deleted++;
                     }
 
@@ -127,7 +135,7 @@ class SimplifyPermissions extends Command
                 }
             }
 
-            DB::commit();
+            $database->commit();
             $this->newLine();
             $this->info("✓ Berhasil menyederhanakan {$simplified} resource groups!");
             $this->info("✓ Dihapus {$deleted} permission yang duplikat!");
@@ -138,7 +146,7 @@ class SimplifyPermissions extends Command
             $this->info("💡 Tips: Gunakan 'permission:sync-routes' untuk menambahkan permission baru dari routes.");
             
         } catch (\Exception $e) {
-            DB::rollBack();
+            $database->rollBack();
             $this->error('Gagal menyederhanakan permission: ' . $e->getMessage());
             return Command::FAILURE;
         }

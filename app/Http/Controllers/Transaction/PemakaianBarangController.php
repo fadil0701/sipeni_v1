@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Transaction;
 
+use App\Support\Rbac\RbacRoles;
+use App\Support\Rbac\UserScope;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\PemakaianBarang;
@@ -24,7 +27,9 @@ class PemakaianBarangController extends Controller
     public function __construct(
         private readonly StockGuardService $stockGuard
     ) {
-        abort(404, 'Modul Pemakaian Barang dinonaktifkan.');
+        if (! config('sipeni.feature_pemakaian_barang', false)) {
+            abort(404, 'Modul Pemakaian Barang dinonaktifkan.');
+        }
     }
 
     /**
@@ -45,7 +50,7 @@ class PemakaianBarangController extends Controller
         ]);
         
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $query->where('id_unit_kerja', $pegawai->id_unit_kerja);
@@ -73,7 +78,7 @@ class PemakaianBarangController extends Controller
         }
         
         // Filter berdasarkan unit kerja (untuk admin)
-        if ($request->filled('id_unit_kerja') && ($user->hasRole('admin') || $user->hasRole('admin_gudang'))) {
+        if ($request->filled('id_unit_kerja') && (UserScope::canViewCrossUnitData($user) || $user->hasRole('admin_gudang_pusat'))) {
             $query->where('id_unit_kerja', $request->id_unit_kerja);
         }
         
@@ -81,7 +86,7 @@ class PemakaianBarangController extends Controller
         $pemakaians = $query->latest('tanggal_pemakaian')->paginate($perPage)->appends($request->query());
         
         // Data untuk filter
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $gudangs = MasterGudang::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
@@ -112,7 +117,7 @@ class PemakaianBarangController extends Controller
             ->where('qty_input', '>', 0);
         
         // Filter berdasarkan unit kerja untuk pegawai
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $query->whereHas('gudang', function($q) use ($pegawai) {
@@ -132,7 +137,7 @@ class PemakaianBarangController extends Controller
         $inventories = $query->orderBy('id_gudang')->orderBy('id_data_barang')->get();
         
         // Data untuk form
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $unitKerjas = MasterUnitKerja::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
@@ -233,7 +238,7 @@ class PemakaianBarangController extends Controller
             }
             
             // Jika status DIAJUKAN dan user adalah admin, coba approve; jika gagal (validasi stok), tampilkan error
-            if ($validated['status_pemakaian'] == 'DIAJUKAN' && $user->hasRole('admin')) {
+            if ($validated['status_pemakaian'] == 'DIAJUKAN' && UserScope::canViewCrossUnitData($user)) {
                 $response = $this->approve($pemakaian->id_pemakaian);
                 if (session()->has('error')) {
                     DB::rollBack();
@@ -273,7 +278,7 @@ class PemakaianBarangController extends Controller
         $user = Auth::user();
         
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 if ($pemakaian->id_unit_kerja != $pegawai->id_unit_kerja) {
@@ -303,7 +308,7 @@ class PemakaianBarangController extends Controller
         }
         
         // Data untuk form
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $unitKerjas = MasterUnitKerja::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
@@ -408,7 +413,7 @@ class PemakaianBarangController extends Controller
             }
             
             // Jika status DIAJUKAN dan user adalah admin, coba approve; jika gagal (validasi stok), tampilkan error
-            if ($validated['status_pemakaian'] == 'DIAJUKAN' && $user->hasRole('admin')) {
+            if ($validated['status_pemakaian'] == 'DIAJUKAN' && UserScope::canViewCrossUnitData($user)) {
                 $response = $this->approve($pemakaian->id_pemakaian);
                 if (session()->has('error')) {
                     DB::rollBack();
@@ -467,7 +472,7 @@ class PemakaianBarangController extends Controller
         $user = Auth::user();
 
         // Hanya admin dan kepala_unit yang bisa approve (sesuai route middleware)
-        if (!$user->hasAnyRole(['admin', 'kepala_unit'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || $user->hasRole('kepala_unit'))) {
             abort(403, 'Unauthorized');
         }
         
@@ -575,7 +580,7 @@ class PemakaianBarangController extends Controller
         $user = Auth::user();
 
         // Hanya admin dan kepala_unit yang bisa reject (sesuai route middleware)
-        if (!$user->hasAnyRole(['admin', 'kepala_unit'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || $user->hasRole('kepala_unit'))) {
             abort(403, 'Unauthorized');
         }
         

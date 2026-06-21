@@ -9,12 +9,6 @@
     <a href="{{ route('transaction.peminjaman-barang.create') }}" class="btn-primary-ui">Tambah Peminjaman</a>
 </div>
 
-@if(session('success'))
-    <div class="alert-box alert-success mb-4">{{ session('success') }}</div>
-@endif
-@if(session('error'))
-    <div class="alert-box alert-error mb-4">{{ session('error') }}</div>
-@endif
 
 <div class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-6">
     <div class="rounded-lg border border-gray-200 bg-white p-3">

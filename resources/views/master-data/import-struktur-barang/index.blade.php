@@ -6,11 +6,6 @@
     <p class="mt-1 text-sm text-gray-600">Import massal data Klasifikasi Aset, Kode Barang, Kategori, Jenis, Subjenis, dan Data Barang dari file Excel.</p>
 </div>
 
-@if(session('success'))
-    <div class="mb-4 bg-green-50 border-l-4 border-green-400 p-4 rounded">
-        <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
-    </div>
-@endif
 
 @if($errors->any())
     <div class="mb-4 bg-red-50 border-l-4 border-red-400 p-4 rounded">

@@ -10,16 +10,6 @@
     </a>
 </div>
 
-@if(session('success'))
-    <div class="mb-4 bg-green-50 border-l-4 border-green-400 p-4 rounded">
-        <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
-    </div>
-@endif
-@if(session('error'))
-    <div class="mb-4 bg-red-50 border-l-4 border-red-400 p-4 rounded">
-        <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
-    </div>
-@endif
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200">
     <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-center">

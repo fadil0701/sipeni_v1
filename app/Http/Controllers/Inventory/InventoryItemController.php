@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\InventoryItem;
 use App\Models\MasterGudang;
 use App\Models\MasterRuangan;
+use App\Support\Storage\PrivateStorage;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\Response;
 
 class InventoryItemController extends Controller
 {
@@ -20,11 +22,10 @@ class InventoryItemController extends Controller
     {
         $inventoryItem = InventoryItem::with(['inventory', 'gudang.unitKerja', 'ruangan'])->findOrFail($id);
         $gudangs = MasterGudang::all();
-        
-        // Load ruangans berdasarkan unit kerja dari gudang
+
         $unitKerjaId = $inventoryItem->gudang->id_unit_kerja ?? null;
         $ruangans = $unitKerjaId ? MasterRuangan::where('id_unit_kerja', $unitKerjaId)->get() : collect();
-        
+
         return view('inventory.inventory-item.edit', compact('inventoryItem', 'gudangs', 'ruangans'));
     }
 
@@ -43,21 +44,17 @@ class InventoryItemController extends Controller
         ]);
 
         if ($request->hasFile('foto_barang_file')) {
-            if (! empty($inventoryItem->foto_barang)) {
-                Storage::disk('public')->delete($inventoryItem->foto_barang);
-            }
-            $validated['foto_barang'] = $request->file('foto_barang_file')->store('foto-inventory-item', 'public');
+            PrivateStorage::delete($inventoryItem->foto_barang);
+            $validated['foto_barang'] = PrivateStorage::storeUploadedFile($request->file('foto_barang_file'), 'foto-inventory-item');
         } elseif ($request->filled('foto_barang_capture')) {
             $capture = (string) $request->input('foto_barang_capture');
             if (preg_match('/^data:image\/(png|jpe?g);base64,(.+)$/i', $capture, $matches)) {
                 $ext = strtolower($matches[1]) === 'jpeg' ? 'jpg' : strtolower($matches[1]);
                 $binary = base64_decode($matches[2], true);
                 if ($binary !== false) {
-                    if (! empty($inventoryItem->foto_barang)) {
-                        Storage::disk('public')->delete($inventoryItem->foto_barang);
-                    }
+                    PrivateStorage::delete($inventoryItem->foto_barang);
                     $path = 'foto-inventory-item/'.uniqid('item_'.$inventoryItem->id_item.'_', true).'.'.$ext;
-                    Storage::disk('public')->put($path, $binary);
+                    PrivateStorage::put($path, $binary);
                     $validated['foto_barang'] = $path;
                 }
             }
@@ -71,14 +68,63 @@ class InventoryItemController extends Controller
             ->with('success', 'Data Inventory Item berhasil diperbarui.');
     }
 
+    public function qrImage($id): Response
+    {
+        $inventoryItem = InventoryItem::findOrFail($id);
+        $qrPath = $inventoryItem->resolveQrCodeStoragePath();
+
+        if ($qrPath === null) {
+            abort(404, 'File QR code tidak ditemukan.');
+        }
+
+        $ext = strtolower(pathinfo($qrPath, PATHINFO_EXTENSION));
+        $mime = match ($ext) {
+            'png' => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            default => 'image/svg+xml',
+        };
+
+        return response(Storage::disk('public')->get($qrPath), 200, [
+            'Content-Type' => $mime,
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
+
     public function templateQr($id)
     {
         $inventoryItem = InventoryItem::with(['inventory.dataBarang', 'gudang', 'ruangan'])->findOrFail($id);
 
         $parts = explode('/', (string) $inventoryItem->kode_register);
-        $tahun = $parts[count($parts) - 2] ?? ($inventoryItem->inventory->tahun_anggaran ?? date('Y'));
+        $tahun = $parts[count($parts) - 2] ?? ($inventoryItem->inventory?->tahun_anggaran ?? date('Y'));
+        $qrPublicUrl = $inventoryItem->qrCodePublicUrl();
+        $scanTargetUrl = rtrim((string) config('app.url'), '/')
+            .'/scan/inventory-item?kode_register='.urlencode((string) $inventoryItem->kode_register);
 
-        return view('inventory.inventory-item.template-qr', compact('inventoryItem', 'tahun'));
+        $payload = [
+            'qrPublicUrl' => $qrPublicUrl,
+            'scanTargetUrl' => $scanTargetUrl,
+            'tahun' => (string) $tahun,
+            'kodeReg' => (string) $inventoryItem->kode_register,
+            'namaBarang' => (string) ($inventoryItem->inventory?->dataBarang?->nama_barang ?? 'Item Inventory'),
+        ];
+        foreach (['scanTargetUrl', 'kodeReg', 'namaBarang'] as $key) {
+            $v = $payload[$key];
+            if (function_exists('mb_scrub')) {
+                $payload[$key] = mb_scrub($v, 'UTF-8');
+            } else {
+                $clean = @iconv('UTF-8', 'UTF-8//IGNORE', $v);
+                $payload[$key] = $clean !== false ? $clean : $v;
+            }
+        }
+
+        $jsonFlags = JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
+            | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
+        $templateQrPayloadJson = json_encode($payload, $jsonFlags, 512);
+        if ($templateQrPayloadJson === false) {
+            $templateQrPayloadJson = '{}';
+        }
+
+        return view('inventory.inventory-item.template-qr', compact('inventoryItem', 'tahun', 'qrPublicUrl', 'templateQrPayloadJson'));
     }
 
     public function downloadTemplateQr($id)
@@ -86,23 +132,9 @@ class InventoryItemController extends Controller
         $inventoryItem = InventoryItem::with(['inventory.dataBarang'])->findOrFail($id);
 
         $parts = explode('/', (string) $inventoryItem->kode_register);
-        $tahun = $parts[count($parts) - 2] ?? ($inventoryItem->inventory->tahun_anggaran ?? date('Y'));
+        $tahun = $parts[count($parts) - 2] ?? ($inventoryItem->inventory?->tahun_anggaran ?? date('Y'));
 
-        $qrRel = str_replace('\\', '/', ltrim((string) $inventoryItem->qr_code, '/'));
-        $disk = Storage::disk('public');
-
-        $qrPath = null;
-        $candidates = [$qrRel];
-        $base = preg_replace('/\.(png|jpe?g|svg)$/i', '', $qrRel);
-        foreach (['svg', 'png', 'jpeg', 'jpg'] as $ext) {
-            $candidates[] = $base.'.'.$ext;
-        }
-        foreach (array_unique(array_filter($candidates)) as $candidate) {
-            if ($disk->exists($candidate)) {
-                $qrPath = $candidate;
-                break;
-            }
-        }
+        $qrPath = $inventoryItem->resolveQrCodeStoragePath();
 
         if ($qrPath === null) {
             return back()->with('error', 'File QR code tidak ditemukan.');
@@ -114,7 +146,7 @@ class InventoryItemController extends Controller
             'jpg', 'jpeg' => 'image/jpeg',
             default => 'image/svg+xml',
         };
-        $qrBinary = $disk->get($qrPath);
+        $qrBinary = Storage::disk('public')->get($qrPath);
         $qrDataUri = 'data:'.$mime.';base64,'.base64_encode($qrBinary);
 
         $title = 'Inventarisasi BMD';

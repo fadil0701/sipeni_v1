@@ -19,7 +19,9 @@ final class AssignablePermissions
      */
     public static function editorMayAssignAll(User $editor): bool
     {
-        return $editor->hasRole('admin');
+        return PermissionHelper::hasEnterpriseBypassRole($editor)
+            || PermissionHelper::canAccess($editor, 'admin.roles.index')
+            || PermissionHelper::canAccess($editor, 'admin.users.index');
     }
 
     /**

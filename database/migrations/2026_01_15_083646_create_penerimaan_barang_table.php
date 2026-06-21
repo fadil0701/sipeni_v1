@@ -15,7 +15,7 @@ return new class extends Migration
             $table->foreignId('id_unit_kerja')->constrained('master_unit_kerja', 'id_unit_kerja')->onDelete('cascade');
             $table->foreignId('id_pegawai_penerima')->constrained('master_pegawai')->onDelete('cascade');
             $table->date('tanggal_penerimaan');
-            $table->enum('status_penerimaan', ['DITERIMA', 'DITOLAK'])->default('DITERIMA');
+            $table->enum('status_penerimaan', ['MENUNGGU_VERIFIKASI', 'DITERIMA', 'DITOLAK'])->default('MENUNGGU_VERIFIKASI');
             $table->text('keterangan')->nullable();
             $table->timestamps();
         });

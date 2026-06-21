@@ -10,7 +10,7 @@ use App\Helpers\PermissionHelper;
 class AssignDisposisiPermission extends Command
 {
     protected $signature = 'permission:assign-disposisi';
-    protected $description = 'Assign disposisi permission to admin_gudang and admin roles';
+    protected $description = 'Assign disposisi permission to admin_gudang_pusat role';
 
     public function handle()
     {
@@ -21,7 +21,7 @@ class AssignDisposisiPermission extends Command
             return Command::FAILURE;
         }
 
-        $roles = Role::whereIn('name', ['admin_gudang', 'admin'])->get();
+        $roles = Role::whereIn('name', ['admin_gudang_pusat'])->get();
         
         if ($roles->isEmpty()) {
             $this->error('Roles not found!');

@@ -78,7 +78,7 @@
                         <dd class="text-sm font-semibold text-gray-900">{{ $pegawai->user->name }}</dd>
                     </div>
                     <div class="sm:col-span-2">
-                        <dt class="text-sm font-medium text-gray-500 mb-1">Roles</dt>
+                        <dt class="text-sm font-medium text-gray-500 mb-1">Role (hak akses)</dt>
                         <dd class="text-sm font-semibold text-gray-900">
                             @if($pegawai->user->roles->count() > 0)
                                 <div class="flex flex-wrap gap-2 mt-2">
@@ -91,6 +91,10 @@
                             @else
                                 <span class="text-gray-500">Belum ada role</span>
                             @endif
+                            <p class="mt-3 text-xs text-gray-600">Pengelolaan role dilakukan melalui User &amp; Account Directory.</p>
+                            <a href="{{ route('admin.users.edit', $pegawai->user->id) }}" class="mt-2 inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-900">
+                                Kelola akun &amp; role
+                            </a>
                         </dd>
                     </div>
                 </dl>

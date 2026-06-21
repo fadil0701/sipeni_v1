@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\User;
 
+use App\Support\Rbac\RbacRoles;
+use App\Support\Rbac\UserScope;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,7 +28,7 @@ class RequestController extends Controller
         $pegawai = MasterPegawai::where('user_id', Auth::id())->first();
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
         $requests = PermintaanBarang::with(['pemohon', 'detailPermintaan'])
-            ->when(! $user->hasRole('admin'), function ($q) use ($pegawai) {
+            ->when(! UserScope::canViewCrossUnitData($user), function ($q) use ($pegawai) {
                 if ($pegawai) {
                     $q->where('id_pemohon', $pegawai->id);
                 } else {
@@ -65,7 +68,7 @@ class RequestController extends Controller
         $request = PermintaanBarang::with(['pemohon', 'detailPermintaan.dataBarang'])
             ->findOrFail($id);
 
-        if (! $user->hasRole('admin')) {
+        if (! UserScope::canViewCrossUnitData($user)) {
             $pegawai = MasterPegawai::where('user_id', Auth::id())->first();
             if (! $pegawai || (int) $request->id_pemohon !== (int) $pegawai->id) {
                 abort(403, 'Anda tidak dapat mengakses permintaan ini.');

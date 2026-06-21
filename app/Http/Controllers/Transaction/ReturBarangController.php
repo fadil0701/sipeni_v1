@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Transaction;
 
+use App\Support\Rbac\RbacRoles;
+use App\Support\Rbac\UserScope;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,9 +17,14 @@ use App\Models\MasterGudang;
 use App\Models\MasterSatuan;
 use App\Models\DataInventory;
 use App\Models\DataStock;
+use App\Models\PrintTemplate;
+use App\Services\PrintTemplateRenderer;
+use App\Services\ReturPrintTemplateData;
 use App\Services\StockGuardService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Response;
+use Illuminate\Http\RedirectResponse;
 use Carbon\Carbon;
 
 class ReturBarangController extends Controller
@@ -32,7 +40,7 @@ class ReturBarangController extends Controller
         $query = ReturBarang::with(['unitKerja', 'gudangAsal', 'gudangTujuan', 'pegawaiPengirim']);
 
         // Filter berdasarkan unit kerja user yang login untuk pegawai/kepala_unit
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 // Hanya tampilkan retur dari unit kerja user yang login
@@ -81,7 +89,7 @@ class ReturBarangController extends Controller
         $user = Auth::user();
         
         // Filter berdasarkan unit kerja user yang login untuk pegawai/kepala_unit
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $unitKerjas = MasterUnitKerja::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
@@ -205,6 +213,36 @@ class ReturBarangController extends Controller
         return view('transaction.retur-barang.show', compact('retur'));
     }
 
+    /**
+     * Cetak dokumen pengembalian dari template aktif (key: retur.pengembalian).
+     */
+    public function printPengembalian(int|string $id): Response|RedirectResponse
+    {
+        $retur = ReturBarang::query()->findOrFail($id);
+
+        $template = PrintTemplate::query()
+            ->where('key', 'retur.pengembalian')
+            ->where('is_active', true)
+            ->first();
+
+        if (! $template) {
+            return redirect()
+                ->route('transaction.retur-barang.show', $id)
+                ->with('info', 'Template cetak retur belum tersedia atau nonaktif. Buat template dengan key retur.pengembalian di Admin → Template Cetak.');
+        }
+
+        $html = PrintTemplateRenderer::render($template, ReturPrintTemplateData::payload($retur));
+
+        return response()
+            ->view('admin.print-templates.preview-frame', [
+                'title' => 'Retur '.$retur->no_retur,
+                'html' => $html,
+                'printTemplate' => $template,
+                'allowPdfExport' => false,
+            ])
+            ->header('Content-Type', 'text/html; charset=UTF-8');
+    }
+
     public function edit($id)
     {
         /** @var User $user */
@@ -220,7 +258,7 @@ class ReturBarangController extends Controller
                 ->with('error', 'Retur yang sudah DITERIMA atau DITOLAK tidak dapat diedit.');
         }
 
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $unitKerjas = MasterUnitKerja::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
@@ -361,7 +399,7 @@ class ReturBarangController extends Controller
         $user = Auth::user();
 
         // Hanya admin dan admin_gudang yang bisa terima retur
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         
@@ -502,7 +540,7 @@ class ReturBarangController extends Controller
         $user = Auth::user();
 
         // Hanya admin dan admin_gudang yang bisa tolak retur
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         

@@ -8,12 +8,6 @@
     <p class="mt-1 text-sm text-gray-600">Daftar dokumen peminjaman yang sudah serah terima, sedang dikembalikan, atau telah selesai.</p>
 </div>
 
-@if(session('success'))
-    <div class="alert-box alert-success mb-4">{{ session('success') }}</div>
-@endif
-@if(session('error'))
-    <div class="alert-box alert-error mb-4">{{ session('error') }}</div>
-@endif
 
 <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
     <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
@@ -81,17 +75,12 @@
                             <a href="{{ route('transaction.peminjaman-barang.show', $item->id_peminjaman) }}" class="text-blue-600 hover:text-blue-800">Detail</a>
                             @if(
                                 $item->status === \App\Models\PeminjamanBarang::STATUS_SERAH_TERIMA
-                                && $user
-                                && (
-                                    $user->hasRole('admin')
-                                    || (
-                                        $user->hasRole('pegawai')
-                                        && $pegawai
-                                        && (int) $pegawai->id_unit_kerja === (int) $item->id_unit_peminjam
-                                    )
-                                )
+                                && $pegawai
+                                && (int) $pegawai->id_unit_kerja === (int) $item->id_unit_peminjam
                             )
+                                @canAccess('transaction.peminjaman-barang.pengembalian.create')
                                 <a href="{{ route('transaction.peminjaman-barang.pengembalian.create', $item->id_peminjaman) }}" class="text-emerald-600 hover:text-emerald-800">Isi Pengembalian</a>
+                                @endcanAccess
                             @endif
                         </div>
                     </td>

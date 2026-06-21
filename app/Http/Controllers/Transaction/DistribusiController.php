@@ -13,10 +13,17 @@ use App\Models\MasterGudang;
 use App\Models\MasterPegawai;
 use App\Models\MasterSatuan;
 use App\Models\PermintaanBarang;
+use App\Models\PrintTemplate;
 use App\Models\TransaksiDistribusi;
+use App\Models\User;
 use App\Services\DistribusiService;
+use App\Services\PrintTemplateRenderer;
+use App\Services\SbbkPrintTemplateData;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use App\Support\Rbac\UserScope;
 
 class DistribusiController extends Controller
 {
@@ -26,6 +33,7 @@ class DistribusiController extends Controller
 
     public function index(Request $request)
     {
+        /** @var User $user */
         $user = Auth::user();
         $query = TransaksiDistribusi::with(['gudangAsal', 'gudangTujuan', 'permintaan', 'pegawaiPengirim']);
 
@@ -71,11 +79,8 @@ class DistribusiController extends Controller
             }
         }
 
-        $permintaans = PermintaanBarang::whereIn('status', [
-            PermintaanBarangStatus::Diverifikasi->value,
-            PermintaanBarangStatus::ProsesDistribusi->value,
-            PermintaanBarangStatus::Dikirim->value,
-        ])->with(['unitKerja', 'pemohon', 'detailPermintaan.dataBarang'])->get();
+        $permintaans = PermintaanBarang::whereIn('status', $this->permintaanStatusesEligibleForDistribusi())
+            ->with(['unitKerja', 'pemohon', 'detailPermintaan.dataBarang'])->get();
 
         $gudangs = MasterGudang::all();
         $pegawais = MasterPegawai::all();
@@ -152,17 +157,49 @@ class DistribusiController extends Controller
         return redirect()->route('transaction.distribusi.index')->with('success', 'Distribusi draft berhasil dibuat.');
     }
 
-    public function show($id)
+    public function show(int|string $id)
     {
         $distribusi = TransaksiDistribusi::with([
             'permintaan.unitKerja', 'permintaan.pemohon', 'gudangAsal', 'gudangTujuan',
             'pegawaiPengirim', 'detailDistribusi.inventory.dataBarang', 'detailDistribusi.inventory.gudang', 'detailDistribusi.satuan',
         ])->findOrFail($id);
 
+        UserScope::assertCanAccessDistribusi(Auth::user(), $distribusi);
+
         return view('transaction.distribusi.show', compact('distribusi'));
     }
 
-    public function edit($id)
+    /**
+     * Cetak SBBK sebagai HTML dari template cetak aktif (key: distribusi.sbbk).
+     */
+    public function printSbbk(int|string $id): Response|RedirectResponse
+    {
+        $distribusi = TransaksiDistribusi::query()->findOrFail($id);
+
+        $template = PrintTemplate::query()
+            ->where('key', 'distribusi.sbbk')
+            ->where('is_active', true)
+            ->first();
+
+        if (! $template) {
+            return redirect()
+                ->route('transaction.distribusi.show', $id)
+                ->with('info', 'Template cetak SBBK belum tersedia atau nonaktif. Buat template dengan key distribusi.sbbk di Admin → Template Cetak, atau jalankan php artisan db:seed --class=SbbkPrintTemplateSeeder.');
+        }
+
+        $html = PrintTemplateRenderer::render($template, SbbkPrintTemplateData::payload($distribusi));
+
+        return response()
+            ->view('admin.print-templates.preview-frame', [
+                'title' => 'SBBK '.$distribusi->no_sbbk,
+                'html' => $html,
+                'printTemplate' => $template,
+                'allowPdfExport' => false,
+            ])
+            ->header('Content-Type', 'text/html; charset=UTF-8');
+    }
+
+    public function edit(int|string $id)
     {
         $distribusi = TransaksiDistribusi::with([
             'detailDistribusi',
@@ -174,11 +211,7 @@ class DistribusiController extends Controller
             return redirect()->route('transaction.distribusi.show', $id)->with('error', 'Hanya distribusi berstatus draft atau diproses yang bisa diedit.');
         }
 
-        $permintaans = PermintaanBarang::whereIn('status', [
-            PermintaanBarangStatus::Diverifikasi->value,
-            PermintaanBarangStatus::ProsesDistribusi->value,
-            PermintaanBarangStatus::Dikirim->value,
-        ])->get();
+        $permintaans = PermintaanBarang::whereIn('status', $this->permintaanStatusesEligibleForDistribusi())->get();
         $gudangs = MasterGudang::all();
         $pegawais = MasterPegawai::all();
         $satuans = MasterSatuan::all();
@@ -188,7 +221,7 @@ class DistribusiController extends Controller
         return view('transaction.distribusi.edit', compact('distribusi', 'permintaans', 'gudangs', 'pegawais', 'satuans', 'inventories', 'selectedPermintaan'));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int|string $id)
     {
         $distribusi = TransaksiDistribusi::findOrFail($id);
         if (! in_array($distribusi->status_distribusi, [DistribusiStatus::Draft, DistribusiStatus::Diproses], true)) {
@@ -201,7 +234,7 @@ class DistribusiController extends Controller
         return redirect()->route('transaction.distribusi.show', $id)->with('success', 'Distribusi berhasil diperbarui.');
     }
 
-    public function destroy($id)
+    public function destroy(int|string $id)
     {
         $distribusi = TransaksiDistribusi::findOrFail($id);
         if ($distribusi->status_distribusi !== DistribusiStatus::Draft) {
@@ -213,7 +246,7 @@ class DistribusiController extends Controller
         return redirect()->route('transaction.distribusi.index')->with('success', 'Distribusi dihapus.');
     }
 
-    public function proses($id)
+    public function proses(int|string $id)
     {
         $distribusi = TransaksiDistribusi::findOrFail($id);
         if ($distribusi->status_distribusi !== DistribusiStatus::Draft) {
@@ -225,7 +258,7 @@ class DistribusiController extends Controller
         return redirect()->route('transaction.distribusi.show', $id)->with('success', 'Distribusi diproses.');
     }
 
-    public function kirim(Request $request, $id)
+    public function kirim(Request $request, int|string $id)
     {
         $distribusi = TransaksiDistribusi::with('detailDistribusi')->findOrFail($id);
         $fromIndex = $request->input('kirim_from') === 'index';
@@ -249,7 +282,7 @@ class DistribusiController extends Controller
         return redirect()->route('transaction.distribusi.show', $id)->with('success', 'Distribusi dikirim.');
     }
 
-    public function getGudangTujuanByPermintaan($permintaanId)
+    public function getGudangTujuanByPermintaan(int|string $permintaanId)
     {
         $permintaan = PermintaanBarang::with('unitKerja')->findOrFail($permintaanId);
         $gudangTujuan = MasterGudang::where('id_unit_kerja', $permintaan->id_unit_kerja)
@@ -311,9 +344,10 @@ class DistribusiController extends Controller
         ]);
     }
 
-    public function getInventoryByGudang($gudangId)
+    public function getInventoryByGudang(int|string $gudangId)
     {
         $gudang = MasterGudang::findOrFail($gudangId);
+        UserScope::assertCanAccessGudang(Auth::user(), $gudang);
         $includeIds = collect((array) request()->input('include_ids', []))
             ->map(fn ($id) => (int) $id)
             ->filter(fn ($id) => $id > 0)
@@ -354,9 +388,10 @@ class DistribusiController extends Controller
         return response()->json(['inventory' => $result->values()]);
     }
 
-    public function getPermintaanDetail($id)
+    public function getPermintaanDetail(int|string $id)
     {
         $permintaan = PermintaanBarang::with(['detailPermintaan.dataBarang', 'detailPermintaan.satuan'])->findOrFail($id);
+        UserScope::assertCanAccessPermintaan(Auth::user(), $permintaan);
         $details = $permintaan->detailPermintaan->map(fn ($detail) => [
             'nama_barang' => $detail->dataBarang->nama_barang ?? '-',
             'qty_diminta' => number_format((float) ($detail->qty_diminta_awal ?? $detail->qty_diminta), 2),
@@ -388,5 +423,18 @@ class DistribusiController extends Controller
         }
 
         return $request->validate($rules);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function permintaanStatusesEligibleForDistribusi(): array
+    {
+        return [
+            PermintaanBarangStatus::Diverifikasi->value,
+            PermintaanBarangStatus::BarangTersedia->value,
+            PermintaanBarangStatus::ProsesDistribusi->value,
+            PermintaanBarangStatus::Dikirim->value,
+        ];
     }
 }

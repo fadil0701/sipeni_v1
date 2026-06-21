@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Transaction;
 
+use App\Support\Rbac\RbacRoles;
+use App\Support\Rbac\UserScope;
+
 use App\Enums\PermintaanBarangStatus;
 use App\Helpers\PaginationHelper;
 use App\Http\Controllers\Controller;
@@ -54,7 +57,7 @@ class ApprovalPermintaanController extends Controller
         // Ambil approval log yang menunggu persetujuan
         // Jika user adalah admin, tampilkan semua approval log
         // Jika tidak, tampilkan hanya yang sesuai dengan role user
-        if ($user->hasRole('admin')) {
+        if (UserScope::canViewCrossUnitData($user)) {
             $query = ApprovalLog::with(['approvalFlow.role', 'user', 'permintaan'])
                 ->where('modul_approval', 'PERMINTAAN_BARANG')
                 ->whereIn('status', ['MENUNGGU', 'DIKETAHUI', 'DIVERIFIKASI', 'DIDISPOSISIKAN']);
@@ -388,7 +391,7 @@ class ApprovalPermintaanController extends Controller
         $userRoles = $user->roles->pluck('id')->toArray();
 
         // Admin bisa melihat semua approval
-        if (! $user->hasRole('admin')) {
+        if (! UserScope::canViewCrossUnitData($user)) {
             $allowedFlowIds = ApprovalFlowDefinition::where('modul_approval', 'PERMINTAAN_BARANG')
                 ->whereIn('role_id', $userRoles)
                 ->pluck('id')

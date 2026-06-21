@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Transaction;
 
+use App\Support\Rbac\RbacRoles;
+use App\Support\Rbac\UserScope;
+
 use App\Enums\PermintaanBarangStatus;
 use App\Helpers\PaginationHelper;
 use App\Http\Controllers\Controller;
@@ -18,6 +21,7 @@ use App\Services\PermintaanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use App\Support\Http\SafeUserMessage;
 use Illuminate\Validation\ValidationException;
 
 class PermintaanBarangController extends Controller
@@ -36,7 +40,7 @@ class PermintaanBarangController extends Controller
         ]);
 
         // Filter berdasarkan unit kerja user yang login untuk pegawai/kepala_unit
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && ! $user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 // Hanya tampilkan permintaan dari unit kerja user yang login
@@ -102,7 +106,7 @@ class PermintaanBarangController extends Controller
         $user = Auth::user();
 
         // Filter unit kerja dan pegawai berdasarkan unit kerja user yang login
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && ! $user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 // Hanya tampilkan unit kerja user yang login
@@ -126,25 +130,12 @@ class PermintaanBarangController extends Controller
             'stockFarmasiIds' => $stockFarmasiIds,
         ] = $this->getBarangMasterFromInventory();
 
-        // Stock data: hanya PERSEDIAAN/FARMASI (stock gudang pusat, wajib validasi)
-        $stockPersediaanIdsInt = array_map('intval', $stockPersediaanIds);
-        $stockFarmasiIdsInt = array_map('intval', $stockFarmasiIds);
-        $stockData = [];
-        foreach ($dataBarangs as $barang) {
-            $key = (string) $barang->id_data_barang;
-            $idBarang = (int) $barang->id_data_barang;
-            $stockPusatPersediaan = in_array($idBarang, $stockPersediaanIdsInt)
-                ? (float) DataStock::getStockGudangPusat($barang->id_data_barang, 'PERSEDIAAN') : 0;
-            $stockPusatFarmasi = in_array($idBarang, $stockFarmasiIdsInt)
-                ? (float) DataStock::getStockGudangPusat($barang->id_data_barang, 'FARMASI') : 0;
-
-            $stockData[$key] = [
-                'total' => (float) DataStock::getTotalStock($barang->id_data_barang),
-                'stock_gudang_pusat_persediaan' => $stockPusatPersediaan,
-                'stock_gudang_pusat_farmasi' => $stockPusatFarmasi,
-                'per_gudang' => DataStock::getStockPerGudangPusat($barang->id_data_barang),
-            ];
-        }
+        // Stock data: batch query (hindari ribuan query per barang)
+        $stockData = DataStock::buildBulkStockSnapshot(
+            $dataBarangs->pluck('id_data_barang')->all(),
+            $stockPersediaanIds,
+            $stockFarmasiIds
+        );
 
         return view('transaction.permintaan-barang.create', compact(
             'unitKerjas',
@@ -159,13 +150,6 @@ class PermintaanBarangController extends Controller
 
     public function store(Request $request)
     {
-        // Debug: Log request data
-        \Log::info('Store Permintaan Request:', [
-            'all' => $request->all(),
-            'jenis_permintaan' => $request->jenis_permintaan,
-            'detail' => $request->detail,
-        ]);
-
         try {
             $validated = $request->validate([
                 'id_unit_kerja' => 'required|exists:master_unit_kerja,id_unit_kerja',
@@ -197,11 +181,6 @@ class PermintaanBarangController extends Controller
                 'detail.*.id_satuan.required' => 'Satuan harus dipilih.',
             ]);
         } catch (ValidationException $e) {
-            \Log::error('Validation failed:', [
-                'errors' => $e->errors(),
-                'request' => $request->all(),
-            ]);
-
             return back()->withInput()->withErrors($e->errors());
         }
 
@@ -263,7 +242,7 @@ class PermintaanBarangController extends Controller
         } catch (\Exception $e) {
             \Log::error('Error creating permintaan barang: '.$e->getMessage());
 
-            return back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan data: '.$e->getMessage());
+            return back()->withInput()->with('error', SafeUserMessage::operationFailed('menyimpan data'));
         }
     }
 
@@ -271,6 +250,7 @@ class PermintaanBarangController extends Controller
     {
         $permintaan = PermintaanBarang::with(['unitKerja', 'pemohon.jabatan', 'detailPermintaan.dataBarang', 'detailPermintaan.satuan', 'approval'])
             ->findOrFail($id);
+        UserScope::assertCanAccessPermintaan(Auth::user(), $permintaan);
         $approvalHistory = $this->approvalService->history('PERMINTAAN_BARANG', (int) $permintaan->id_permintaan);
         $approvalFlow = ApprovalFlowDefinition::query()
             ->where('modul_approval', 'PERMINTAAN_BARANG')
@@ -285,6 +265,7 @@ class PermintaanBarangController extends Controller
     {
         $user = Auth::user();
         $permintaan = PermintaanBarang::with('detailPermintaan')->findOrFail($id);
+        UserScope::assertCanAccessPermintaan($user, $permintaan);
 
         // Hanya bisa edit jika status DRAFT
         if ($permintaan->status !== PermintaanBarangStatus::Draft) {
@@ -293,7 +274,7 @@ class PermintaanBarangController extends Controller
         }
 
         // Filter unit kerja dan pegawai berdasarkan unit kerja user yang login
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && ! $user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 // Hanya tampilkan unit kerja user yang login
@@ -316,25 +297,12 @@ class PermintaanBarangController extends Controller
             'stockFarmasiIds' => $stockFarmasiIds,
         ] = $this->getBarangMasterFromInventory();
 
-        // Stock data: hanya PERSEDIAAN/FARMASI (stock gudang pusat)
-        $stockPersediaanIdsInt = array_map('intval', $stockPersediaanIds);
-        $stockFarmasiIdsInt = array_map('intval', $stockFarmasiIds);
-        $stockData = [];
-        foreach ($dataBarangs as $barang) {
-            $key = (string) $barang->id_data_barang;
-            $idBarang = (int) $barang->id_data_barang;
-            $stockPusatPersediaan = in_array($idBarang, $stockPersediaanIdsInt)
-                ? (float) DataStock::getStockGudangPusat($barang->id_data_barang, 'PERSEDIAAN') : 0;
-            $stockPusatFarmasi = in_array($idBarang, $stockFarmasiIdsInt)
-                ? (float) DataStock::getStockGudangPusat($barang->id_data_barang, 'FARMASI') : 0;
-
-            $stockData[$key] = [
-                'total' => (float) DataStock::getTotalStock($barang->id_data_barang),
-                'stock_gudang_pusat_persediaan' => $stockPusatPersediaan,
-                'stock_gudang_pusat_farmasi' => $stockPusatFarmasi,
-                'per_gudang' => DataStock::getStockPerGudangPusat($barang->id_data_barang),
-            ];
-        }
+        // Stock data: batch query (hindari N+1)
+        $stockData = DataStock::buildBulkStockSnapshot(
+            $dataBarangs->pluck('id_data_barang')->all(),
+            $stockPersediaanIds,
+            $stockFarmasiIds
+        );
         $satuans = MasterSatuan::all();
 
         return view('transaction.permintaan-barang.edit', compact(
@@ -352,6 +320,7 @@ class PermintaanBarangController extends Controller
     public function update(Request $request, $id)
     {
         $permintaan = PermintaanBarang::findOrFail($id);
+        UserScope::assertCanAccessPermintaan(Auth::user(), $permintaan);
 
         // Hanya bisa edit jika status DRAFT
         if ($permintaan->status !== PermintaanBarangStatus::Draft) {
@@ -432,13 +401,14 @@ class PermintaanBarangController extends Controller
         } catch (\Exception $e) {
             \Log::error('Error updating permintaan barang: '.$e->getMessage());
 
-            return back()->withInput()->with('error', 'Terjadi kesalahan saat memperbarui data: '.$e->getMessage());
+            return back()->withInput()->with('error', SafeUserMessage::operationFailed('memperbarui data'));
         }
     }
 
     public function destroy($id)
     {
         $permintaan = PermintaanBarang::findOrFail($id);
+        UserScope::assertCanAccessPermintaan(Auth::user(), $permintaan);
 
         // Hanya bisa hapus jika status DRAFT
         if ($permintaan->status !== PermintaanBarangStatus::Draft) {
@@ -455,6 +425,7 @@ class PermintaanBarangController extends Controller
     public function ajukan($id)
     {
         $permintaan = PermintaanBarang::findOrFail($id);
+        UserScope::assertCanAccessPermintaan(Auth::user(), $permintaan);
 
         if ($permintaan->status !== PermintaanBarangStatus::Draft) {
             return redirect()->route('transaction.permintaan-barang.show', $id)
@@ -473,7 +444,7 @@ class PermintaanBarangController extends Controller
             ]);
 
             return redirect()->route('transaction.permintaan-barang.show', $id)
-                ->with('error', 'Terjadi kesalahan saat mengajukan permintaan: '.$e->getMessage());
+                ->with('error', SafeUserMessage::operationFailed('mengajukan permintaan'));
         }
     }
 

@@ -7,14 +7,31 @@
     <form method="POST" action="{{ route('maintenance.kalibrasi-aset.update', $kalibrasi->id_kalibrasi) }}" enctype="multipart/form-data" class="space-y-4">
         @csrf
         @method('PUT')
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-                <label class="block text-sm font-medium mb-2">Register Aset</label>
-                <select name="id_register_aset" required class="block w-full border border-gray-300 rounded-md px-3 py-2">
-                    @foreach($registerAsets as $aset)
-                        <option value="{{ $aset->id_register_aset }}" @selected(old('id_register_aset', $kalibrasi->id_register_aset) == $aset->id_register_aset)>{{ $aset->nomor_register }} - {{ $aset->inventory->dataBarang->nama_barang ?? '-' }}</option>
+                <label for="kalibrasi_edit_filter_unit" class="block text-sm font-medium mb-2">Unit Kerja</label>
+                <select id="kalibrasi_edit_filter_unit" class="block w-full border border-gray-300 rounded-md px-3 py-2" aria-describedby="kalibrasi_edit_unit_hint">
+                    <option value="" @selected($defaultFilterUnitKerjaId === null || $defaultFilterUnitKerjaId === '')>Semua unit kerja</option>
+                    @foreach($unitKerjas as $uk)
+                        <option value="{{ $uk->id_unit_kerja }}" @selected((string) ($defaultFilterUnitKerjaId ?? '') === (string) $uk->id_unit_kerja)>{{ $uk->nama_unit_kerja }}</option>
                     @endforeach
                 </select>
+                <p id="kalibrasi_edit_unit_hint" class="mt-1 text-xs text-gray-500">Menyaring daftar register aset (bukan field simpan).</p>
+            </div>
+            <div>
+                <label for="kalibrasi_edit_register_aset" class="block text-sm font-medium mb-2">Register Aset</label>
+                <select id="kalibrasi_edit_register_aset" name="id_register_aset" required class="block w-full border border-gray-300 rounded-md px-3 py-2 @error('id_register_aset') border-red-500 @enderror">
+                    @foreach($registerAsets as $aset)
+                        @php($namaBarang = $aset->inventory?->dataBarang?->nama_barang ?? '-')
+                        @php($namaUnit = $aset->unitKerja?->nama_unit_kerja ?? 'Unit belum diisi')
+                        <option
+                            value="{{ $aset->id_register_aset }}"
+                            data-unit-kerja="{{ $aset->id_unit_kerja ?? '' }}"
+                            @selected(old('id_register_aset', $kalibrasi->id_register_aset) == $aset->id_register_aset)
+                        >{{ $aset->nomor_register }} — {{ $namaUnit }} — {{ $namaBarang }}</option>
+                    @endforeach
+                </select>
+                @error('id_register_aset')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
             </div>
             <div>
                 <label class="block text-sm font-medium mb-2">Permintaan Kalibrasi (Opsional)</label>
@@ -87,6 +104,30 @@
 @push('scripts')
 <script>
     (function () {
+        const filterUnit = document.getElementById('kalibrasi_edit_filter_unit');
+        const regSelect = document.getElementById('kalibrasi_edit_register_aset');
+        function applyUnitFilter() {
+            if (!filterUnit || !regSelect) return;
+            const v = filterUnit.value;
+            const opts = regSelect.querySelectorAll('option');
+            opts.forEach(function (opt) {
+                if (!v) {
+                    opt.hidden = false;
+                    return;
+                }
+                const u = opt.getAttribute('data-unit-kerja') ?? '';
+                opt.hidden = u !== String(v);
+            });
+            const sel = regSelect.selectedOptions[0];
+            if (sel && sel.hidden) {
+                regSelect.selectedIndex = 0;
+            }
+        }
+        if (filterUnit && regSelect) {
+            filterUnit.addEventListener('change', applyUnitFilter);
+            applyUnitFilter();
+        }
+
         const uploadInput = document.getElementById('file_sertifikat_upload_edit');
         const kameraInput = document.getElementById('file_sertifikat_kamera_edit');
         const uploadName = document.getElementById('file_sertifikat_upload_edit_name');

@@ -1,0 +1,203 @@
+# Persona E2E — kredensial utama dari scripts/e2e/.env (SIMANTIK_EMAIL_*, SIMANTIK_PASSWORD_*)
+# Fallback: email_pattern + bootstrap artisan, atau email di bawah jika .env kosong.
+# Master data & stok dummy: php artisan db:seed --class=ComprehensiveDummySeeder (alur transaksi)
+
+defaults:
+  admin_password: ""
+  pegawai_password: ""
+
+personas:
+  - key: super_administrator
+    label: Super Administrator
+    email: pusdatinppkp@gmail.com
+    password: ${admin_password}
+    allowed_get:
+      - /
+      - /transaction/permintaan-barang
+      - /transaction/approval
+      - /transaction/distribusi
+      - /transaction/penerimaan-barang
+      - /transaction/retur-barang
+      - /inventory/data-stock
+      - /inventory/data-inventory
+      - /reports
+      - /planning/rku
+      - /procurement/proses-pengadaan
+      - /finance/pembayaran
+      - /admin/users
+      - /admin/roles
+    forbidden_get: []
+
+  - key: admin
+    label: Admin IT
+    email: admin-it@sipeni.local
+    password: ${admin_password}
+    allowed_get:
+      - /
+      - /reports
+    forbidden_get:
+      - /transaction/permintaan-barang
+      - /transaction/approval
+      - /inventory/data-stock
+      - /admin/users
+
+  - key: admin_unit
+    label: Admin Unit (Pemohon)
+    email: staf-adm.gudang-unit@sipeni.local
+    password: ${pegawai_password}
+    allowed_get:
+      - /
+      - /transaction/permintaan-barang
+      - /transaction/permintaan-barang/create
+      - /transaction/penerimaan-barang
+      - /transaction/retur-barang
+      - /asset/register-aset
+    forbidden_get:
+      - /admin/users
+      - /transaction/distribusi
+
+  - key: kepala_unit
+    label: Kepala Unit
+    email_pattern: kepala-unit.{jabatan_id}@sipeni.local
+    jabatan_name: Kepala Unit
+    password: ${pegawai_password}
+    allowed_get:
+      - /
+      - /transaction/approval
+      - /transaction/permintaan-barang
+    forbidden_get:
+      - /admin/users
+      - /transaction/distribusi
+
+  - key: kasubbag_tu
+    label: Kasubbag TU
+    email_pattern: kasubbag-tu.{jabatan_id}@sipeni.local
+    jabatan_name: Kasubbag TU
+    password: ${pegawai_password}
+    allowed_get:
+      - /
+      - /transaction/approval
+      - /reports
+      - /reports/kartu-stok
+      - /inventory/data-stock
+    forbidden_get:
+      - /admin/users
+
+  - key: kepala_pusat
+    label: Kepala Pusat
+    email_pattern: kepala-pusat.{jabatan_id}@sipeni.local
+    jabatan_name: Kepala Pusat
+    password: ${pegawai_password}
+    allowed_get:
+      - /
+      - /transaction/approval
+      - /reports
+    forbidden_get:
+      - /admin/users
+
+  - key: admin_gudang_pusat
+    label: Pengurus Barang / Admin Gudang Pusat
+    email: staf-adm.gudang-pusat@sipeni.local
+    password: ${pegawai_password}
+    allowed_get:
+      - /
+      - /transaction/approval
+      - /transaction/draft-distribusi
+      - /transaction/distribusi
+      - /transaction/distribusi/create
+      - /inventory/data-stock
+      - /inventory/data-inventory
+      - /reports/stock-gudang
+    forbidden_get:
+      - /admin/users
+
+  - key: admin_gudang_persediaan
+    label: Admin Gudang Persediaan
+    email_pattern: admin-gudang-persediaan.{jabatan_id}@sipeni.local
+    jabatan_name: Admin Gudang Persediaan
+    password: ${pegawai_password}
+    allowed_get:
+      - /
+      - /transaction/approval
+      - /inventory/data-stock
+      - /inventory/data-inventory
+    forbidden_get:
+      - /admin/users
+
+  - key: admin_gudang_aset
+    label: Admin Gudang Aset
+    email_pattern: admin-gudang-aset.{jabatan_id}@sipeni.local
+    jabatan_name: Admin Gudang Aset
+    password: ${pegawai_password}
+    allowed_get:
+      - /
+      - /inventory/data-stock
+      - /inventory/data-inventory
+      - /asset/register-aset
+    forbidden_get:
+      - /admin/users
+
+  - key: admin_gudang_farmasi
+    label: Admin Gudang Farmasi
+    email_pattern: admin-gudang-farmasi.{jabatan_id}@sipeni.local
+    jabatan_name: Admin Gudang Farmasi
+    password: ${pegawai_password}
+    allowed_get:
+      - /
+      - /inventory/data-stock
+      - /inventory/farmasi-kedaluwarsa
+    forbidden_get:
+      - /admin/users
+
+  - key: perencana
+    label: Perencana
+    email: staf-adm.perencana@sipeni.local
+    password: ${pegawai_password}
+    allowed_get:
+      - /
+      - /transaction/approval
+    forbidden_get:
+      - /admin/users
+      - /planning/rku
+      - /planning/rekap-tahunan
+
+  - key: pengadaan
+    label: Pengadaan
+    email_pattern: pengadaan-barang.{jabatan_id}@sipeni.local
+    jabatan_name: Pengadaan Barang
+    password: ${pegawai_password}
+    allowed_get:
+      - /
+      - /procurement/proses-pengadaan
+      - /procurement/paket-pengadaan
+      - /transaction/approval
+    forbidden_get:
+      - /admin/users
+
+  - key: keuangan
+    label: Keuangan
+    email_pattern: keuangan-bendahara.{jabatan_id}@sipeni.local
+    jabatan_name: Keuangan/Bendahara
+    password: ${pegawai_password}
+    allowed_get:
+      - /
+      - /finance/pembayaran
+      - /transaction/approval
+    forbidden_get:
+      - /admin/users
+
+# Alur transaksi multi-user (urutan login bergantian)
+transaction_flow:
+  pemohon:
+    email: staf-adm.gudang-unit@sipeni.local
+    password: ${pegawai_password}
+  kepala_unit:
+    jabatan_name: Kepala Unit
+  kasubbag_tu:
+    jabatan_name: Kasubbag TU
+  admin_gudang:
+    email: staf-adm.gudang-pusat@sipeni.local
+    password: ${pegawai_password}
+  penerima:
+    email: staf-adm.gudang-unit@sipeni.local
+    password: ${pegawai_password}

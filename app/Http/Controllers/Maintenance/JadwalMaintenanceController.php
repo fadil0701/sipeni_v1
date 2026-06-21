@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers\Maintenance;
 
+use App\Helpers\PaginationHelper;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\JadwalMaintenance;
 use App\Models\MasterPegawai;
 use App\Models\MasterUnitKerja;
 use App\Models\PermintaanPemeliharaan;
 use App\Models\RegisterAset;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -29,7 +30,7 @@ class JadwalMaintenanceController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->whereHas('registerAset', function($q) use ($search) {
+            $query->whereHas('registerAset', function ($q) use ($search) {
                 $q->where('nomor_register', 'like', "%{$search}%");
             });
         }
@@ -65,7 +66,7 @@ class JadwalMaintenanceController extends Controller
                 ->count(),
         ];
 
-        $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
+        $perPage = PaginationHelper::getPerPage($request, 10);
         $jadwals = $query->latest('tanggal_mulai')->paginate($perPage)->appends($request->query());
 
         return view('maintenance.jadwal-maintenance.index', compact('jadwals', 'summary'));
@@ -73,15 +74,9 @@ class JadwalMaintenanceController extends Controller
 
     public function create()
     {
-        // UI hanya memilih Unit Kerja.
-        // Backend tetap membuat jadwal per aset aktif di unit tersebut,
-        // supaya generate permintaan pemeliharaan tetap berbasis aset.
+        // Tampilkan semua unit kerja dari master agar dropdown tidak kosong.
+        // Saat simpan, store() tetap memvalidasi: harus ada minimal satu register aset AKTIF di unit tersebut.
         $unitKerjas = MasterUnitKerja::query()
-            ->whereIn('id_unit_kerja', RegisterAset::query()
-                ->where('status_aset', 'AKTIF')
-                ->selectRaw('DISTINCT id_unit_kerja')
-                ->pluck('id_unit_kerja')
-            )
             ->orderBy('nama_unit_kerja')
             ->get();
 
@@ -131,8 +126,9 @@ class JadwalMaintenanceController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return back()->withInput()->withErrors([
-                'error' => 'Gagal membuat jadwal maintenance: ' . $e->getMessage(),
+                'error' => 'Gagal membuat jadwal maintenance: '.$e->getMessage(),
             ]);
         }
 
@@ -140,14 +136,15 @@ class JadwalMaintenanceController extends Controller
             ->with('success', 'Jadwal maintenance berhasil dibuat untuk unit kerja dan aset aktifnya.');
     }
 
-    public function show($id)
+    public function show(int|string $id)
     {
         $jadwal = JadwalMaintenance::with(['registerAset.unitKerja', 'registerAset.inventory.dataBarang', 'creator'])
             ->findOrFail($id);
+
         return view('maintenance.jadwal-maintenance.show', compact('jadwal'));
     }
 
-    public function edit($id)
+    public function edit(int|string $id)
     {
         $jadwal = JadwalMaintenance::with(['registerAset.unitKerja', 'registerAset.inventory.dataBarang'])
             ->findOrFail($id);
@@ -155,7 +152,7 @@ class JadwalMaintenanceController extends Controller
         return view('maintenance.jadwal-maintenance.edit', compact('jadwal'));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int|string $id)
     {
         $request->validate([
             'jenis_maintenance' => 'required|in:RUTIN,KALIBRASI,PERBAIKAN,PENGGANTIAN_SPAREPART',
@@ -183,7 +180,7 @@ class JadwalMaintenanceController extends Controller
             ->with('success', 'Jadwal maintenance berhasil diperbarui.');
     }
 
-    public function destroy($id)
+    public function destroy(int|string $id)
     {
         $jadwal = JadwalMaintenance::findOrFail($id);
         $jadwal->delete();
@@ -196,7 +193,7 @@ class JadwalMaintenanceController extends Controller
      * Generate permintaan pemeliharaan rutin dari jadwal aktif.
      * Ini memungkinkan preventive maintenance berjalan tanpa menunggu user membuat permintaan manual.
      */
-    public function generatePermintaan($id)
+    public function generatePermintaan(int|string $id)
     {
         $jadwal = JadwalMaintenance::with(['registerAset.kartuInventarisRuangan'])->findOrFail($id);
 
@@ -204,7 +201,7 @@ class JadwalMaintenanceController extends Controller
             return back()->with('error', 'Hanya jadwal aktif yang bisa digenerate menjadi permintaan.');
         }
 
-        if (!$jadwal->registerAset || (string) $jadwal->registerAset->status_aset !== 'AKTIF') {
+        if (! $jadwal->registerAset || (string) $jadwal->registerAset->status_aset !== 'AKTIF') {
             return back()->with('error', 'Register aset tidak valid atau tidak aktif.');
         }
 
@@ -220,18 +217,15 @@ class JadwalMaintenanceController extends Controller
                 ->orderBy('id')
                 ->first();
 
-            if (!$pemohon) {
+            if (! $pemohon) {
                 throw new \RuntimeException('Tidak ditemukan pegawai pada unit kerja aset untuk dijadikan pemohon rutin.');
             }
 
             $tahun = date('Y');
-            $lastPermintaan = PermintaanPemeliharaan::whereYear('created_at', $tahun)
-                ->orderBy('id_permintaan_pemeliharaan', 'desc')
-                ->first();
-            $urutan = $lastPermintaan ? (int) substr($lastPermintaan->no_permintaan_pemeliharaan, -4) + 1 : 1;
+            $urutan = PermintaanPemeliharaan::nextUrutanNomorUntukTahun($tahun);
 
             $permintaan = PermintaanPemeliharaan::create([
-                'no_permintaan_pemeliharaan' => 'PMH/' . $tahun . '/' . str_pad($urutan, 4, '0', STR_PAD_LEFT),
+                'no_permintaan_pemeliharaan' => 'PMH/'.$tahun.'/'.str_pad((string) $urutan, 4, '0', STR_PAD_LEFT),
                 'id_register_aset' => $register->id_register_aset,
                 'id_unit_kerja' => $register->id_unit_kerja,
                 'id_pemohon' => $pemohon->id,
@@ -240,7 +234,7 @@ class JadwalMaintenanceController extends Controller
                 'prioritas' => 'SEDANG',
                 'status_permintaan' => 'DISETUJUI',
                 'deskripsi_kerusakan' => 'Permintaan otomatis dari jadwal maintenance rutin.',
-                'keterangan' => trim(($jadwal->keterangan ?? '') . ' [AUTO-RUTIN]'),
+                'keterangan' => trim(($jadwal->keterangan ?? '').' [AUTO-RUTIN]'),
             ]);
 
             $baseDate = $jadwal->tanggal_selanjutnya ?: Carbon::parse($jadwal->tanggal_mulai);
@@ -258,14 +252,15 @@ class JadwalMaintenanceController extends Controller
                 ->with('success', 'Permintaan rutin berhasil digenerate. Lanjutkan isi Laporan Servis.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal generate permintaan rutin: ' . $e->getMessage());
+
+            return back()->with('error', 'Gagal generate permintaan rutin: '.$e->getMessage());
         }
     }
 
-    private function calculateNextDate($tanggalMulai, $periode, $intervalHari = null)
+    private function calculateNextDate(string|\DateTimeInterface $tanggalMulai, string $periode, int|string|null $intervalHari = null): string
     {
-        $date = \Carbon\Carbon::parse($tanggalMulai);
-        
+        $date = Carbon::parse($tanggalMulai);
+
         switch ($periode) {
             case 'HARIAN':
                 return $date->addDay()->format('Y-m-d');
@@ -280,11 +275,9 @@ class JadwalMaintenanceController extends Controller
             case 'TAHUNAN':
                 return $date->addYear()->format('Y-m-d');
             case 'CUSTOM':
-                return $date->addDays($intervalHari ?? 30)->format('Y-m-d');
+                return $date->addDays((int) ($intervalHari ?? 30))->format('Y-m-d');
             default:
                 return $date->addMonth()->format('Y-m-d');
         }
     }
 }
-
-

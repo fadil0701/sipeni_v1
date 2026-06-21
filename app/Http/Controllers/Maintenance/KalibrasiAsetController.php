@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers\Maintenance;
 
+use App\Helpers\PaginationHelper;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\KalibrasiAset;
-use App\Models\RegisterAset;
-use App\Models\PermintaanPemeliharaan;
-use App\Models\RiwayatPemeliharaan;
 use App\Models\JadwalMaintenance;
+use App\Models\KalibrasiAset;
+use App\Models\MasterUnitKerja;
+use App\Models\PermintaanPemeliharaan;
+use App\Models\RegisterAset;
+use App\Models\RiwayatPemeliharaan;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use App\Support\Storage\PrivateStorage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -25,16 +29,16 @@ class KalibrasiAsetController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('no_kalibrasi', 'like', "%{$search}%")
-                  ->orWhere('no_sertifikat', 'like', "%{$search}%")
-                  ->orWhereHas('registerAset', function($q) use ($search) {
-                      $q->where('nomor_register', 'like', "%{$search}%");
-                  });
+                    ->orWhere('no_sertifikat', 'like', "%{$search}%")
+                    ->orWhereHas('registerAset', function ($q) use ($search) {
+                        $q->where('nomor_register', 'like', "%{$search}%");
+                    });
             });
         }
 
-        $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
+        $perPage = PaginationHelper::getPerPage($request, 10);
         $kalibrasis = $query->latest('tanggal_kalibrasi')->paginate($perPage)->appends($request->query());
 
         return view('maintenance.kalibrasi-aset.index', compact('kalibrasis'));
@@ -42,20 +46,25 @@ class KalibrasiAsetController extends Controller
 
     public function create(Request $request)
     {
-        $registerAsets = RegisterAset::where('status_aset', 'AKTIF')
-            ->with(['inventory.dataBarang'])
+        $unitKerjas = MasterUnitKerja::query()->orderBy('nama_unit_kerja')->get();
+
+        $registerAsets = RegisterAset::query()
+            ->where('status_aset', 'AKTIF')
+            ->with(['inventory.dataBarang', 'unitKerja'])
+            ->orderBy('id_unit_kerja')
+            ->orderBy('nomor_register')
             ->get();
-        
+
         $permintaans = PermintaanPemeliharaan::where('jenis_pemeliharaan', 'KALIBRASI')
             ->where('status_permintaan', 'DISETUJUI')
             ->with(['registerAset'])
             ->get();
 
-        $selectedPermintaan = $request->get('permintaan_id') 
+        $selectedPermintaan = $request->get('permintaan_id')
             ? PermintaanPemeliharaan::with(['registerAset'])->find($request->get('permintaan_id'))
             : null;
 
-        return view('maintenance.kalibrasi-aset.create', compact('registerAsets', 'permintaans', 'selectedPermintaan'));
+        return view('maintenance.kalibrasi-aset.create', compact('registerAsets', 'permintaans', 'selectedPermintaan', 'unitKerjas'));
     }
 
     public function store(Request $request)
@@ -81,15 +90,15 @@ class KalibrasiAsetController extends Controller
             $lastKalibrasi = KalibrasiAset::whereYear('created_at', $tahun)
                 ->orderBy('id_kalibrasi', 'desc')
                 ->first();
-            
-            $urutan = $lastKalibrasi ? (int)substr($lastKalibrasi->no_kalibrasi, -4) + 1 : 1;
-            $noKalibrasi = 'KAL/' . $tahun . '/' . str_pad($urutan, 4, '0', STR_PAD_LEFT);
+
+            $urutan = $lastKalibrasi ? (int) substr($lastKalibrasi->no_kalibrasi, -4) + 1 : 1;
+            $noKalibrasi = 'KAL/'.$tahun.'/'.str_pad($urutan, 4, '0', STR_PAD_LEFT);
 
             $filePath = null;
             if ($request->hasFile('file_sertifikat_kamera')) {
-                $filePath = $request->file('file_sertifikat_kamera')->store('kalibrasi', 'public');
+                $filePath = PrivateStorage::storeUploadedFile($request->file('file_sertifikat_kamera'), 'kalibrasi');
             } elseif ($request->hasFile('file_sertifikat')) {
-                $filePath = $request->file('file_sertifikat')->store('kalibrasi', 'public');
+                $filePath = PrivateStorage::storeUploadedFile($request->file('file_sertifikat'), 'kalibrasi');
             }
 
             $kalibrasi = KalibrasiAset::create([
@@ -133,11 +142,13 @@ class KalibrasiAsetController extends Controller
             }
 
             DB::commit();
+
             return redirect()->route('maintenance.kalibrasi-aset.index')
                 ->with('success', 'Data kalibrasi berhasil dibuat.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error', 'Gagal membuat data kalibrasi: ' . $e->getMessage());
+
+            return back()->withInput()->with('error', 'Gagal membuat data kalibrasi: '.$e->getMessage());
         }
     }
 
@@ -146,7 +157,7 @@ class KalibrasiAsetController extends Controller
         $kalibrasi = KalibrasiAset::with([
             'registerAset.inventory.dataBarang',
             'permintaanPemeliharaan',
-            'creator'
+            'creator',
         ])->findOrFail($id);
 
         return view('maintenance.kalibrasi-aset.show', compact('kalibrasi'));
@@ -154,17 +165,24 @@ class KalibrasiAsetController extends Controller
 
     public function edit($id)
     {
-        $kalibrasi = KalibrasiAset::findOrFail($id);
-        $registerAsets = RegisterAset::where('status_aset', 'AKTIF')
-            ->with(['inventory.dataBarang'])
+        $kalibrasi = KalibrasiAset::with('registerAset.unitKerja')->findOrFail($id);
+        $unitKerjas = MasterUnitKerja::query()->orderBy('nama_unit_kerja')->get();
+
+        $registerAsets = RegisterAset::query()
+            ->where('status_aset', 'AKTIF')
+            ->with(['inventory.dataBarang', 'unitKerja'])
+            ->orderBy('id_unit_kerja')
+            ->orderBy('nomor_register')
             ->get();
-        
+
         $permintaans = PermintaanPemeliharaan::where('jenis_pemeliharaan', 'KALIBRASI')
             ->where('status_permintaan', 'DISETUJUI')
             ->with(['registerAset'])
             ->get();
 
-        return view('maintenance.kalibrasi-aset.edit', compact('kalibrasi', 'registerAsets', 'permintaans'));
+        $defaultFilterUnitKerjaId = $kalibrasi->registerAset?->id_unit_kerja;
+
+        return view('maintenance.kalibrasi-aset.edit', compact('kalibrasi', 'registerAsets', 'permintaans', 'unitKerjas', 'defaultFilterUnitKerjaId'));
     }
 
     public function update(Request $request, $id)
@@ -190,14 +208,11 @@ class KalibrasiAsetController extends Controller
         try {
             $filePath = $kalibrasi->file_sertifikat;
             if ($request->hasFile('file_sertifikat') || $request->hasFile('file_sertifikat_kamera')) {
-                // Hapus file lama jika ada
-                if ($filePath && Storage::disk('public')->exists($filePath)) {
-                    Storage::disk('public')->delete($filePath);
-                }
+                PrivateStorage::delete($filePath);
                 if ($request->hasFile('file_sertifikat_kamera')) {
-                    $filePath = $request->file('file_sertifikat_kamera')->store('kalibrasi', 'public');
+                    $filePath = PrivateStorage::storeUploadedFile($request->file('file_sertifikat_kamera'), 'kalibrasi');
                 } else {
-                    $filePath = $request->file('file_sertifikat')->store('kalibrasi', 'public');
+                    $filePath = PrivateStorage::storeUploadedFile($request->file('file_sertifikat'), 'kalibrasi');
                 }
             }
 
@@ -240,22 +255,22 @@ class KalibrasiAsetController extends Controller
             }
 
             DB::commit();
+
             return redirect()->route('maintenance.kalibrasi-aset.index')
                 ->with('success', 'Data kalibrasi berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error', 'Gagal memperbarui data kalibrasi: ' . $e->getMessage());
+
+            return back()->withInput()->with('error', 'Gagal memperbarui data kalibrasi: '.$e->getMessage());
         }
     }
 
     public function destroy($id)
     {
         $kalibrasi = KalibrasiAset::findOrFail($id);
-        
+
         // Hapus file jika ada
-        if ($kalibrasi->file_sertifikat && Storage::disk('public')->exists($kalibrasi->file_sertifikat)) {
-            Storage::disk('public')->delete($kalibrasi->file_sertifikat);
-        }
+        PrivateStorage::delete($kalibrasi->file_sertifikat);
 
         $kalibrasi->delete();
 
@@ -272,11 +287,11 @@ class KalibrasiAsetController extends Controller
             ->orderBy('tanggal_selanjutnya')
             ->first();
 
-        if (!$jadwal) {
+        if (! $jadwal) {
             return;
         }
 
-        $date = \Carbon\Carbon::parse($tanggalAcuan);
+        $date = Carbon::parse($tanggalAcuan);
         $nextDate = match ($jadwal->periode) {
             'HARIAN' => $date->addDay()->format('Y-m-d'),
             'MINGGUAN' => $date->addWeek()->format('Y-m-d'),
@@ -294,5 +309,3 @@ class KalibrasiAsetController extends Controller
         ]);
     }
 }
-
-

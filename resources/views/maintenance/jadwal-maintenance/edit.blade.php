@@ -78,4 +78,18 @@
         </div>
     </form>
 </div>
+
+@push('scripts')
+<script>
+    const periode = document.getElementById('periode');
+    const interval = document.getElementById('interval_hari');
+    function toggleInterval() {
+        const enabled = periode.value === 'CUSTOM';
+        interval.disabled = !enabled;
+        interval.required = enabled;
+    }
+    periode.addEventListener('change', toggleInterval);
+    toggleInterval();
+</script>
+@endpush
 @endsection

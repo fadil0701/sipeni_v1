@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Inventory;
 use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use Illuminate\Http\Request;
+use App\Support\Storage\PrivateStorage;
 use Illuminate\Support\Facades\Storage;
 
 class InventoryQrScanController extends Controller
@@ -38,13 +39,10 @@ class InventoryQrScanController extends Controller
             ], 404);
         }
 
-        $fotoUrl = null;
-        $itemFotoUrl = $inventoryItem->fotoBarangPublicUrl();
-        if ($itemFotoUrl) {
-            $fotoUrl = $itemFotoUrl;
-        } else {
+        $fotoUrl = $inventoryItem->fotoBarangPublicUrl();
+        if (! $fotoUrl) {
             $uploadFoto = $inventoryItem->inventory->upload_foto ?? null;
-            if ($uploadFoto && Storage::disk('public')->exists($uploadFoto)) {
+            if ($uploadFoto && ! PrivateStorage::isPrivatePath($uploadFoto) && Storage::disk('public')->exists($uploadFoto)) {
                 $fotoUrl = Storage::url($uploadFoto);
             }
         }

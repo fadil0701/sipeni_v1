@@ -75,7 +75,20 @@ class PengadaanService
             }
             if ($paket->permintaan) {
                 $this->permintaanStatusService->setStatus($paket->permintaan, PermintaanBarangStatus::BarangTersedia);
+                $this->resumeToDistribusi($paket->permintaan);
             }
         });
+    }
+
+    /**
+     * Lanjutkan permintaan setelah pengadaan selesai agar muncul di modul distribusi (SBBK).
+     */
+    public function resumeToDistribusi(PermintaanBarang $permintaan): void
+    {
+        if ($permintaan->status !== PermintaanBarangStatus::BarangTersedia) {
+            return;
+        }
+
+        $this->permintaanStatusService->setStatus($permintaan, PermintaanBarangStatus::ProsesDistribusi);
     }
 }

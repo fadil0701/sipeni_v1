@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::getConnection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Ubah enum menjadi VARCHAR sementara untuk menghindari masalah dengan data yang sudah ada
         DB::statement("ALTER TABLE `permintaan_barang` MODIFY COLUMN `tipe_permintaan` VARCHAR(20) NULL AFTER `tanggal_permintaan`");
         
@@ -29,6 +33,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (Schema::getConnection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Ubah enum menjadi VARCHAR sementara
         DB::statement("ALTER TABLE `permintaan_barang` MODIFY COLUMN `tipe_permintaan` VARCHAR(20) NULL AFTER `tanggal_permintaan`");
         

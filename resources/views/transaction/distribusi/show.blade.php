@@ -6,6 +6,13 @@
         ? $distribusi->status_distribusi->value
         : $distribusi->status_distribusi;
     $hasPegawaiPengirim = (bool) $distribusi->id_pegawai_pengirim;
+    $sbbkTemplateActive = false;
+    if ((bool) config('sipeni.feature_print_templates', false)) {
+        $sbbkTemplateActive = \App\Models\PrintTemplate::query()
+            ->where('key', 'distribusi.sbbk')
+            ->where('is_active', true)
+            ->exists();
+    }
 @endphp
 
 <div class="mb-4">
@@ -17,15 +24,6 @@
     </a>
 </div>
 
-@if(session('success'))
-    <div class="mb-4 bg-green-50 border-l-4 border-green-400 p-4 rounded text-sm text-green-800">{{ session('success') }}</div>
-@endif
-@if(session('error'))
-    <div class="mb-4 bg-red-50 border-l-4 border-red-400 p-4 rounded text-sm text-red-800">{{ session('error') }}</div>
-@endif
-@if(session('info'))
-    <div class="mb-4 bg-blue-50 border-l-4 border-blue-400 p-4 rounded text-sm text-blue-800">{{ session('info') }}</div>
-@endif
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200">
     <div class="px-6 py-5 border-b border-gray-200 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
@@ -35,6 +33,16 @@
             <p class="text-xs text-gray-500 mt-1">Lanjutkan alur dengan tombol di kanan: ubah data (draft), proses, lalu kirim setelah pegawai pengirim diisi.</p>
         </div>
         <div class="flex flex-wrap gap-2 shrink-0">
+            @if($sbbkTemplateActive)
+                <a
+                    href="{{ route('transaction.distribusi.print-sbbk', $distribusi->id_distribusi) }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-800 bg-gray-100 rounded-md hover:bg-gray-200 border border-gray-300"
+                >
+                    Cetak SBBK (template)
+                </a>
+            @endif
             @if($statusValue === 'draft')
                 <a
                     href="{{ route('transaction.distribusi.edit', $distribusi->id_distribusi) }}"
@@ -170,8 +178,7 @@
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Barang</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jenis Barang</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gudang Asal</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Merk</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Distribusi</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Satuan</th>
                                 @if($distribusi->detailDistribusi->whereIn('inventory.gudang.kategori_gudang', ['FARMASI', 'PERSEDIAAN'])->count() > 0)
@@ -217,10 +224,7 @@
                                     {{ $inventory->dataBarang->nama_barang ?? '-' }}
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-900">
-                                    {{ $inventory->jenis_barang ?? '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-900">
-                                    {{ $inventory->gudang->nama_gudang ?? '-' }}
+                                    {{ trim((string) ($inventory->merk ?? '')) !== '' ? $inventory->merk : '-' }}
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-900">{{ number_format($detail->qty_distribusi, 2, ',', '.') }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-900">{{ $detail->satuan->nama_satuan ?? '-' }}</td>
@@ -268,7 +272,7 @@
                         <tfoot>
                             <tr class="bg-gray-50 font-semibold border-t border-gray-200">
                                 @php
-                                    $colspanLabel = 6 + ($hasFarmasiPersediaan ? 2 : 0) + ($hasAset ? 1 : 0);
+                                    $colspanLabel = 5 + ($hasFarmasiPersediaan ? 2 : 0) + ($hasAset ? 1 : 0);
                                 @endphp
                                 <td colspan="{{ $colspanLabel }}" class="px-4 py-3 text-sm text-gray-900 text-right">Total</td>
                                 <td class="px-4 py-3 text-sm text-gray-900"></td>

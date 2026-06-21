@@ -24,9 +24,14 @@ class ImageHelper
             return $path;
         }
 
-        // Cek apakah file ada di storage
+        // Cek private storage (upload sensitif)
+        if (Storage::disk('local')->exists($path)) {
+            return route('media.show', ['path' => $path]);
+        }
+
+        // Backward compat: file lama di public disk
         if (Storage::disk('public')->exists($path)) {
-            return asset('storage/' . $path);
+            return asset('storage/'.$path);
         }
 
         return $fallbackUrl ?? self::getPlaceholderImage();
@@ -59,6 +64,6 @@ class ImageHelper
             return true;
         }
 
-        return Storage::disk('public')->exists($path);
+        return Storage::disk('local')->exists($path) || Storage::disk('public')->exists($path);
     }
 }

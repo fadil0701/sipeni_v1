@@ -108,19 +108,64 @@
         <div class="title">Pusat Pelayanan Kesehatan Pegawai</div>
 
         <div class="qr-wrap">
-            <img src="{{ $inventoryItem->qrCodePublicUrl() }}" alt="QR Code {{ $inventoryItem->kode_register }}">
+            @if(!empty($qrPublicUrl))
+                <img src="{{ $qrPublicUrl }}" alt="QR Code {{ $inventoryItem->kode_register }}">
+            @else
+                <div style="padding:12px;font-size:13px;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;text-align:left;line-height:1.45;">
+                    Berkas QR tidak tersedia. Pastikan berkas ada di <code style="background:#fff;padding:0 4px;border-radius:3px;">storage/app/public</code> dan jalankan
+                    <code style="background:#fff;padding:0 4px;border-radius:3px;">php artisan inventory:regenerate-qr-codes</code>
+                    serta <code style="background:#fff;padding:0 4px;border-radius:3px;">php artisan storage:link</code>.
+                </div>
+            @endif
         </div>
 
         <div class="year">Tahun {{ $tahun }}</div>
         <div class="reg">Kode Reg: {{ $inventoryItem->kode_register }}</div>
-        <div class="name">{{ $inventoryItem->inventory->dataBarang->nama_barang ?? 'Item Inventory' }}</div>
+        <div class="name">{{ $inventoryItem->inventory?->dataBarang?->nama_barang ?? 'Item Inventory' }}</div>
     </div>
 
+    <script src="{{ asset('js/qrcode.min.js') }}"></script>
     <script>
-        const qrUrl = @json($inventoryItem->qrCodePublicUrl());
-        const tahun = @json((string) $tahun);
-        const kodeReg = @json((string) $inventoryItem->kode_register);
-        const namaBarang = @json((string) ($inventoryItem->inventory->dataBarang->nama_barang ?? 'Item Inventory'));
+        const T = {!! $templateQrPayloadJson !!};
+        const qrUrl = T.qrPublicUrl || null;
+        const scanTargetUrl = T.scanTargetUrl || '';
+        const tahun = T.tahun || '';
+        const kodeReg = T.kodeReg || '';
+        const namaBarang = T.namaBarang || 'Item Inventory';
+
+        /**
+         * QR di canvas: render dari data URL agar kompatibel lintas browser.
+         */
+        function loadQrImageForCanvas() {
+            return new Promise((resolve, reject) => {
+                if (typeof window.QRCode === 'undefined' || typeof window.QRCode.toDataURL !== 'function') {
+                    reject(new Error('Berkas public/js/qrcode.min.js tidak dimuat (404 atau diblok).'));
+
+                    return;
+                }
+                if (!scanTargetUrl) {
+                    reject(new Error('URL scan untuk QR kosong.'));
+
+                    return;
+                }
+                window.QRCode.toDataURL(scanTargetUrl, {
+                    width: 460,
+                    margin: 1,
+                    errorCorrectionLevel: 'M',
+                    color: { dark: '#000000', light: '#ffffff' },
+                }, (err, dataUrl) => {
+                    if (err) {
+                        reject(err);
+
+                        return;
+                    }
+                    const qrImg = new Image();
+                    qrImg.onload = () => resolve(qrImg);
+                    qrImg.onerror = () => reject(new Error('Gagal memuat PNG QR internal.'));
+                    qrImg.src = dataUrl;
+                });
+            });
+        }
 
         async function renderTemplateToCanvas() {
             const canvas = document.createElement('canvas');
@@ -143,14 +188,7 @@
             ctx.font = '700 58px Arial';
             ctx.fillText('Puspelkes DKI Jakarta', 450, 230);
 
-            // QR image
-            const qrImg = new Image();
-            qrImg.crossOrigin = 'anonymous';
-            await new Promise((resolve, reject) => {
-                qrImg.onload = resolve;
-                qrImg.onerror = reject;
-                qrImg.src = qrUrl;
-            });
+            const qrImg = await loadQrImageForCanvas();
             ctx.drawImage(qrImg, 220, 300, 460, 460);
 
             // footer texts
@@ -184,17 +222,32 @@
                     URL.revokeObjectURL(url);
                 }, mimeType, ext === 'jpeg' ? 0.92 : undefined);
             } catch (err) {
-                alert('Gagal membuat file image template. Pastikan QR code dapat dimuat.');
+                const msg = err && err.message ? String(err.message) : String(err);
+                alert('Gagal membuat file image template.\n\n' + msg);
                 console.error(err);
             }
         }
 
-        document.getElementById('downloadPngBtn')?.addEventListener('click', () => {
-            downloadCanvas('image/png', 'png');
-        });
-        document.getElementById('downloadJpegBtn')?.addEventListener('click', () => {
-            downloadCanvas('image/jpeg', 'jpeg');
-        });
+        const pngBtn = document.getElementById('downloadPngBtn');
+        const jpegBtn = document.getElementById('downloadJpegBtn');
+        const canCanvasQr = Boolean(scanTargetUrl);
+        if (canCanvasQr) {
+            pngBtn?.addEventListener('click', () => {
+                downloadCanvas('image/png', 'png');
+            });
+            jpegBtn?.addEventListener('click', () => {
+                downloadCanvas('image/jpeg', 'jpeg');
+            });
+        } else {
+            [pngBtn, jpegBtn].forEach((btn) => {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                    btn.title = 'URL scan tidak tersedia';
+                }
+            });
+        }
     </script>
 </body>
 </html>

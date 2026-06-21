@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Inventory;
 
+use App\Support\Rbac\RbacRoles;
+use App\Support\Rbac\UserScope;
+
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Schema;
 use App\Models\DataInventory;
 use App\Models\InventoryItem;
 use App\Models\DataStock;
@@ -19,36 +19,36 @@ use App\Models\MasterKegiatan;
 use App\Models\MasterSatuan;
 use App\Models\MasterUnitKerja;
 use App\Models\MasterPegawai;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Illuminate\Http\Request;
 
 class DataInventoryController extends Controller
 {
     public function index(Request $request)
     {   
-        $user = Auth::user();
-        
+        $user = $this->authUser();
+
         // GUDANG PUSAT (Admin/Admin Gudang): Melihat SEMUA data inventory (global view)
         // GUDANG UNIT (Kepala Unit/Pegawai/Admin Gudang Unit): Hanya melihat data di unitnya saja (local view)
         // ADMIN GUDANG PER KATEGORI: Hanya melihat gudang sesuai kategori (Aset/Persediaan/Farmasi) agar tidak konflik
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai', 'admin_gudang_unit']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             // GUDANG UNIT: Hanya melihat data yang ada di gudang UNIT mereka
-            $pegawai = MasterPegawai::where('user_id', $user->id)->first();
+            $pegawai = \call_user_func([MasterPegawai::class, 'where'], 'user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 // Ambil id gudang UNIT yang terkait dengan unit kerja mereka
-                $gudangUnitIds = MasterGudang::where('jenis_gudang', 'UNIT')
+                $gudangUnitIds = \call_user_func([MasterGudang::class, 'where'], 'jenis_gudang', 'UNIT')
                     ->where('id_unit_kerja', $pegawai->id_unit_kerja)
                     ->pluck('id_gudang');
                 
                 if ($gudangUnitIds->isEmpty()) {
                     // Jika tidak ada gudang unit, tidak tampilkan data
-                    $query = DataInventory::whereRaw('1 = 0');
+                    $query = \call_user_func([DataInventory::class, 'whereRaw'], '1 = 0');
                 } else {
                     // Untuk GUDANG UNIT:
                     // - PERSEDIAAN/FARMASI: melihat data_inventory yang id_gudang = gudang UNIT mereka
                     // - ASET: melihat data_inventory yang memiliki inventory_item di gudang UNIT mereka
-                    $query = DataInventory::with([
+                    $query = \call_user_func([DataInventory::class, 'with'], [
                         'dataBarang', 
                         'gudang', 
                         'sumberAnggaran', 
@@ -79,16 +79,16 @@ class DataInventoryController extends Controller
                 }
             } else {
                 // Jika user tidak memiliki pegawai atau unit kerja, tidak tampilkan data
-                $query = DataInventory::whereRaw('1 = 0');
+                $query = \call_user_func([DataInventory::class, 'whereRaw'], '1 = 0');
             }
         } elseif ($user->hasRole('admin_gudang_aset') || $user->hasRole('admin_gudang_persediaan') || $user->hasRole('admin_gudang_farmasi')) {
             // Admin Gudang per kategori: hanya inventory di gudang dengan kategori yang sama (tidak konflik)
             $kategori = $user->hasRole('admin_gudang_aset') ? 'ASET' : ($user->hasRole('admin_gudang_persediaan') ? 'PERSEDIAAN' : 'FARMASI');
-            $query = DataInventory::with(['dataBarang', 'gudang', 'sumberAnggaran', 'subKegiatan', 'satuan', 'inventoryItems.gudang', 'inventoryItems.ruangan'])
+            $query = \call_user_func([DataInventory::class, 'with'], ['dataBarang', 'gudang', 'sumberAnggaran', 'subKegiatan', 'satuan', 'inventoryItems.gudang', 'inventoryItems.ruangan'])
                 ->whereHas('gudang', fn ($q) => $q->where('kategori_gudang', $kategori));
         } else {
             // Admin / Admin Gudang (umum): Melihat SEMUA data inventory
-            $query = DataInventory::with(['dataBarang', 'gudang', 'sumberAnggaran', 'subKegiatan', 'satuan', 'inventoryItems.gudang', 'inventoryItems.ruangan']);
+            $query = \call_user_func([DataInventory::class, 'with'], ['dataBarang', 'gudang', 'sumberAnggaran', 'subKegiatan', 'satuan', 'inventoryItems.gudang', 'inventoryItems.ruangan']);
         }
 
         if ($request->filled('search')) {
@@ -123,10 +123,10 @@ class DataInventoryController extends Controller
         $inventories = $query->latest()->paginate($perPage)->appends($request->query());
         
         // Untuk GUDANG UNIT: Hitung ulang qty dan update gudang berdasarkan inventory_item untuk ASET
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai', 'admin_gudang_unit']) && !$user->hasRole('admin')) {
-            $pegawai = MasterPegawai::where('user_id', $user->id)->first();
+        if (UserScope::mustScopeToUnitKerja($user)) {
+            $pegawai = \call_user_func([MasterPegawai::class, 'where'], 'user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
-                $gudangUnitIds = MasterGudang::where('jenis_gudang', 'UNIT')
+                $gudangUnitIds = \call_user_func([MasterGudang::class, 'where'], 'jenis_gudang', 'UNIT')
                     ->where('id_unit_kerja', $pegawai->id_unit_kerja)
                     ->pluck('id_gudang');
                 
@@ -153,50 +153,50 @@ class DataInventoryController extends Controller
         }
         
         // Filter gudang yang ditampilkan di dropdown berdasarkan role (agar tidak konflik)
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai', 'admin_gudang_unit']) && !$user->hasRole('admin')) {
-            $pegawai = MasterPegawai::where('user_id', $user->id)->first();
+        if (UserScope::mustScopeToUnitKerja($user)) {
+            $pegawai = \call_user_func([MasterPegawai::class, 'where'], 'user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
-                $gudangs = MasterGudang::where('jenis_gudang', 'UNIT')
+                $gudangs = \call_user_func([MasterGudang::class, 'where'], 'jenis_gudang', 'UNIT')
                     ->where('id_unit_kerja', $pegawai->id_unit_kerja)
                     ->get();
             } else {
                 $gudangs = collect([]);
             }
         } elseif ($user->hasRole('admin_gudang_aset')) {
-            $gudangs = MasterGudang::where('kategori_gudang', 'ASET')->get();
+            $gudangs = \call_user_func([MasterGudang::class, 'where'], 'kategori_gudang', 'ASET')->get();
         } elseif ($user->hasRole('admin_gudang_persediaan')) {
-            $gudangs = MasterGudang::where('kategori_gudang', 'PERSEDIAAN')->get();
+            $gudangs = \call_user_func([MasterGudang::class, 'where'], 'kategori_gudang', 'PERSEDIAAN')->get();
         } elseif ($user->hasRole('admin_gudang_farmasi')) {
-            $gudangs = MasterGudang::where('kategori_gudang', 'FARMASI')->get();
+            $gudangs = \call_user_func([MasterGudang::class, 'where'], 'kategori_gudang', 'FARMASI')->get();
         } else {
-            $gudangs = MasterGudang::all();
+            $gudangs = \call_user_func([MasterGudang::class, 'all']);
         }
         
-        $dataBarangs = MasterDataBarang::all();
+        $dataBarangs = \call_user_func([MasterDataBarang::class, 'all']);
 
-        return view('inventory.data-inventory.index', compact('inventories', 'gudangs', 'dataBarangs'));
+        return \call_user_func('\\view', 'inventory.data-inventory.index', compact('inventories', 'gudangs', 'dataBarangs'));
     }
 
     public function create()
     {
-        $user = Auth::user();
-        
+        $user = $this->authUser();
+
         // GUDANG UNIT: Tidak bisa menambah data inventory baru
         // Hanya bisa menerima melalui distribusi
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
-            abort(403, 'Unauthorized - Gudang unit tidak dapat menambah data inventory baru. Inventory hanya dapat ditambahkan melalui distribusi dari gudang pusat.');
+        if (UserScope::mustScopeToUnitKerja($user)) {
+            \call_user_func('\\abort', 403, 'Unauthorized - Gudang unit tidak dapat menambah data inventory baru. Inventory hanya dapat ditambahkan melalui distribusi dari gudang pusat.');
         }
         
-        $dataBarangs = MasterDataBarang::all();
+        $dataBarangs = \call_user_func([MasterDataBarang::class, 'all']);
         // Hanya tampilkan gudang PUSAT untuk input inventory
-        $gudangs = MasterGudang::where('jenis_gudang', 'PUSAT')->get();
-        $sumberAnggarans = MasterSumberAnggaran::all();
-        $subKegiatans = MasterSubKegiatan::all();
-        $defaultSubKegiatanId = MasterSubKegiatan::query()->value('id_sub_kegiatan');
-        $satuans = MasterSatuan::all();
-        $unitKerjas = MasterUnitKerja::all();
+        $gudangs = \call_user_func([MasterGudang::class, 'where'], 'jenis_gudang', 'PUSAT')->get();
+        $sumberAnggarans = \call_user_func([MasterSumberAnggaran::class, 'all']);
+        $subKegiatans = \call_user_func([MasterSubKegiatan::class, 'all']);
+        $defaultSubKegiatanId = \call_user_func([MasterSubKegiatan::class, 'query'])->value('id_sub_kegiatan');
+        $satuans = \call_user_func([MasterSatuan::class, 'all']);
+        $unitKerjas = \call_user_func([MasterUnitKerja::class, 'all']);
 
-        return view('inventory.data-inventory.create', compact(
+        return \call_user_func('\\view', 'inventory.data-inventory.create', compact(
             'dataBarangs', 'gudangs', 'sumberAnggarans', 'subKegiatans', 'satuans', 'unitKerjas', 'defaultSubKegiatanId'
         ));
     }
@@ -209,7 +209,7 @@ class DataInventoryController extends Controller
                 'required',
                 'exists:master_gudang,id_gudang',
                 function ($attribute, $value, $fail) {
-                    $gudang = MasterGudang::find($value);
+                    $gudang = \call_user_func([MasterGudang::class, 'find'], $value);
                     if ($gudang && $gudang->jenis_gudang !== 'PUSAT') {
                         $fail('Data inventory hanya dapat disimpan di gudang PUSAT. Gudang UNIT hanya menerima distribusi barang.');
                     }
@@ -238,12 +238,12 @@ class DataInventoryController extends Controller
 
         // Form saat ini menyembunyikan field sub kegiatan, sementara kolom DB wajib.
         if (($validated['jenis_inventory'] ?? '') === 'ASET' && empty($validated['id_data_barang'])) {
-            return back()->withInput()->withErrors(['id_data_barang' => 'Data Barang wajib diisi untuk inventory jenis ASET.']);
+            return \call_user_func('\\back')->withInput()->withErrors(['id_data_barang' => 'Data Barang wajib diisi untuk inventory jenis ASET.']);
         }
         if (in_array(($validated['jenis_inventory'] ?? ''), ['PERSEDIAAN', 'FARMASI'], true) && empty($validated['id_data_barang'])) {
-            $validated['id_data_barang'] = MasterDataBarang::query()->value('id_data_barang');
+            $validated['id_data_barang'] = \call_user_func([MasterDataBarang::class, 'query'])->value('id_data_barang');
             if (!$validated['id_data_barang']) {
-                return back()->withInput()->withErrors(['id_data_barang' => 'Master Data Barang belum tersedia.']);
+                return \call_user_func('\\back')->withInput()->withErrors(['id_data_barang' => 'Master Data Barang belum tersedia.']);
             }
         }
 
@@ -281,21 +281,21 @@ class DataInventoryController extends Controller
         }
 
         $validated['total_harga'] = $validated['qty_input'] * $validated['harga_satuan'];
-        $validated['created_by'] = auth()->id();
+        $validated['created_by'] = \call_user_func('\\auth')->id();
 
         // Handle file uploads
         if ($request->hasFile('upload_foto')) {
-            $validated['upload_foto'] = $request->file('upload_foto')->store('foto-inventory', 'public');
+            $validated['upload_foto'] = \App\Support\Storage\PrivateStorage::storeUploadedFile($request->file('upload_foto'), 'foto-inventory');
         }
 
         if ($request->hasFile('upload_dokumen')) {
-            $validated['upload_dokumen'] = $request->file('upload_dokumen')->store('dokumen-inventory', 'public');
+            $validated['upload_dokumen'] = \App\Support\Storage\PrivateStorage::storeUploadedFile($request->file('upload_dokumen'), 'dokumen-inventory');
         }
 
-        DB::beginTransaction();
+        \call_user_func('\\app', 'db')->beginTransaction();
         try {
             // Insert ke data_inventory
-            $inventory = DataInventory::create($validated);
+            $inventory = \call_user_func([DataInventory::class, 'create'], $validated);
 
             // Logika berdasarkan jenis inventory:
             // - ASET → masuk ke InventoryItem (untuk RegisterAset/KIR) via Observer, TIDAK masuk ke DataStock
@@ -315,20 +315,20 @@ class DataInventoryController extends Controller
                 // PERSEDIAAN/FARMASI TIDAK masuk ke InventoryItem
             }
 
-            DB::commit();
+            \call_user_func('\\app', 'db')->commit();
 
-            return redirect()->route('inventory.data-inventory.index')
+            return \call_user_func('\\redirect')->route('inventory.data-inventory.index')
                 ->with('success', 'Data Inventory berhasil ditambahkan.');
         } catch (\Exception $e) {
-            DB::rollBack();
+            \call_user_func('\\app', 'db')->rollBack();
             
             // Log error untuk debugging
-            \Log::error('Error saving DataInventory: ' . $e->getMessage(), [
+            \call_user_func('\\logger')->error('Error saving DataInventory: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'request' => $request->all()
             ]);
             
-            return back()
+            return \call_user_func('\\back')
                 ->withInput()
                 ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage()])
                 ->with('error', 'Terjadi kesalahan saat menyimpan data. Silakan periksa kembali data yang diinput.');
@@ -340,9 +340,9 @@ class DataInventoryController extends Controller
 
     private function updateStock(DataInventory $inventory, array $data)
     {
-        $stock = DataStock::firstOrNew([
-            'id_data_barang' => $inventory->id_data_barang,
-            'id_gudang' => $inventory->id_gudang,
+        $stock = \call_user_func([DataStock::class, 'firstOrNew'], [
+            'id_data_barang' => data_get($inventory, 'id_data_barang'),
+            'id_gudang' => data_get($inventory, 'id_gudang'),
         ]);
 
         if ($stock->exists) {
@@ -356,40 +356,40 @@ class DataInventoryController extends Controller
             $stock->id_satuan = $data['id_satuan'];
         }
 
-        $stock->last_updated = now();
+        $stock->last_updated = \call_user_func('\\now');
         $stock->save();
     }
 
     private function createRegisterAset(DataInventory $inventory, array $data)
     {
         // Cek apakah RegisterAset sudah ada untuk inventory ini
-        $existingRegister = RegisterAset::where('id_inventory', $inventory->id_inventory)->first();
+        $existingRegister = \call_user_func([RegisterAset::class, 'where'], 'id_inventory', data_get($inventory, 'id_inventory'))->first();
         if ($existingRegister) {
             return; // Sudah ada, tidak perlu dibuat lagi
         }
 
-        $gudang = $inventory->gudang;
-        $unitKerja = $gudang->unitKerja ?? MasterUnitKerja::first();
+        $gudang = data_get($inventory, 'gudang');
+        $unitKerja = data_get($gudang, 'unitKerja') ?? \call_user_func([MasterUnitKerja::class, 'first']);
         
         if (!$unitKerja) {
-            \Log::warning('Unit kerja tidak ditemukan untuk membuat RegisterAset', [
-                'id_inventory' => $inventory->id_inventory,
-                'id_gudang' => $inventory->id_gudang
+            \call_user_func('\\logger')->warning('Unit kerja tidak ditemukan untuk membuat RegisterAset', [
+                'id_inventory' => data_get($inventory, 'id_inventory'),
+                'id_gudang' => data_get($inventory, 'id_gudang')
             ]);
             return;
         }
 
         // Generate nomor register dari kode register pertama di InventoryItem yang belum ter-register
-        $hasIdItemColumn = \Schema::hasColumn('register_aset', 'id_item');
+        $hasIdItemColumn = \call_user_func('\\app', 'db')->connection()->getSchemaBuilder()->hasColumn('register_aset', 'id_item');
         $registeredItemIds = [];
         
         if ($hasIdItemColumn) {
-            $registeredItemIds = RegisterAset::whereNotNull('id_item')
+            $registeredItemIds = \call_user_func([RegisterAset::class, 'whereNotNull'], 'id_item')
                 ->pluck('id_item')
                 ->toArray();
         }
         
-        $firstInventoryItemQuery = InventoryItem::where('id_inventory', $inventory->id_inventory);
+        $firstInventoryItemQuery = \call_user_func([InventoryItem::class, 'where'], 'id_inventory', data_get($inventory, 'id_inventory'));
         
         if ($hasIdItemColumn && !empty($registeredItemIds)) {
             $firstInventoryItemQuery->whereNotIn('id_item', $registeredItemIds);
@@ -407,11 +407,11 @@ class DataInventoryController extends Controller
         $nomorRegister = $firstInventoryItem->kode_register;
 
         $registerData = [
-            'id_inventory' => $inventory->id_inventory,
+            'id_inventory' => data_get($inventory, 'id_inventory'),
             'id_unit_kerja' => $unitKerja->id_unit_kerja,
             'nomor_register' => $nomorRegister,
             'kondisi_aset' => 'BAIK',
-            'tanggal_perolehan' => $data['tanggal_perolehan'] ?? now(),
+            'tanggal_perolehan' => $data['tanggal_perolehan'] ?? \call_user_func('\\now'),
             'status_aset' => 'AKTIF',
         ];
         
@@ -420,24 +420,24 @@ class DataInventoryController extends Controller
             $registerData['id_item'] = $firstInventoryItem->id_item;
         }
         
-        RegisterAset::create($registerData);
+        \call_user_func([RegisterAset::class, 'create'], $registerData);
     }
 
-    public function show($id)
+    public function show(int|string $id)
     {
-        $user = Auth::user();
+        $user = $this->authUser();
         
         // GUDANG PUSAT: Load semua inventoryItems
         // GUDANG UNIT: Load hanya inventoryItems di gudang unit mereka
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
-            $pegawai = MasterPegawai::where('user_id', $user->id)->first();
+        if (UserScope::mustScopeToUnitKerja($user)) {
+            $pegawai = \call_user_func([MasterPegawai::class, 'where'], 'user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
-                $gudangUnitIds = MasterGudang::where('jenis_gudang', 'UNIT')
+                $gudangUnitIds = \call_user_func([MasterGudang::class, 'where'], 'jenis_gudang', 'UNIT')
                     ->where('id_unit_kerja', $pegawai->id_unit_kerja)
                     ->pluck('id_gudang');
                 
                 // Load inventory dengan filter inventoryItems untuk gudang unit mereka
-                $inventory = DataInventory::with([
+                $inventory = \call_user_func([DataInventory::class, 'with'], [
                     'dataBarang', 
                     'gudang', 
                     'sumberAnggaran', 
@@ -462,7 +462,7 @@ class DataInventoryController extends Controller
                 }
                 
                 if (!$hasAccess) {
-                    abort(403, 'Unauthorized - Anda hanya dapat melihat inventory dari gudang unit Anda sendiri');
+                    \call_user_func('\\abort', 403, 'Unauthorized - Anda hanya dapat melihat inventory dari gudang unit Anda sendiri');
                 }
                 
                 // Untuk ASET: Update gudang dan qty berdasarkan inventoryItems di gudang unit
@@ -477,27 +477,27 @@ class DataInventoryController extends Controller
                     }
                 }
             } else {
-                abort(403, 'Unauthorized - User tidak memiliki unit kerja');
+                \call_user_func('\\abort', 403, 'Unauthorized - User tidak memiliki unit kerja');
             }
         } else {
             // GUDANG PUSAT: Load semua inventoryItems
-            $inventory = DataInventory::with(['dataBarang', 'gudang', 'sumberAnggaran', 'subKegiatan', 'satuan', 'inventoryItems.gudang', 'inventoryItems.ruangan'])
+            $inventory = \call_user_func([DataInventory::class, 'with'], ['dataBarang', 'gudang', 'sumberAnggaran', 'subKegiatan', 'satuan', 'inventoryItems.gudang', 'inventoryItems.ruangan'])
                 ->findOrFail($id);
         }
 
-        return view('inventory.data-inventory.show', compact('inventory'));
+        return \call_user_func('\\view', 'inventory.data-inventory.show', compact('inventory'));
     }
 
-    public function edit($id)
+    public function edit(int|string $id)
     {
-        $user = Auth::user();
-        $dataInventory = DataInventory::with(['gudang', 'inventoryItems.gudang', 'inventoryItems.ruangan'])->findOrFail($id);
+        $user = $this->authUser();
+        $dataInventory = \call_user_func([DataInventory::class, 'with'], ['gudang', 'inventoryItems.gudang', 'inventoryItems.ruangan'])->findOrFail($id);
 
         // GUDANG UNIT: Pastikan inventory ini bisa diedit oleh unit mereka
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
-            $pegawai = MasterPegawai::where('user_id', $user->id)->first();
+        if (UserScope::mustScopeToUnitKerja($user)) {
+            $pegawai = \call_user_func([MasterPegawai::class, 'where'], 'user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
-                $gudangUnitIds = MasterGudang::where('jenis_gudang', 'UNIT')
+                $gudangUnitIds = \call_user_func([MasterGudang::class, 'where'], 'jenis_gudang', 'UNIT')
                     ->where('id_unit_kerja', $pegawai->id_unit_kerja)
                     ->pluck('id_gudang');
                 
@@ -513,7 +513,7 @@ class DataInventoryController extends Controller
                     
                     // Jika ASET sudah didistribusikan (data_inventory masih di gudang pusat), redirect ke show
                     if ($canEdit && $dataInventory->gudang->jenis_gudang === 'PUSAT') {
-                        return redirect()->route('inventory.data-inventory.show', $id)
+                        return \call_user_func('\\redirect')->route('inventory.data-inventory.show', $id)
                             ->with('info', 'Untuk ASET yang sudah didistribusikan, edit dilakukan di level per register (inventory item).');
                     }
                 } else {
@@ -522,22 +522,22 @@ class DataInventoryController extends Controller
                 }
                 
                 if (!$canEdit) {
-                    abort(403, 'Unauthorized - Anda hanya dapat mengedit inventory dari gudang unit Anda sendiri');
+                    \call_user_func('\\abort', 403, 'Unauthorized - Anda hanya dapat mengedit inventory dari gudang unit Anda sendiri');
                 }
             } else {
-                abort(403, 'Unauthorized - User tidak memiliki unit kerja');
+                \call_user_func('\\abort', 403, 'Unauthorized - User tidak memiliki unit kerja');
             }
         }
         // GUDANG PUSAT: Bisa edit semua (tidak perlu validasi khusus)
         
-        $dataBarangs = MasterDataBarang::all();
+        $dataBarangs = \call_user_func([MasterDataBarang::class, 'all']);
         
         // Filter gudang berdasarkan role
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
-            $pegawai = MasterPegawai::where('user_id', $user->id)->first();
+        if (UserScope::mustScopeToUnitKerja($user)) {
+            $pegawai = \call_user_func([MasterPegawai::class, 'where'], 'user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 // Hanya tampilkan gudang UNIT yang terkait dengan unit kerja mereka
-                $gudangs = MasterGudang::where('jenis_gudang', 'UNIT')
+                $gudangs = \call_user_func([MasterGudang::class, 'where'], 'jenis_gudang', 'UNIT')
                     ->where('id_unit_kerja', $pegawai->id_unit_kerja)
                     ->get();
             } else {
@@ -545,46 +545,46 @@ class DataInventoryController extends Controller
             }
         } else {
             // GUDANG PUSAT: Hanya bisa edit inventory di gudang PUSAT
-            $gudangs = MasterGudang::where('jenis_gudang', 'PUSAT')->get();
+            $gudangs = \call_user_func([MasterGudang::class, 'where'], 'jenis_gudang', 'PUSAT')->get();
         }
         
-        $sumberAnggarans = MasterSumberAnggaran::all();
-        $subKegiatans = MasterSubKegiatan::all();
-        $defaultSubKegiatanId = MasterSubKegiatan::query()->value('id_sub_kegiatan');
-        $satuans = MasterSatuan::all();
-        $unitKerjas = MasterUnitKerja::all();
+        $sumberAnggarans = \call_user_func([MasterSumberAnggaran::class, 'all']);
+        $subKegiatans = \call_user_func([MasterSubKegiatan::class, 'all']);
+        $defaultSubKegiatanId = \call_user_func([MasterSubKegiatan::class, 'query'])->value('id_sub_kegiatan');
+        $satuans = \call_user_func([MasterSatuan::class, 'all']);
+        $unitKerjas = \call_user_func([MasterUnitKerja::class, 'all']);
 
-        return view('inventory.data-inventory.edit', compact(
+        return \call_user_func('\\view', 'inventory.data-inventory.edit', compact(
             'dataInventory', 'dataBarangs', 'gudangs', 'sumberAnggarans', 'subKegiatans', 'satuans', 'unitKerjas', 'defaultSubKegiatanId'
         ));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int|string $id)
     {
-        $user = Auth::user();
-        $inventory = DataInventory::with('gudang')->findOrFail($id);
+        $user = $this->authUser();
+        $inventory = \call_user_func([DataInventory::class, 'with'], 'gudang')->findOrFail($id);
 
         // Filter berdasarkan jenis gudang untuk kepala_unit dan pegawai
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
-            $pegawai = MasterPegawai::where('user_id', $user->id)->first();
+        if (UserScope::mustScopeToUnitKerja($user)) {
+            $pegawai = \call_user_func([MasterPegawai::class, 'where'], 'user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 // Pastikan inventory ini dari gudang UNIT yang terkait dengan unit kerja mereka
                 if ($inventory->gudang->jenis_gudang !== 'UNIT' || 
                     $inventory->gudang->id_unit_kerja !== $pegawai->id_unit_kerja) {
-                    abort(403, 'Unauthorized - Anda hanya dapat mengupdate inventory dari gudang unit Anda sendiri');
+                    \call_user_func('\\abort', 403, 'Unauthorized - Anda hanya dapat mengupdate inventory dari gudang unit Anda sendiri');
                 }
             } else {
-                abort(403, 'Unauthorized - User tidak memiliki unit kerja');
+                \call_user_func('\\abort', 403, 'Unauthorized - User tidak memiliki unit kerja');
             }
         }
 
         // Validation rules berbeda untuk admin/admin_gudang vs kepala_unit/pegawai
         $gudangRules = ['required', 'exists:master_gudang,id_gudang'];
         
-        if ($user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if ((UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             // Admin dan admin_gudang hanya bisa update inventory di gudang PUSAT
             $gudangRules[] = function ($attribute, $value, $fail) {
-                $gudang = MasterGudang::find($value);
+                $gudang = \call_user_func([MasterGudang::class, 'find'], $value);
                 if ($gudang && $gudang->jenis_gudang !== 'PUSAT') {
                     $fail('Data inventory hanya dapat disimpan di gudang PUSAT. Gudang UNIT hanya menerima distribusi barang.');
                 }
@@ -592,9 +592,9 @@ class DataInventoryController extends Controller
         } else {
             // Kepala unit dan pegawai hanya bisa update inventory di gudang UNIT mereka
             $gudangRules[] = function ($attribute, $value, $fail) use ($user) {
-                $pegawai = MasterPegawai::where('user_id', $user->id)->first();
+                $pegawai = \call_user_func([MasterPegawai::class, 'where'], 'user_id', $user->id)->first();
                 if ($pegawai && $pegawai->id_unit_kerja) {
-                    $gudang = MasterGudang::find($value);
+                    $gudang = \call_user_func([MasterGudang::class, 'find'], $value);
                     if ($gudang && ($gudang->jenis_gudang !== 'UNIT' || $gudang->id_unit_kerja !== $pegawai->id_unit_kerja)) {
                         $fail('Anda hanya dapat mengupdate inventory di gudang unit Anda sendiri.');
                     }
@@ -629,12 +629,12 @@ class DataInventoryController extends Controller
         ]);
 
         if (($validated['jenis_inventory'] ?? '') === 'ASET' && empty($validated['id_data_barang'])) {
-            return back()->withInput()->withErrors(['id_data_barang' => 'Data Barang wajib diisi untuk inventory jenis ASET.']);
+            return \call_user_func('\\back')->withInput()->withErrors(['id_data_barang' => 'Data Barang wajib diisi untuk inventory jenis ASET.']);
         }
         if (in_array(($validated['jenis_inventory'] ?? ''), ['PERSEDIAAN', 'FARMASI'], true) && empty($validated['id_data_barang'])) {
-            $validated['id_data_barang'] = MasterDataBarang::query()->value('id_data_barang');
+            $validated['id_data_barang'] = \call_user_func([MasterDataBarang::class, 'query'])->value('id_data_barang');
             if (!$validated['id_data_barang']) {
-                return back()->withInput()->withErrors(['id_data_barang' => 'Master Data Barang belum tersedia.']);
+                return \call_user_func('\\back')->withInput()->withErrors(['id_data_barang' => 'Master Data Barang belum tersedia.']);
             }
         }
 
@@ -673,22 +673,20 @@ class DataInventoryController extends Controller
 
         // Handle file uploads
         if ($request->hasFile('upload_foto')) {
-            // Hapus foto lama jika ada
             if ($inventory->upload_foto) {
-                Storage::disk('public')->delete($inventory->upload_foto);
+                \App\Support\Storage\PrivateStorage::delete($inventory->upload_foto);
             }
-            $validated['upload_foto'] = $request->file('upload_foto')->store('foto-inventory', 'public');
+            $validated['upload_foto'] = \App\Support\Storage\PrivateStorage::storeUploadedFile($request->file('upload_foto'), 'foto-inventory');
         }
 
         if ($request->hasFile('upload_dokumen')) {
-            // Hapus dokumen lama jika ada
             if ($inventory->upload_dokumen) {
-                Storage::disk('public')->delete($inventory->upload_dokumen);
+                \App\Support\Storage\PrivateStorage::delete($inventory->upload_dokumen);
             }
-            $validated['upload_dokumen'] = $request->file('upload_dokumen')->store('dokumen-inventory', 'public');
+            $validated['upload_dokumen'] = \App\Support\Storage\PrivateStorage::storeUploadedFile($request->file('upload_dokumen'), 'dokumen-inventory');
         }
 
-        DB::beginTransaction();
+        \call_user_func('\\app', 'db')->beginTransaction();
         try {
             $oldJenis = $inventory->jenis_inventory;
             $oldQty = $inventory->qty_input;
@@ -705,7 +703,7 @@ class DataInventoryController extends Controller
                     // (Tidak dihapus, hanya update jika perlu)
                 } elseif (in_array($oldJenis, ['PERSEDIAAN', 'FARMASI'])) {
                     // Jika sebelumnya PERSEDIAAN/FARMASI, kurangi DataStock
-                    $oldStock = \App\Models\DataStock::where('id_data_barang', $oldDataBarangId)
+                    $oldStock = \call_user_func([DataStock::class, 'where'], 'id_data_barang', $oldDataBarangId)
                         ->where('id_gudang', $oldGudangId)
                         ->first();
                     if ($oldStock) {
@@ -737,15 +735,15 @@ class DataInventoryController extends Controller
                     // (Logika ini bisa dikembangkan lebih lanjut jika diperlukan)
                 } elseif (in_array($validated['jenis_inventory'], ['PERSEDIAAN', 'FARMASI'])) {
                     // Update DataStock dengan selisih qty
-                    $stock = \App\Models\DataStock::where('id_data_barang', $inventory->id_data_barang)
-                        ->where('id_gudang', $inventory->id_gudang)
+                    $stock = \call_user_func([DataStock::class, 'where'], 'id_data_barang', data_get($inventory, 'id_data_barang'))
+                        ->where('id_gudang', data_get($inventory, 'id_gudang'))
                         ->first();
                     
                     if ($stock) {
                         $selisihQty = $validated['qty_input'] - $oldQty;
                         $stock->qty_masuk += $selisihQty;
                         $stock->qty_akhir += $selisihQty;
-                        $stock->last_updated = now();
+                        $stock->last_updated = \call_user_func('\\now');
                         $stock->save();
                     } else {
                         // Jika stock belum ada, buat baru
@@ -754,61 +752,61 @@ class DataInventoryController extends Controller
                 }
             }
             
-            DB::commit();
+            \call_user_func('\\app', 'db')->commit();
         } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Error updating DataInventory: ' . $e->getMessage());
-            return back()->withInput()->with('error', 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage());
+            \call_user_func('\\app', 'db')->rollBack();
+            \call_user_func('\\logger')->error('Error updating DataInventory: ' . $e->getMessage());
+            return \call_user_func('\\back')->withInput()->with('error', 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage());
         }
 
-        return redirect()->route('inventory.data-inventory.index')
+        return \call_user_func('\\redirect')->route('inventory.data-inventory.index')
             ->with('success', 'Data Inventory berhasil diperbarui.');
     }
 
-    public function destroy($id)
+    public function destroy(int|string $id)
     {
-        $user = Auth::user();
+        $user = $this->authUser();
         
         // GUDANG UNIT: Tidak bisa menghapus data inventory
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
-            abort(403, 'Unauthorized - Anda tidak memiliki izin untuk menghapus data inventory.');
+        if (UserScope::mustScopeToUnitKerja($user)) {
+            \call_user_func('\\abort', 403, 'Unauthorized - Anda tidak memiliki izin untuk menghapus data inventory.');
         }
         
         // GUDANG PUSAT: Bisa menghapus data inventory
-        $inventory = DataInventory::findOrFail($id);
+        $inventory = \call_user_func([DataInventory::class, 'findOrFail'], $id);
         $inventory->delete();
 
-        return redirect()->route('inventory.data-inventory.index')
+        return \call_user_func('\\redirect')->route('inventory.data-inventory.index')
             ->with('success', 'Data Inventory berhasil dihapus.');
     }
 
     private function resolveDefaultSubKegiatanId(): int
     {
-        $id = MasterSubKegiatan::query()->value('id_sub_kegiatan');
+        $id = \call_user_func([MasterSubKegiatan::class, 'query'])->value('id_sub_kegiatan');
         if ($id) {
             return (int) $id;
         }
 
         // Auto-bootstrap master hirarki minimum agar input inventory tidak gagal
         $programDefaults = [];
-        if (Schema::hasColumn('master_program', 'kode_program')) {
+        if (\call_user_func('\\app', 'db')->connection()->getSchemaBuilder()->hasColumn('master_program', 'kode_program')) {
             $programDefaults['kode_program'] = 'SYS-DEFAULT-PROGRAM';
         }
-        $program = MasterProgram::query()->firstOrCreate(
+        $program = \call_user_func([MasterProgram::class, 'query'])->firstOrCreate(
             ['nama_program' => 'PROGRAM DEFAULT SISTEM'],
             $programDefaults
         );
 
         $kegiatanDefaults = [];
-        if (Schema::hasColumn('master_kegiatan', 'kode_kegiatan')) {
+        if (\call_user_func('\\app', 'db')->connection()->getSchemaBuilder()->hasColumn('master_kegiatan', 'kode_kegiatan')) {
             $kegiatanDefaults['kode_kegiatan'] = 'SYS-DEFAULT-KEGIATAN';
         }
-        $kegiatan = MasterKegiatan::query()->firstOrCreate(
+        $kegiatan = \call_user_func([MasterKegiatan::class, 'query'])->firstOrCreate(
             ['id_program' => $program->id_program, 'nama_kegiatan' => 'KEGIATAN DEFAULT SISTEM'],
             $kegiatanDefaults
         );
 
-        $subKegiatan = MasterSubKegiatan::query()->firstOrCreate(
+        $subKegiatan = \call_user_func([MasterSubKegiatan::class, 'query'])->firstOrCreate(
             ['kode_sub_kegiatan' => 'SYS-DEFAULT-SUB-KEGIATAN'],
             [
                 'id_kegiatan' => $kegiatan->id_kegiatan,
@@ -817,5 +815,15 @@ class DataInventoryController extends Controller
         );
 
         return (int) $subKegiatan->id_sub_kegiatan;
+    }
+
+    private function authUser(): User
+    {
+        $user = \call_user_func('\\auth')->user();
+        if (! $user instanceof User) {
+            \call_user_func('\\abort', 401);
+        }
+
+        return $user;
     }
 }

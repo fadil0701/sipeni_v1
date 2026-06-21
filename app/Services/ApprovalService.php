@@ -102,7 +102,7 @@ class ApprovalService
             ->get();
 
         foreach ($nextFlows as $nextFlow) {
-            ApprovalLog::firstOrCreate(
+            $log = ApprovalLog::firstOrCreate(
                 [
                     'modul_approval' => $currentLog->modul_approval,
                     'id_referensi' => $currentLog->id_referensi,
@@ -116,6 +116,10 @@ class ApprovalService
                     'approved_at' => null,
                 ]
             );
+
+            if ($log->wasRecentlyCreated) {
+                AppNotificationService::notifyApprovalPending($log);
+            }
         }
     }
 

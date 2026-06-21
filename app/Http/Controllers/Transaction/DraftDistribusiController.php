@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Transaction;
 
+use App\Support\Rbac\RbacRoles;
+use App\Support\Rbac\UserScope;
+
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalLog;
 use Illuminate\Http\Request;
@@ -17,7 +20,7 @@ class DraftDistribusiController extends Controller
         $kategoriGudang = strtoupper((string) $request->query('kategori', ''));
         $viewType = $request->query('view_type', 'perlu_diproses');
 
-        $isAdmin = $user->hasAnyRole(['admin', 'admin_gudang']);
+        $isAdmin = (UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user));
         $isViewOnly = !$isAdmin && $user->hasAnyRole(['kepala_unit', 'kepala_pusat', 'kasubbag_tu']);
 
         $roleByKategori = [

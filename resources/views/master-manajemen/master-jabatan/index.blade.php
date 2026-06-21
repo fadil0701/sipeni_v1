@@ -14,35 +14,7 @@
     </a>
 </div>
 
-@if(session('success'))
-    <div class="mb-4 bg-green-50 border-l-4 border-green-400 p-4 rounded">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                </svg>
-            </div>
-            <div class="ml-3">
-                <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
-            </div>
-        </div>
-    </div>
-@endif
 
-@if(session('error'))
-    <div class="mb-4 bg-red-50 border-l-4 border-red-400 p-4 rounded">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                </svg>
-            </div>
-            <div class="ml-3">
-                <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
-            </div>
-        </div>
-    </div>
-@endif
 
 <x-index.filter-toolbar
     :action="route('master-manajemen.master-jabatan.index')"
@@ -52,19 +24,7 @@
     <x-slot:before>
         <input type="hidden" name="per_page" value="{{ request('per_page', 10) }}" id="hidden_per_page">
     </x-slot:before>
-    <x-slot:filters>
-        <div class="w-full shrink-0 sm:min-w-[11rem] sm:w-56">
-            <label for="role_id" class="mb-1 block text-sm font-medium text-gray-700">Role</label>
-            <select id="role_id" name="role_id" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Semua Role</option>
-                @foreach($roles as $role)
-                    <option value="{{ $role->id }}" {{ request('role_id') == $role->id ? 'selected' : '' }}>
-                        {{ $role->display_name }}
-                    </option>
-                @endforeach
-            </select>
-        </div>
-    </x-slot:filters>
+    <x-slot:filters></x-slot:filters>
 </x-index.filter-toolbar>
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
@@ -78,7 +38,6 @@
                     <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Urutan</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Jabatan</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Pegawai</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
@@ -93,15 +52,6 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $jabatan->nama_jabatan }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            @if($jabatan->role)
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                                    {{ $jabatan->role->display_name }}
-                                </span>
-                            @else
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">-</span>
-                            @endif
                         </td>
                         <td class="px-6 py-4">
                             <div class="text-sm text-gray-900">{{ $jabatan->deskripsi ?? '-' }}</div>
@@ -123,7 +73,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center">
+                        <td colspan="6" class="px-6 py-12 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
@@ -181,11 +131,6 @@
         }
     }
     
-    document.querySelectorAll('#role_id').forEach(select => {
-        select.addEventListener('change', function() {
-            this.form.submit();
-        });
-    });
 </script>
 @endpush
 @endsection

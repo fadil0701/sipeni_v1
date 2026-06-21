@@ -2,11 +2,11 @@
 
 Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lanjutan yang belum dikerjakan pada sesi pengembangan terbaru. Bagian teknis diselaraskan dengan perilaku kode di repository SIPENI saat ini (`PermintaanBarangController`, `DataInventoryController`, `DistribusiService`, dll.).
 
-### Status ringkas *(per 2026-05-03)*
+### Status ringkas *(per 2026-05-04)*
 
 | Kategori | Isi singkat |
 |----------|----------------|
-| **Sudah diselesaikan** | TTE dokumen KIR tahap internal: segel (`tte_document_seals`) + hash + QR verifikasi + **tiga slot TTE per peran** (`tte_document_signatures`: Kepala Pusat, Pengurus Barang, Kepala Unit) dengan aksi **Tandatangani** per akun pegawai terpetakan; halaman publik `/verifikasi-dokumen/{token}` menampilkan daftar status per peran; desain di `docs/TTE_DESAIN_TAHAP_1.md`. **Import Data Inventory:** tombol **Import data** di halaman Data Inventory, permission wildcard import untuk role gudang di `PermissionHelper` + entri `PermissionSeeder`, perbaikan **aktif ganda** menu sidebar Data Inventory vs Import (wildcard route). Retur / Kartu Stok / tes terkait sesuai catatan §3 Prioritas Menengah #4–#6 (2026-05-02). |
+| **Sudah diselesaikan** | TTE dokumen KIR tahap internal: segel (`tte_document_seals`) + hash + QR verifikasi + **tiga slot TTE per peran** (`tte_document_signatures`: Kepala Pusat, Pengurus Barang, Kepala Unit) dengan aksi **Tandatangani** per akun pegawai terpetakan; halaman publik `/verifikasi-dokumen/{token}` menampilkan daftar status per peran; desain di `docs/TTE_DESAIN_TAHAP_1.md`. **Import Data Inventory:** tombol **Import data** di halaman Data Inventory, permission wildcard import untuk role gudang di `PermissionHelper` + entri `PermissionSeeder`, perbaikan **aktif ganda** menu sidebar Data Inventory vs Import (wildcard route). Retur / Kartu Stok / tes terkait sesuai catatan §3 Prioritas Menengah #4–#6 (2026-05-02). **Template cetak (admin):** CRUD `print_templates`, gabungan **Header + Isi**, `PrintTemplateRenderer` + payload **`distribusi.sbbk`** (`SbbkPrintTemplateData`), chip variabel (template + JSON contoh + registry payload; Key kosong = gabungan semua key terdaftar), perbaikan error kompilasi Blade pada form. **Toggle fitur cetak template (2026-05-04):** env `FEATURE_PRINT_TEMPLATES` (default **mati**) — menyembunyikan menu Admin “Template Cetak”, tombol cetak SBBK berbasis template, mem-filter submenu di `PermissionHelper`, dan mem-blokir rute terkait via middleware; **KIR / aset tidak memakai flag ini** (alur TTE KIR tetap). |
 | **Sedang / parsial** | TTE: verifikasi dengan **input kode** tanpa URL, log audit akses halaman verifikasi, penyempurnaan metadata. Select2 vs sisa fallback **Choices.js** di beberapa blade (§2.E). UAT manual lintas role untuk modul besar. Hardening test ekstrem maintenance (§4.D). |
 | **Akan dikerjakan / backlog terarah** | Integrasi **PSrE / BSrE** resmi bila kebijakan menghendaki. Opsional: membuka akses role tambahan ke dokumen KIR (mis. **Kepala Pusat** pada middleware route asset) agar penandatangan bisa mengakses dari browser tanpa workaround admin. Prioritas rendah: polish visual select, UX cetak unduhan, notifikasi peminjaman (§4.D). |
 
@@ -97,6 +97,18 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Struktur referensi barang:
   - penggabungan data `bmd_aset_lancar_lengkap.xlsx` ke workbook import `kemendagri_import_sheet6_objek_filtered.xlsx` sesuai format sheet target (`aset` s.d `permendagri_108`) untuk memperkaya referensi aset lancar.
 
+### I. Template cetak dinamis (admin) & SBBK distribusi
+- **Status: Selesai (inti operasional + admin; kelengkapan multi-dokumen → §3 Prioritas Menengah #7–#10)**
+- **Model & penyimpanan:** tabel `print_templates` (termasuk `header_html`, `layout_mode`, `header_preset`, `body`, `sample_data`, `key`, `is_active`, dll.) — lihat migrasi di `database/migrations/*print_templates*`.
+- **Render:** `App\Services\PrintTemplateRenderer` — placeholder `{{path.dotted}}` (escape) dan `{{{path}}}` (HTML mentah dari payload tepercaya); `mergedTemplateString()` menggabungkan header + isi; `render()` dipakai dari cetak distribusi.
+- **Data payload SBBK:** `App\Services\SbbkPrintTemplateData::payload()` membangun array data (teks + `detail_rows_html` untuk baris tabel); `variableGroups()` menjadi sumber daftar variabel untuk chip/registry.
+- **Admin:** `PrintTemplateController` (index/create/edit/show + pratinjau HTML dari `sample_data`); form `_form.blade.php` — dua area editor (TinyMCE Header + Isi), **strip chip** variabel.
+- **Chip variabel:** `PrintTemplateRenderer::mergePlaceholderGroupsWithData()` menggabungkan placeholder di HTML, kunci dari **JSON contoh**, dan variabel payload aplikasi menurut **Key** template; `mergedKnownVariableGroupsForAllKeys()` memastikan halaman **create** (Key masih kosong) tetap menampilkan gabungan semua payload terdaftar di registry.
+- **Registry payload per key:** `PrintTemplateRenderer::allKnownVariableGroupsByTemplateKey()` (saat ini memetakan `distribusi.sbbk`); mudah ditambah key dokumen lain.
+- **Integrasi transaksi:** `DistribusiController` memuat template aktif ber-key `distribusi.sbbk` dan me-render dengan `SbbkPrintTemplateData::payload($distribusi)`.
+- **Stabilitas Blade:** perbaikan `ParseError` pada `_form.blade.php` (menghindari `@php` di dalam `<textarea>` dan teks bantuan berisi escape Blade `@{{` / `@{{{` yang memecahkan compiler di luar blok aman).
+- **Nonaktif sementara (opsional):** `FEATURE_PRINT_TEMPLATES` → `config('sipeni.feature_print_templates')`; middleware alias `feature.print-templates` pada rute `admin/print-templates*` dan `transaction/distribusi/{id}/print-sbbk`; UI sidebar + `PermissionHelper` (submenu `print-templates`) + halaman detail distribusi mengikuti flag. Detail teknis dan backlog lanjutan: **§8.E**.
+
 ---
 
 ## 2) Pekerjaan Yang Belum Diselesaikan
@@ -159,7 +171,7 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Menyiapkan opsi tahap lanjut integrasi PSrE resmi (untuk kebutuhan legal formal lintas instansi).
 
 ### G. Fitur Pemeliharaan (Permintaan -> Jadwal -> Service -> Riwayat)
-- **Status: Parsial Tinggi (alur inti sudah berjalan)**
+- **Status: Parsial Tinggi (alur inti sudah berjalan; penyesuaian jadwal 2026-05-04 — lihat §4.E)**
 - **Tujuan:**
   - Menjadikan modul pemeliharaan sebagai alur end-to-end yang konsisten dari pengajuan sampai histori aset.
 - **Ruang Lingkup Fungsional:**
@@ -357,6 +369,23 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 5. Tambahkan test terarah untuk alur retur terpisah (create multi-item, approve/tolak, update stok pusat/unit). ✅ **`ReturBarangFlowTest`** — create dari inventory unit + **`terima`** (status **DITERIMA**); guest tidak akses index.
 6. Koreksi/penegasan definisi `Qty Awal` pada laporan `Kartu Stok` (saat ini masih bernilai 0 pasca import/adjustment) agar sesuai domain bisnis yang diinginkan. ✅ **(2026-05-02)**
    - di `ReportController::kartuStok`, untuk baris dengan `qty_awal` ~0 namun ada mutasi, ditampilkan **saldo awal implisit** \(Qty akhir − Qty masuk + Qty keluar\) dengan penanda **implisit** di view `kartu-stok`.
+7. **Template cetak dinamis — kelengkapan multi-dokumen & konsistensi data**
+   - Perluas **`PrintTemplateRenderer::allKnownVariableGroupsByTemplateKey()`** + pasangan **`::variableGroups()`** (atau setara) untuk setiap dokumen operasional yang akan memakai pola yang sama: mis. **penerimaan barang**, **permintaan barang** (surat jalan/nota), **KIB/KIR** ringkas, retur, laporan stok — agar chip admin dan dokumentasi tidak hanya **`distribusi.sbbk`**.
+   - **Seeder / firstOrCreate** template default per `key` (HTML contoh resmi instansi + `sample_data` yang selaras dengan struktur `payload()`), sehingga instalasi baru atau environment uji langsung bisa cetak tanpa menyusun template dari nol.
+   - **Selaraskan JSON contoh** di admin dengan field payload nyata per key (hindari drift antara placeholder bawaan body vs kunci di `SbbkPrintTemplateData` / layanan lain).
+8. **Template cetak — kualitas output & UX admin**
+   - Halaman contoh **margin/cetak** (A4/F4) dan blok tabel SBBK yang konsisten dengan standar kertas; pratinjau admin vs hasil browser cetak perlu dicek lintas peramban.
+   - Pertimbangkan **memindahkan inisialisasi TinyMCE** dari Blade `@verbatim` ke **`resources/js`** + Vite agar maintenance lebih aman dan mengurangi risiko regresi parser Blade.
+9. **Template cetak — pengujian & keamanan**
+   - **Test otomatis:** render `PrintTemplateRenderer::render()` dengan fixture template + payload minimal; smoke route admin create/update/preview (auth + role admin).
+   - **Kebijakan HTML mentah:** dokumentasikan bahwa `{{{ }}}` hanya untuk string dari kode tepercaya (bukan input pengguna bebas); audit template aktif bila perlu.
+10. **Template cetak — operasional**
+   - Daftar template di **sidebar/izin** konsisten dengan modul lain; opsi **duplikasi template** (clone key/name) untuk mempercepat variasi dokumen.
+   - **Update 2026-05-04:** visibilitas menu Admin “Template Cetak” dan akses rute admin/SBBK sudah digating lewat **`FEATURE_PRINT_TEMPLATES`** (default off). Saat fitur diaktifkan kembali, validasi ulang konsistensi izin + UX daftar template.
+
+11. **Template cetak — TTE / tata letak tanda tangan (pasca KIR stabil)**
+   - KIR dokumen sudah selaras format internal; **SBBK berbasis template** belum wajib mengikuti alur TTE KIR — setelah penempatan TTE pada kop/bawah surat SBBK disepakati (koordinat, urutan peran, atau integrasi segel seperti KIR bila diperlukan), sesuaikan **HTML template** + payload (`SbbkPrintTemplateData`) dan uji cetak browser/PDF.
+   - Jika nanti SBBK memakai segel/verifikasi: pertimbangkan reuse pola `TteSealService` / token verifikasi atau tetap cetak statis sesuai kebijakan.
 
 ### Prioritas Rendah
 1. Penyempurnaan visual minor pada selectable/search fields.
@@ -407,6 +436,7 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
   - upload file dibedakan dengan tombol + badge (`UPLOAD`/`KAMERA`).
 - Form `kalibrasi-aset`:
   - upload file sertifikat dibedakan dengan tombol + badge (`UPLOAD`/`KAMERA`).
+  - create/edit: dropdown **Unit Kerja** sebagai filter daftar **Register Aset** (selaras domain aset per unit di modul pemeliharaan); label opsi register memuat **nomor register — nama unit — nama barang**; field unit tidak disimpan terpisah (sumber kebenaran tetap `id_register_aset`).
 - Preview file maintenance:
   - di form create/edit: foto ditampilkan langsung, PDF/DOC/DOCX ditampilkan sebagai link,
   - di halaman detail (`show`): foto ditampilkan langsung, PDF/DOC/DOCX ditampilkan sebagai link.
@@ -426,9 +456,15 @@ Dokumen ini merangkum pekerjaan yang sudah diselesaikan dan daftar pekerjaan lan
 - Skenario test ekstrem/concurrency untuk maintenance.
 - Opsi export non-CSV (jika dibutuhkan pemangku kepentingan).
 - **TTE dokumen:** tahap internal (segel + multi-penandatangan KIR) sudah berjalan; **belum** BSrE/PSrE resmi; pelengkap: verifikasi kode-only, audit log.
+- **Template cetak / SBBK:** modul dapat dinonaktifkan lewat `FEATURE_PRINT_TEMPLATES`; backlog §3 **#7–#11** dan **§8.E**.
 - Hardening notifikasi + dashboard monitoring status lintas role untuk peminjaman barang.
 - Finalisasi UAT manual lintas role untuk alur peminjaman barang (antar unit vs gudang pusat).
 - *(UI retur + test retur + Kartu Stok Qty awal: terselesaikan 2026-05-02 — lihat Prioritas Menengah #4–#6.)*
+
+### E. Jadwal Pemeliharaan — selarasan alur & perbaikan operasional *(2026-05-04)*
+- **Nomor PMH:** generate dari jadwal (`JadwalMaintenanceController::generatePermintaan`) memakai **`PermintaanPemeliharaan::nextUrutanNomorUntukTahun()`** yang sama dengan alur permintaan manual — `lockForUpdate` + parsing suffix 4 digit + loop cek unik, mengganti logika `substr`/`orderBy` lama yang rentan bentrok atau salah parse.
+- **Daftar unit di form create:** query register aset aktif memfilter **`id_unit_kerja` not null** dan memakai `distinct` + `whereIn` aman agar tidak memasukkan unit hantu ke dropdown.
+- **UI:** index filter punya tombol **Terapkan filter** + **Reset** (pencarian ID unit & teks register tidak lagi “mandeg” tanpa submit); form **create** menampilkan error global dari blok `try/catch` store; form **edit** menambahkan skrip toggle **interval hari** untuk periode **CUSTOM** (selaras dengan create).
 
 ---
 
@@ -596,6 +632,8 @@ Bagian ini mencatat keselarasan dokumen dengan implementasi terbaru tanpa mengub
 - **UAT manual** lintas role: masih terbuka untuk beberapa modul (peminjaman, dll.).
 - **Prioritas Menengah #4–#6 (2026-05-02):** UI retur dibersihkan dari referensi penerimaan/distribusi; **`ReturBarangFlowTest`** menambah cakupan retur; **Kartu Stok** menampilkan qty awal implisit bila `qty_awal` di DB nol (lihat §3 Prioritas Menengah).
 - **UX & akses Inventory (2026-05-03):** tombol **Import data** pada halaman Data Inventory; permission `inventory.data-inventory.import.*` di `PermissionHelper` / `PermissionSeeder`; perbaikan highlight sidebar **Data Inventory** vs **Import Data Inventory** (`layouts/app.blade.php`).
+- **Template cetak admin + SBBK (2026-05-03):** CRUD `print_templates`, renderer + chip variabel + integrasi distribusi; sisa pekerjaan pada **§3 Prioritas Menengah #7–#11** dan rujukan teknis **§8.D–§8.E**.
+- **Toggle template cetak + SBBK (2026-05-04):** fitur dapat dimatikan default lewat **`FEATURE_PRINT_TEMPLATES`** agar pengguna tidak melihat modul yang belum final (khususnya penempatan TTE SBBK); lihat **§8.E** untuk file terkait dan langkah mengaktifkan kembali.
 
 ---
 
@@ -614,3 +652,46 @@ Bagian ini mencatat keselarasan dokumen dengan implementasi terbaru tanpa mengub
 - **Sudah selesai:** lihat baris pertama tabel **Status ringkas** di atas.
 - **Sedang dikerjakan / parsial:** TTE pelengkap (kode-only, audit), pembersihan Choices, UAT, hardening maintenance.
 - **Akan dikerjakan:** PSrE/BSrE, opsi akses role untuk penandatangan KIR, prioritas rendah UX/notifikasi.
+
+### D. Template cetak dinamis *(pembaruan 2026-05-03)*
+- **Controller admin:** `App\Http\Controllers\Admin\PrintTemplateController`.
+- **Layanan:** `App\Services\PrintTemplateRenderer`, `App\Services\SbbkPrintTemplateData`.
+- **View admin:** `resources/views/admin/print-templates/` (`_form.blade.php`, `create`, `edit`, `index`, `show`, `preview-frame`).
+- **Transaksi:** integrasi render di `DistribusiController` (template key `distribusi.sbbk`).
+- **Lanjutan disarankan:** §3 **Prioritas Menengah** butir **#7–#11**.
+
+### E. Toggle fitur template cetak & kerja lanjut *(2026-05-04)*
+
+**Konteks:** Modul admin **Template Cetak** dan **cetak SBBK dari template** dapat disembunyikan dari pengguna sementara fokus tim ke **KIR + TTE** (penempatan TTE pada SBBK/template belum final). **Dokumen KIR / rute aset tidak memakai flag ini.**
+
+**Konfigurasi**
+
+| Item | Keterangan |
+|------|------------|
+| Env | `FEATURE_PRINT_TEMPLATES` — di `.env.example` default `false`. |
+| Config | `config/sipeni.php` → `feature_print_templates` membaca env di atas. |
+| Mengaktifkan lagi | Set `FEATURE_PRINT_TEMPLATES=true`, lalu `php artisan config:clear` (hindari cache config lama). |
+
+**Perilaku saat flag `false` (default)**
+
+- Sidebar **Admin Panel → Template Cetak** tidak ditampilkan (`resources/views/layouts/app.blade.php` — cek `config('sipeni.feature_print_templates')` **dan** permission).
+- Submenu `print-templates` di `PermissionHelper::getAccessibleMenus()` dilewati.
+- Tombol **Cetak SBBK (template)** pada detail distribusi disembunyikan; query `PrintTemplate` tidak dijalankan (`resources/views/transaction/distribusi/show.blade.php`).
+- HTTP: middleware `feature.print-templates` mengembalikan **404** untuk `admin/print-templates*` dan `transaction/distribusi/{id}/print-sbbk`.
+
+**File / titik integrasi**
+
+- `App\Http\Middleware\EnsurePrintTemplatesFeatureEnabled`
+- `bootstrap/app.php` — alias middleware `feature.print-templates`
+- `routes/web.php` — grup admin `print-templates` + route `distribusi.print-sbbk`
+- `config/sipeni.php`, `.env.example`
+
+**Pengerjaan selanjutnya (print-template / SBBK)** — selaras §3 **#7–#11**
+
+1. **Multi-dokumen & registry:** tambah key + `variableGroups()` / payload per dokumen (penerimaan, retur, dll.) di `PrintTemplateRenderer::allKnownVariableGroupsByTemplateKey()`; seeder template default per key.
+2. **Kualitas cetak:** selaraskan margin A4/F4, tabel SBBK, pratinjau admin vs hasil cetak browser; pertimbangkan pindahkan inisialisasi TinyMCE ke bundel JS (Vite).
+3. **Uji & keamanan:** test render fixture; smoke route admin (auth + role); dokumentasi penggunaan `{{{ }}}` hanya untuk string tepercaya.
+4. **Operasional:** duplikasi template; setelah fitur dibuka ke user, UAT lintas role untuk CRUD template + cetak SBBK.
+5. **TTE / blok tanda tangan SBBK:** setelah desain penempatan TTE disepakati, perbarui template HTML + `SbbkPrintTemplateData` (dan bila perlu integrasi dengan pola segel seperti KIR); lalu aktifkan `FEATURE_PRINT_TEMPLATES` untuk lingkungan yang siap.
+
+**Referensi dokumen terkait:** `docs/DAFTAR_DOKUMEN_CETAK.md` (daftar jenis dokumen cetak dan status keterhubungan ke template).

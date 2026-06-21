@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::getConnection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Ubah enum dari TAHUNAN menjadi CITO menggunakan raw SQL
         // MySQL tidak bisa langsung mengubah enum jika ada data yang tidak sesuai
         // Jadi kita ubah enum dulu, baru update data yang sudah ada
@@ -29,6 +33,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (Schema::getConnection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Ubah enum kembali dari CITO menjadi TAHUNAN menggunakan raw SQL
         DB::statement("ALTER TABLE `permintaan_barang` MODIFY COLUMN `tipe_permintaan` ENUM('RUTIN', 'TAHUNAN') NULL AFTER `tanggal_permintaan`");
         

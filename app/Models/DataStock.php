@@ -53,6 +53,80 @@ class DataStock extends Model
     }
 
     /**
+     * Snapshot stok banyak barang sekaligus (hindari N+1 query per barang).
+     *
+     * @param  list<int>  $barangIds
+     * @param  list<int|string>  $stockPersediaanIds
+     * @param  list<int|string>  $stockFarmasiIds
+     * @return array<string, array{total: float, stock_gudang_pusat_persediaan: float, stock_gudang_pusat_farmasi: float, per_gudang: \Illuminate\Support\Collection<int, array<string, mixed>>}>
+     */
+    public static function buildBulkStockSnapshot(array $barangIds, array $stockPersediaanIds, array $stockFarmasiIds): array
+    {
+        $barangIds = array_values(array_unique(array_map('intval', array_filter($barangIds))));
+        if ($barangIds === []) {
+            return [];
+        }
+
+        $gudangPusat = \App\Models\MasterGudang::query()
+            ->where('jenis_gudang', 'PUSAT')
+            ->whereIn('kategori_gudang', ['FARMASI', 'PERSEDIAAN'])
+            ->get(['id_gudang', 'kategori_gudang', 'nama_gudang'])
+            ->keyBy('kategori_gudang');
+
+        $idGudangPersediaan = (int) ($gudangPusat->get('PERSEDIAAN')?->id_gudang ?? 0);
+        $idGudangFarmasi = (int) ($gudangPusat->get('FARMASI')?->id_gudang ?? 0);
+        $pusatIds = array_values(array_filter([$idGudangPersediaan, $idGudangFarmasi]));
+
+        $stocks = self::query()
+            ->whereIn('id_data_barang', $barangIds)
+            ->get(['id_data_barang', 'id_gudang', 'qty_akhir', 'id_satuan']);
+
+        $gudangNames = $pusatIds !== []
+            ? \App\Models\MasterGudang::query()->whereIn('id_gudang', $pusatIds)->pluck('nama_gudang', 'id_gudang')
+            : collect();
+
+        $satuanIds = $stocks->pluck('id_satuan')->filter()->unique()->values()->all();
+        $satuans = $satuanIds !== []
+            ? \App\Models\MasterSatuan::query()->whereIn('id_satuan', $satuanIds)->pluck('nama_satuan', 'id_satuan')
+            : collect();
+
+        $persediaanSet = array_flip(array_map('intval', $stockPersediaanIds));
+        $farmasiSet = array_flip(array_map('intval', $stockFarmasiIds));
+        $grouped = $stocks->groupBy('id_data_barang');
+
+        $result = [];
+        foreach ($barangIds as $idBarang) {
+            $key = (string) $idBarang;
+            $rows = $grouped->get($idBarang, collect());
+
+            $perGudang = $rows
+                ->filter(fn ($stock) => in_array((int) $stock->id_gudang, $pusatIds, true))
+                ->map(function ($stock) use ($gudangNames, $satuans) {
+                    return [
+                        'id_gudang' => $stock->id_gudang,
+                        'nama_gudang' => $gudangNames[$stock->id_gudang] ?? '-',
+                        'qty_akhir' => $stock->qty_akhir,
+                        'satuan' => $satuans[$stock->id_satuan] ?? '-',
+                    ];
+                })
+                ->values();
+
+            $result[$key] = [
+                'total' => (float) $rows->sum('qty_akhir'),
+                'stock_gudang_pusat_persediaan' => isset($persediaanSet[$idBarang]) && $idGudangPersediaan
+                    ? (float) $rows->where('id_gudang', $idGudangPersediaan)->sum('qty_akhir')
+                    : 0.0,
+                'stock_gudang_pusat_farmasi' => isset($farmasiSet[$idBarang]) && $idGudangFarmasi
+                    ? (float) $rows->where('id_gudang', $idGudangFarmasi)->sum('qty_akhir')
+                    : 0.0,
+                'per_gudang' => $perGudang,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
      * Get total stock available for a barang across all gudang
      */
     public static function getTotalStock($idDataBarang): float

@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Asset;
 
+use App\Support\Rbac\RbacRoles;
+use App\Support\Rbac\UserScope;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,11 +33,8 @@ class RegisterAsetController extends Controller
         // Admin gudang dan pengurus barang bisa melihat semua gudang unit
         $pegawai = null;
         $userUnitKerjaId = null;
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasAnyRole(['admin', 'admin_gudang', 'pengurus_barang'])) {
-            $pegawai = MasterPegawai::where('user_id', $user->id)->first();
-            if ($pegawai && $pegawai->id_unit_kerja) {
-                $userUnitKerjaId = $pegawai->id_unit_kerja;
-            }
+        if (UserScope::isUnitKerjaDataRestricted($user)) {
+            $userUnitKerjaId = UserScope::unitKerjaId($user);
         }
         
         // Ambil unit kerja yang punya RegisterAset (sumber data KIR).
@@ -88,7 +88,7 @@ class RegisterAsetController extends Controller
         
         // Ambil data gudang pusat (KIB saja) - HANYA untuk admin, admin_gudang, pengurus_barang, bukan untuk pegawai
         $gudangPusatData = null;
-        if (!$userUnitKerjaId || $user->hasAnyRole(['admin', 'admin_gudang', 'pengurus_barang'])) {
+        if (! $userUnitKerjaId) {
             $gudangPusat = MasterGudang::where('jenis_gudang', 'PUSAT')
                 ->where('kategori_gudang', 'ASET')
                 ->first();
@@ -362,9 +362,9 @@ class RegisterAsetController extends Controller
             $filter = 'kir'; // Untuk gudang unit selalu KIR
             
             // Filter berdasarkan gudang unit untuk kepala_unit dan pegawai
-            if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasAnyRole(['admin', 'admin_gudang', 'pengurus_barang'])) {
-                $pegawai = MasterPegawai::where('user_id', $user->id)->first();
-                if ($pegawai && $gudangUnit->id_unit_kerja && $pegawai->id_unit_kerja != $gudangUnit->id_unit_kerja) {
+            if (UserScope::isUnitKerjaDataRestricted($user)) {
+                $unitId = UserScope::unitKerjaId($user);
+                if ($unitId && $gudangUnit->id_unit_kerja && (int) $unitId !== (int) $gudangUnit->id_unit_kerja) {
                     abort(403, 'Unauthorized - Anda hanya dapat melihat aset dari gudang unit Anda sendiri');
                 }
             }
@@ -506,7 +506,7 @@ class RegisterAsetController extends Controller
         $user = Auth::user();
 
         // Hanya admin dan admin_gudang yang bisa create
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         
@@ -560,7 +560,7 @@ class RegisterAsetController extends Controller
         $user = Auth::user();
 
         // Hanya admin dan admin_gudang yang bisa store
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         
@@ -653,7 +653,7 @@ class RegisterAsetController extends Controller
         $user = Auth::user();
 
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 if ($registerAset->id_unit_kerja != $pegawai->id_unit_kerja) {
@@ -682,7 +682,7 @@ class RegisterAsetController extends Controller
         $user = Auth::user();
 
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 if ($registerAset->id_unit_kerja != $pegawai->id_unit_kerja) {
@@ -719,7 +719,7 @@ class RegisterAsetController extends Controller
         $user = Auth::user();
 
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 if ($registerAset->id_unit_kerja != $pegawai->id_unit_kerja) {
@@ -827,7 +827,7 @@ class RegisterAsetController extends Controller
         $user = Auth::user();
 
         // Hanya admin dan admin_gudang yang bisa delete
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         

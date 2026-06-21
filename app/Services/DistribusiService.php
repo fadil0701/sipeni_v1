@@ -146,17 +146,34 @@ class DistribusiService
         }
     }
 
+    /**
+     * Format resmi mengikuti contoh SBBK: {urut}/NA-SBBK/PPKP/{bulan Romawi}/{tahun}.
+     * Urutan nomor per tahun kalender; nomor lama `SBBK/{tahun}/{urut}` tetap dihitung agar urut berlanjut setelah migrasi.
+     */
     private function generateNoSbbk(string $tanggalDistribusi): string
     {
-        $tahun = Carbon::parse($tanggalDistribusi)->format('Y');
-        $last = TransaksiDistribusi::whereYear('tanggal_distribusi', $tahun)->orderBy('no_sbbk', 'desc')->first();
-        $urut = 1;
-        if ($last) {
-            $parts = explode('/', (string) $last->no_sbbk);
-            $urut = ((int) end($parts)) + 1;
+        $date = Carbon::parse($tanggalDistribusi);
+        $tahun = $date->format('Y');
+        $romawi = SbbkPrintTemplateData::bulanRomawiFromDate($date);
+
+        $maxUrut = 0;
+        $nos = TransaksiDistribusi::query()
+            ->whereYear('tanggal_distribusi', (int) $tahun)
+            ->pluck('no_sbbk');
+
+        foreach ($nos as $no) {
+            $no = (string) $no;
+            if (preg_match('#^(\d+)/NA-SBBK/PPKP/[IVXLCDM]+/\d{4}$#u', $no, $m)) {
+                $maxUrut = max($maxUrut, (int) $m[1]);
+
+                continue;
+            }
+            if (preg_match('#^SBBK/(\d{4})/(\d+)$#', $no, $m) && $m[1] === $tahun) {
+                $maxUrut = max($maxUrut, (int) $m[2]);
+            }
         }
 
-        return sprintf('SBBK/%s/%04d', $tahun, $urut);
+        return sprintf('%04d/NA-SBBK/PPKP/%s/%s', $maxUrut + 1, $romawi, $tahun);
     }
 
     private function createAutoPenerimaan(TransaksiDistribusi $distribusi): void
@@ -219,6 +236,8 @@ class DistribusiService
                 'keterangan' => null,
             ]);
         }
+
+        AppNotificationService::notifyPenerimaanAwaitingVerification($penerimaan->fresh());
     }
 
     private function generateNoPenerimaan(string $tanggalPenerimaan): string

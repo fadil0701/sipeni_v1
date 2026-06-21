@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\MasterJabatan;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -126,16 +127,15 @@ class ComprehensiveDummySeeder extends Seeder
                     'updated_at' => $now,
                 ]);
 
-            // Jabatan
-            $jabatanPegawaiId = DB::table('master_jabatan')->where('nama_jabatan', 'Pegawai Dummy')->value('id_jabatan')
-                ?? DB::table('master_jabatan')->insertGetId([
-                    'nama_jabatan' => 'Pegawai Dummy',
+            // Jabatan dummy (gelar organisasi saja; role user tidak diikat ke jabatan)
+            $jabatanDummy = MasterJabatan::query()->firstOrCreate(
+                ['nama_jabatan' => 'Pegawai Dummy'],
+                [
                     'urutan' => 999,
-                    'role_id' => DB::table('roles')->where('name', 'pegawai')->value('id'),
-                    'deskripsi' => 'Jabatan dummy untuk uji coba',
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
+                    'deskripsi' => 'Jabatan dummy pengujian / data sintetis',
+                ]
+            );
+            $jabatanPegawaiId = (int) $jabatanDummy->id_jabatan;
 
             // Pegawai dummy (tanpa membuat user)
             $this->createPegawaiDummy('NIPDUMMY0001', 'Admin Gudang Dummy', 'dummy.admin.gudang@simantik.test', $ukPusatId, $jabatanPegawaiId);
@@ -495,4 +495,3 @@ class ComprehensiveDummySeeder extends Seeder
         ]);
     }
 }
-

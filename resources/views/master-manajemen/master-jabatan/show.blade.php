@@ -42,20 +42,11 @@
                         <dd class="text-sm font-semibold text-gray-900">{{ $jabatan->urutan }}</dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500 mb-1">Role User</dt>
-                        <dd class="text-sm font-semibold text-gray-900">
-                            @if($jabatan->role)
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                                    {{ $jabatan->role->display_name }} ({{ $jabatan->role->name }})
-                                </span>
-                            @else
-                                <span class="text-gray-500">-</span>
-                            @endif
-                        </dd>
-                    </div>
-                    <div>
                         <dt class="text-sm font-medium text-gray-500 mb-1">Jumlah Pegawai</dt>
                         <dd class="text-sm font-semibold text-gray-900">{{ $jabatan->pegawai->count() }} pegawai</dd>
+                    </div>
+                    <div class="sm:col-span-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                        Hak akses aplikasi diatur per <strong>akun user pegawai</strong>, bukan dari jabatan. Beberapa pegawai boleh memakai jabatan yang sama dengan kombinasi role berbeda.
                     </div>
                     <div class="sm:col-span-2">
                         <dt class="text-sm font-medium text-gray-500 mb-1">Deskripsi</dt>
@@ -76,6 +67,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Pegawai</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Kerja</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role user (akun)</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
@@ -93,6 +85,17 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">{{ $pegawai->email_pegawai ?? '-' }}</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        @if($pegawai->user && $pegawai->user->roles->isNotEmpty())
+                                            <div class="flex flex-wrap gap-1">
+                                                @foreach($pegawai->user->roles as $role)
+                                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800">{{ $role->display_name }}</span>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <span class="text-xs text-gray-500">—</span>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <a href="{{ route('master-manajemen.master-pegawai.show', $pegawai->id) }}" class="text-blue-600 hover:text-blue-900 transition-colors">Detail</a>

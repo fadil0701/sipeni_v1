@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class PermintaanPemeliharaan extends Model
 {
     protected $table = 'permintaan_pemeliharaan';
+
     protected $primaryKey = 'id_permintaan_pemeliharaan';
 
     protected $fillable = [
@@ -28,6 +29,34 @@ class PermintaanPemeliharaan extends Model
     protected $casts = [
         'tanggal_permintaan' => 'date',
     ];
+
+    /**
+     * Nomor urut berikutnya untuk format PMH/{tahun}/####.
+     * Harus dipanggil di dalam transaksi DB; memakai lockForUpdate agar aman saat request paralel.
+     */
+    public static function nextUrutanNomorUntukTahun(string $tahun): int
+    {
+        $prefix = 'PMH/'.$tahun.'/';
+
+        $lastNoPermintaan = static::query()
+            ->where('no_permintaan_pemeliharaan', 'like', $prefix.'%')
+            ->orderByDesc('id_permintaan_pemeliharaan')
+            ->lockForUpdate()
+            ->value('no_permintaan_pemeliharaan');
+
+        $next = 1;
+        if ($lastNoPermintaan && preg_match('/(\d{4})$/', $lastNoPermintaan, $matches)) {
+            $next = ((int) $matches[1]) + 1;
+        }
+
+        while (static::query()
+            ->where('no_permintaan_pemeliharaan', $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT))
+            ->exists()) {
+            $next++;
+        }
+
+        return $next;
+    }
 
     /**
      * Register aset yang diminta untuk pemeliharaan
@@ -86,5 +115,3 @@ class PermintaanPemeliharaan extends Model
             ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN');
     }
 }
-
-

@@ -28,7 +28,7 @@
         @if($isRequired) required @endif
         @if($searchable) data-searchable="true" @endif
         {{ $attributes->except(['class']) }}
-        class="select-searchable {{ $attributes->get('class') }} block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error($errorKey) border-red-500 @enderror"
+        class="select-searchable {{ $attributes->get('class') }} block w-full border border-gray-300 rounded-md shadow-sm sm:text-sm @error($errorKey) border-red-500 @enderror"
     >
         <option value="">{{ $placeholder }}</option>
         {{ $slot }}

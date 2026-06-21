@@ -18,12 +18,12 @@
     <form action="{{ route('master.kegiatan.store') }}" method="POST" class="p-6">
         @csrf
         
-        <div class="max-w-2xl space-y-6">
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
                 <label for="id_program" class="block text-sm font-medium text-gray-700 mb-2">
                     Program <span class="text-red-500">*</span>
                 </label>
-                <select id="id_program" name="id_program" required class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm @error('id_program') border-red-500 @enderror">
+                <select id="id_program" name="id_program" required class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_program') border-red-500 @enderror">
                     <option value="">Pilih Program</option>
                     @foreach($programs as $program)
                         <option value="{{ $program->id_program }}" {{ old('id_program') == $program->id_program ? 'selected' : '' }}>{{ $program->kode_program ? $program->kode_program.' — ' : '' }}{{ $program->nama_program }}</option>
@@ -36,15 +36,15 @@
                 <label for="kode_kegiatan" class="block text-sm font-medium text-gray-700 mb-2">
                     Kode Kegiatan <span class="text-red-500">*</span>
                 </label>
-                <input type="text" id="kode_kegiatan" name="kode_kegiatan" required value="{{ old('kode_kegiatan') }}" autocomplete="off" placeholder="Contoh: 1.02.03.1.01" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm font-mono @error('kode_kegiatan') border-red-500 @enderror">
+                <input type="text" id="kode_kegiatan" name="kode_kegiatan" required value="{{ old('kode_kegiatan') }}" autocomplete="off" placeholder="Contoh: 1.02.03.1.01" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono @error('kode_kegiatan') border-red-500 @enderror">
                 @error('kode_kegiatan')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
 
-            <div>
+            <div class="sm:col-span-2">
                 <label for="nama_kegiatan" class="block text-sm font-medium text-gray-700 mb-2">
                     Nama Kegiatan <span class="text-red-500">*</span>
                 </label>
-                <input type="text" id="nama_kegiatan" name="nama_kegiatan" required value="{{ old('nama_kegiatan') }}" placeholder="Masukkan nama kegiatan" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm @error('nama_kegiatan') border-red-500 @enderror">
+                <input type="text" id="nama_kegiatan" name="nama_kegiatan" required value="{{ old('nama_kegiatan') }}" placeholder="Masukkan nama kegiatan" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('nama_kegiatan') border-red-500 @enderror">
                 @error('nama_kegiatan')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
         </div>
@@ -56,4 +56,3 @@
     </form>
 </div>
 @endsection
-

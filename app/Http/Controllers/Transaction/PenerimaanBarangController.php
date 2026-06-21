@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers\Transaction;
 
+use App\Support\Rbac\RbacRoles;
+use App\Support\Rbac\UserScope;
+
 use App\Helpers\PaginationHelper;
 use App\Helpers\PermissionHelper;
+use App\Support\Http\SafeUserMessage;
 use App\Http\Controllers\Controller;
 use App\Models\DataInventory;
 use App\Models\DetailPenerimaanBarang;
@@ -15,6 +19,8 @@ use App\Models\MasterUnitKerja;
 use App\Models\PenerimaanBarang;
 use App\Models\RegisterAset;
 use App\Models\TransaksiDistribusi;
+use App\Services\DataStockSyncService;
+use App\Services\PenerimaanDistribusiInventoryTransferService;
 use App\Services\PermintaanBarangStatusService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -33,7 +39,7 @@ class PenerimaanBarangController extends Controller
         $query = PenerimaanBarang::with(['distribusi', 'unitKerja', 'pegawaiPenerima']);
 
         // Filter berdasarkan unit kerja user yang login untuk pegawai/kepala_unit
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && ! $user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 // Hanya tampilkan penerimaan dari unit kerja user yang login
@@ -159,6 +165,14 @@ class PenerimaanBarangController extends Controller
                     ])->all(),
                 ];
                 $this->autoCreateRegisterAset($penerimaanFresh, $distribusi, $validatedForAset);
+
+                if ($penerimaan_barang->id_distribusi) {
+                    PenerimaanDistribusiInventoryTransferService::transferPersediaanFarmasiToGudangTujuanAfterDiterima(
+                        $penerimaanFresh->fresh(['detailPenerimaan']),
+                        $distribusi
+                    );
+                }
+                DataStockSyncService::syncFromInventory();
             } else {
                 $penerimaan_barang->status_penerimaan = 'DITOLAK';
                 $prev = (string) ($penerimaan_barang->keterangan ?? '');
@@ -176,7 +190,7 @@ class PenerimaanBarangController extends Controller
             DB::rollBack();
             \Log::error('Verify penerimaan gagal: '.$e->getMessage());
 
-            return back()->with('error', 'Gagal menyimpan verifikasi: '.$e->getMessage());
+            return back()->with('error', SafeUserMessage::operationFailed('menyimpan verifikasi'));
         }
     }
 
@@ -205,7 +219,7 @@ class PenerimaanBarangController extends Controller
         $distribusiQuery = TransaksiDistribusi::where('status_distribusi', 'dikirim');
 
         // Filter distribusi berdasarkan unit kerja user yang login untuk pegawai/kepala_unit
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && ! $user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 // Hanya tampilkan distribusi yang ditujukan ke gudang unit kerja user
@@ -309,6 +323,14 @@ class PenerimaanBarangController extends Controller
                 if ($oldStatus !== 'DITERIMA') {
                     $this->autoCreateRegisterAset($penerimaan, $penerimaan->distribusi, $validated);
                 }
+
+                if ($penerimaan->id_distribusi) {
+                    PenerimaanDistribusiInventoryTransferService::transferPersediaanFarmasiToGudangTujuanAfterDiterima(
+                        $penerimaan->fresh(['detailPenerimaan']),
+                        $penerimaan->distribusi
+                    );
+                }
+                DataStockSyncService::syncFromInventory();
             } else {
                 $penerimaan->distribusi->update(['status_distribusi' => 'dikirim']);
             }
@@ -321,7 +343,7 @@ class PenerimaanBarangController extends Controller
             DB::rollBack();
             \Log::error('Error updating penerimaan barang: '.$e->getMessage());
 
-            return back()->withInput()->with('error', 'Terjadi kesalahan saat memperbarui data: '.$e->getMessage());
+            return back()->withInput()->with('error', SafeUserMessage::operationFailed('memperbarui data'));
         }
     }
 
@@ -360,7 +382,7 @@ class PenerimaanBarangController extends Controller
             \Log::error('Error deleting penerimaan barang: '.$e->getMessage());
 
             return redirect()->route('transaction.penerimaan-barang.index')
-                ->with('error', 'Terjadi kesalahan saat menghapus data: '.$e->getMessage());
+                ->with('error', SafeUserMessage::operationFailed('menghapus data'));
         }
     }
 
@@ -372,6 +394,8 @@ class PenerimaanBarangController extends Controller
             'detailDistribusi.satuan',
             'gudangTujuan.unitKerja',
         ])->findOrFail($id);
+
+        UserScope::assertCanAccessDistribusi(Auth::user(), $distribusi);
 
         $details = $distribusi->detailDistribusi->map(function ($detail) {
             $inventory = $detail->inventory;
@@ -542,23 +566,17 @@ class PenerimaanBarangController extends Controller
     private function authorizePenerimaanAccess(PenerimaanBarang $penerimaan): void
     {
         $user = Auth::user();
-        if ($user->hasRole('admin')) {
+        if (UserScope::canViewCrossUnitData($user)) {
             return;
         }
 
-        if ($user->hasAnyRole([
-            'admin_gudang',
-            'admin_gudang_aset',
-            'admin_gudang_persediaan',
-            'admin_gudang_farmasi',
-            'admin_gudang_unit',
-        ])) {
+        if (RbacRoles::userHasWarehousePusatAccess($user)) {
             return;
         }
 
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai'])) {
-            $pegawai = MasterPegawai::where('user_id', $user->id)->first();
-            if ($pegawai && (int) $pegawai->id_unit_kerja === (int) $penerimaan->id_unit_kerja) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
+            $unitId = UserScope::unitKerjaId($user);
+            if ($unitId !== null && (int) $unitId === (int) $penerimaan->id_unit_kerja) {
                 return;
             }
         }

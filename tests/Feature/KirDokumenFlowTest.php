@@ -54,10 +54,17 @@ class KirDokumenFlowTest extends TestCase
 
     public function test_pegawai_cannot_access_kir_dokumen_for_other_unit(): void
     {
+        // Cari pegawai non-admin — role unit-scoped (admin_unit, kepala_unit, pegawai)
+        // agar UserScope::mustScopeToUnitKerja() true, sehingga controller memblokir akses lintas unit.
         $pegawaiUnit = DB::table('master_pegawai')
-            ->whereNotNull('user_id')
-            ->whereNotNull('id_unit_kerja')
-            ->orderBy('id')
+            ->join('users', 'master_pegawai.user_id', '=', 'users.id')
+            ->join('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
+            ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+            ->whereNotNull('master_pegawai.user_id')
+            ->whereNotNull('master_pegawai.id_unit_kerja')
+            ->where('roles.name', '!=', 'super_administrator')
+            ->select('master_pegawai.*')
+            ->orderBy('master_pegawai.id')
             ->first();
         $this->assertNotNull($pegawaiUnit);
 

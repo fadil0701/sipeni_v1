@@ -1,12 +1,6 @@
 @extends('layouts.app')
 
 @section('content')
-@if(session('error'))
-    <div class="mb-4 bg-red-50 border-l-4 border-red-400 p-4 rounded text-sm text-red-800">{{ session('error') }}</div>
-@endif
-@if(session('success'))
-    <div class="mb-4 bg-green-50 border-l-4 border-green-400 p-4 rounded text-sm text-green-800">{{ session('success') }}</div>
-@endif
 
 <!-- Page Header -->
 <div class="mb-6 flex justify-between items-center">

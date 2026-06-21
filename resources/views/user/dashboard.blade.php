@@ -11,6 +11,32 @@
     </div>
 </div>
 
+<!-- @if(!empty($panduanRoleGuides))
+<div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <h2 class="text-base font-semibold text-emerald-900">Panduan Pengguna</h2>
+            <p class="mt-1 text-sm text-emerald-800">Petunjuk tugas sesuai role Anda di SI-MANTIK.</p>
+        </div>
+        <a href="{{ route('panduan.index') }}" class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700">
+            Semua panduan
+        </a>
+    </div>
+    <div class="mt-3 flex flex-wrap gap-2">
+        @foreach($panduanRoleGuides as $guide)
+            <a href="{{ route('panduan.show', $guide['slug']) }}"
+               class="inline-flex items-center rounded-md border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-emerald-900 hover:border-emerald-400">
+                {{ $guide['title'] }}
+            </a>
+        @endforeach
+        <a href="{{ route('panduan.show', 'alur-kerja') }}"
+           class="inline-flex items-center rounded-md border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-emerald-900 hover:border-emerald-400">
+            Alur kerja utama
+        </a>
+    </div>
+</div>
+@endif -->
+
 @if($isPengurusBarangWorkspace ?? false)
 @php
     $currentUser = auth()->user();
@@ -57,10 +83,12 @@
             <p class="text-xs text-gray-500">Retur Diajukan</p>
             <p class="mt-1 text-xl font-semibold text-gray-900">{{ number_format($workspaceStats['retur_diajukan'] ?? 0, 0, ',', '.') }}</p>
         </div>
+        @if(config('sipeni.feature_pemakaian_barang', false))
         <div class="rounded-lg bg-white p-3 shadow-sm">
             <p class="text-xs text-gray-500">Pemakaian Diajukan</p>
             <p class="mt-1 text-xl font-semibold text-gray-900">{{ number_format($workspaceStats['pemakaian_diajukan'] ?? 0, 0, ',', '.') }}</p>
         </div>
+        @endif
     </div>
     <div class="mt-4 flex flex-wrap gap-2">
         @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.approval.index'))
@@ -78,7 +106,7 @@
         @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.retur-barang.index'))
             <a href="{{ route('transaction.retur-barang.index') }}" class="inline-flex items-center rounded-md bg-amber-600 px-3 py-2 text-xs font-medium text-white hover:bg-amber-700">Retur Barang</a>
         @endif
-        @if(\Illuminate\Support\Facades\Route::has('transaction.pemakaian-barang.index') && \App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.pemakaian-barang.index'))
+        @if(config('sipeni.feature_pemakaian_barang', false) && \Illuminate\Support\Facades\Route::has('transaction.pemakaian-barang.index') && \App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.pemakaian-barang.index'))
             <a href="{{ route('transaction.pemakaian-barang.index') }}" class="inline-flex items-center rounded-md bg-fuchsia-600 px-3 py-2 text-xs font-medium text-white hover:bg-fuchsia-700">Pemakaian Barang</a>
         @endif
     </div>
@@ -130,13 +158,97 @@
                     <p class="text-[11px] text-amber-700">Retur &gt; 72 jam</p>
                     <p class="mt-1 text-xl font-semibold text-amber-800">{{ $workspaceSla['retur_over_sla'] ?? 0 }}</p>
                 </div>
+                @if(config('sipeni.feature_pemakaian_barang', false))
                 <div class="rounded-md bg-yellow-50 p-3">
                     <p class="text-[11px] text-yellow-700">Pemakaian &gt; 48 jam</p>
                     <p class="mt-1 text-xl font-semibold text-yellow-800">{{ $workspaceSla['pemakaian_over_sla'] ?? 0 }}</p>
                 </div>
+                @endif
             </div>
         </div>
     </div>
+</div>
+@endif
+
+@php
+    $dashUser = auth()->user();
+@endphp
+@if($dashUser && \App\Helpers\PermissionHelper::canAccess($dashUser, 'inventory.farmasi-kedaluwarsa.index') && ($farmasiExpiryKpi ?? null))
+<div class="mb-6 rounded-xl border border-teal-100 bg-teal-50/80 p-5">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <h2 class="text-lg font-semibold text-teal-900">Reminder tanggal kedaluwarsa</h2>
+            <p class="mt-1 text-sm text-teal-800">Farmasi &amp; persediaan ber-ED, cakupan gudang sama seperti <strong>Data Stok</strong> (termasuk gudang unit kerja).</p>
+        </div>
+        <a href="{{ route('inventory.farmasi-kedaluwarsa.index') }}" class="inline-flex items-center rounded-md bg-teal-700 px-3 py-2 text-xs font-medium text-white hover:bg-teal-800">
+            Buka halaman lengkap
+        </a>
+    </div>
+    <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div class="rounded-lg border border-red-200 bg-white p-3 shadow-sm">
+            <p class="text-[11px] font-medium text-red-800">Kritis + tinggi (≤30 hari)</p>
+            <p class="mt-1 text-xl font-semibold text-red-900">{{ number_format($farmasiExpiryKpi['kritis_tinggi'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="rounded-lg border border-amber-200 bg-white p-3 shadow-sm">
+            <p class="text-[11px] font-medium text-amber-900">≤90 hari (dari hari ini)</p>
+            <p class="mt-1 text-xl font-semibold text-amber-950">{{ number_format($farmasiExpiryKpi['le_90'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="rounded-lg border border-yellow-200 bg-white p-3 shadow-sm">
+            <p class="text-[11px] font-medium text-yellow-900">91–180 hari</p>
+            <p class="mt-1 text-xl font-semibold text-yellow-950">{{ number_format($farmasiExpiryKpi['range_91_180'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+            <p class="text-[11px] font-medium text-gray-800">Sudah kedaluwarsa</p>
+            <p class="mt-1 text-xl font-semibold text-gray-900">{{ number_format($farmasiExpiryKpi['expired'] ?? 0, 0, ',', '.') }}</p>
+        </div>
+    </div>
+    @if(($farmasiExpiryPreview ?? null) && $farmasiExpiryPreview->isNotEmpty())
+        @php
+            $todayDash = now()->startOfDay();
+        @endphp
+        <div class="mt-4 overflow-hidden rounded-lg border border-teal-100 bg-white shadow-sm">
+            <div class="border-b border-teal-50 bg-teal-50/50 px-4 py-2">
+                <h3 class="text-sm font-semibold text-teal-900">Batch terdekat</h3>
+                <p class="text-xs text-teal-800">Urut berdasarkan tanggal kedaluwarsa (sudah lewat atau hingga 180 hari ke depan).</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                        <tr>
+                            <th class="px-3 py-2">Barang</th>
+                            <th class="px-3 py-2">Jenis</th>
+                            <th class="px-3 py-2">Batch</th>
+                            <th class="px-3 py-2">Kedaluwarsa</th>
+                            <th class="px-3 py-2 text-right">Sisa hari</th>
+                            <th class="px-3 py-2">Prioritas</th>
+                            <th class="px-3 py-2">Gudang</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach($farmasiExpiryPreview as $inv)
+                            @php
+                                $m = \App\Services\FarmasiExpiryReminderService::decorateRowForView($inv, $todayDash);
+                            @endphp
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-3 py-2 text-gray-900">
+                                    <span class="font-medium">{{ $inv->dataBarang->nama_barang ?? '-' }}</span>
+                                    <span class="block text-xs text-gray-500">{{ $inv->dataBarang->kode_data_barang ?? '-' }}</span>
+                                </td>
+                                <td class="px-3 py-2 text-gray-600 text-xs">{{ $inv->jenis_inventory ?? '—' }}</td>
+                                <td class="px-3 py-2 text-gray-700">{{ $inv->no_batch ?: '—' }}</td>
+                                <td class="px-3 py-2 text-gray-800">{{ $inv->tanggal_kedaluwarsa ? $inv->tanggal_kedaluwarsa->format('d/m/Y') : '—' }}</td>
+                                <td class="px-3 py-2 text-right font-medium {{ $m['sisa_hari'] < 0 ? 'text-red-700' : 'text-gray-900' }}">{{ $m['sisa_hari'] }}</td>
+                                <td class="px-3 py-2 text-gray-800">{{ $m['prioritas_label'] }}</td>
+                                <td class="px-3 py-2 text-gray-700">{{ $inv->gudang->nama_gudang ?? '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @else
+        <p class="mt-4 text-sm text-teal-800">Tidak ada batch dalam jendela pratinjau (hingga 180 hari) atau stok farmasi tidak memenuhi filter.</p>
+    @endif
 </div>
 @endif
 

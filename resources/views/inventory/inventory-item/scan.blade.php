@@ -35,12 +35,12 @@
             @php($inv = $inventoryItem->inventory)
             <div class="muted">Kode Registrasi</div>
             <div style="font-size:20px;font-weight:800;margin-top:4px;">{{ $inventoryItem->kode_register }}</div>
-            @if(auth()->check() && auth()->user()->hasRole('admin'))
+            @canAccess('inventory.data-inventory.index')
                 <div class="actions">
                     <a href="{{ route('inventory.inventory-item.edit', $inventoryItem->id_item) }}" class="btn btn-primary">Edit Data Item</a>
                     <a href="{{ route('inventory.data-inventory.edit', $inventoryItem->id_inventory) }}" class="btn btn-secondary">Edit Data Inventory</a>
                 </div>
-            @endif
+            @endcanAccess
 
             <h2>Informasi Barang</h2>
             <div class="grid">

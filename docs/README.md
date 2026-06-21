@@ -1,115 +1,84 @@
-# 📚 Dokumentasi SI-MANTIK
+# Dokumentasi SI-MANTIK
 
-Selamat datang di dokumentasi Sistem Informasi Manajemen Terintegrasi (SI-MANTIK).
-
-## 📖 Daftar Dokumentasi
-
-### 1. [Hak Akses, Role, dan Delegasi Permission](./HAK_AKSES_ROLE_DAN_DELEGASI.md)
-Penjelasan teknis: permission = nama route, modul sidebar vs permission role, sinkronisasi `permission:sync-routes`, class `PermissionModule` / `AssignablePermissions`, serta perilaku Manajemen Role dan User (delegasi untuk non-admin).
-
-**Untuk:** Developer dan admin yang mengonfigurasi akses sistem.
+Sistem Informasi Manajemen Terintegrasi (SI-MANTIK) — indeks dokumentasi aktif.
 
 ---
 
-### 2. [Alur Transaksi Barang - Step by Step Guide](./ALUR_TRANSAKSI.md)
-Panduan lengkap penggunaan sistem transaksi barang mulai dari permintaan hingga penerimaan dan retur.
+## Audit & Perencanaan
 
-**Isi:**
-- Step-by-step guide untuk setiap tahap transaksi
-- Penjelasan role dan permission
-- Status transaksi dan workflow
-- Tips & best practices
-- Troubleshooting
-
-**Untuk:** Semua user yang menggunakan sistem transaksi
+| Dokumen | Isi |
+|---------|-----|
+| [Audit Sistem Lengkap (Juni 2026)](./AUDIT_SISTEM_LENGKAP_2026-06-21.md) | Temuan keamanan, fitur, operasional, roadmap perbaikan |
 
 ---
 
-### 3. [Diagram Alur Transaksi](./DIAGRAM_ALUR_TRANSAKSI.md)
-Diagram visual dan flowchart lengkap alur transaksi barang.
+## Panduan Pengguna
 
-**Isi:**
-- Flowchart lengkap transaksi
-- Role & Permission Matrix
-- Status Flow Diagram
-- Decision Points
-- Data Flow
-- Timeline Estimasi
+Panduan end-user tersedia dalam **tiga bentuk**:
 
-**Untuk:** Developer, Admin, dan User yang ingin memahami alur sistem secara visual
+| Saluran | Lokasi |
+|---------|--------|
+| **Di aplikasi** | Sidebar → **Panduan Pengguna** (`/panduan`) — panduan role otomatis + bab umum + unduh PDF |
+| **Markdown** | Folder [panduan-pengguna/](./panduan-pengguna/README.md) |
+| **PDF** | [panduan-pengguna-simantik-lengkap.pdf](./panduan-pengguna/pdf/panduan-pengguna-simantik-lengkap.pdf) |
 
----
+| Bab | Isi |
+|-----|-----|
+| [01 — Pengenalan & Login](./panduan-pengguna/01-pengenalan-dan-login.md) | Login, kebijakan password, navigasi, panduan in-app |
+| [02 — Modul & Fitur](./panduan-pengguna/02-modul-dan-fitur.md) | Semua menu sidebar |
+| [03 — Alur Kerja Utama](./panduan-pengguna/03-alur-kerja-utama.md) | Permintaan, RKU, distribusi, dll. |
+| [04 — Matriks Role](./panduan-pengguna/04-matrik-akses-role.md) | Tabel akses per role |
+| [Panduan per Role](./panduan-pengguna/per-role/README.md) | 15 role kanonik + Admin IT |
 
-## 🚀 Quick Start
-
-### Untuk User Baru:
-1. Baca [Alur Transaksi Barang](./ALUR_TRANSAKSI.md) untuk memahami cara menggunakan sistem
-2. Lihat [Diagram Alur Transaksi](./DIAGRAM_ALUR_TRANSAKSI.md) untuk memahami workflow secara visual
-
-### Untuk Developer:
-1. Baca [Hak Akses, Role, dan Delegasi Permission](./HAK_AKSES_ROLE_DAN_DELEGASI.md) untuk konfigurasi permission dan panel admin.
-2. Review [Diagram Alur Transaksi](./DIAGRAM_ALUR_TRANSAKSI.md) untuk memahami arsitektur sistem.
-3. Lihat kode di folder `app/Http/Controllers/Transaction/` untuk implementasi detail.
+Regenerasi PDF: `php artisan panduan:export-pdf`
 
 ---
 
-## 📋 Ringkasan Alur Transaksi
+## Alur Bisnis & Transaksi
 
-```
-1. Permintaan Barang (Pegawai/Kepala Unit)
-   ↓
-2. Approval Multi-Level (Kepala Unit → Kasubbag → Kepala Pusat)
-   ↓
-3. Disposisi (Admin Gudang)
-   ↓
-4. Proses Disposisi (Admin Gudang Kategori)
-   ↓
-5. Compile SBBK (Admin Gudang)
-   ↓
-6. Distribusi/Kirim (Admin Gudang)
-   ↓
-7. Penerimaan Barang (Pegawai/Kepala Unit)
-   ↓
-8. Retur Barang (Opsional - Pegawai/Kepala Unit)
-```
+| Dokumen | Isi |
+|---------|-----|
+| [Alur Transaksi Barang](./ALUR_TRANSAKSI.md) | Step-by-step permintaan → penerimaan → retur |
+| [Diagram Alur Transaksi](./DIAGRAM_ALUR_TRANSAKSI.md) | Flowchart visual |
+| [Alur Inventory & Distribusi](./alur_inventory_pusat_distribusi_unit_kerja.md) | Gudang pusat → unit kerja |
+| [Alur RKU → Pengadaan → Pembayaran](./alur_rku_pengadaan_pembayaran_serah_terima.md) | Perencanaan hingga serah terima |
+| [Alur Pemeliharaan & Kalibrasi](./alur_pemeliharaan_aset_maintenance_kalibrasi.md) | Maintenance aset |
+| [Ekosistem Terintegrasi](./ekosistem_terintegrasi_rku_inventory_pengadaan_aset_maintenance.md) | Gambaran besar modul |
 
 ---
 
-## 🔑 Role & Access
+## RBAC & Keamanan Akses
 
-| Role | Deskripsi | Akses Utama |
-|------|-----------|-------------|
-| **Pegawai** | User biasa | Permintaan, Penerimaan, Retur |
-| **Kepala Unit** | Pimpinan unit kerja | Permintaan, Approval, Penerimaan, Retur |
-| **Kasubbag TU** | Kasubbag Tata Usaha | Permintaan, Verifikasi Approval |
-| **Kepala Pusat** | Pimpinan pusat | Permintaan, Final Approval |
-| **Admin Gudang** | Pengurus barang pusat | Semua transaksi, Compile SBBK |
-| **Admin Gudang Kategori** | Admin gudang spesifik | Proses Disposisi sesuai kategori |
-| **Admin** | Super admin | Full access semua fitur |
+| Dokumen | Isi |
+|---------|-----|
+| [Hak Akses, Role, dan Delegasi](./HAK_AKSES_ROLE_DAN_DELEGASI.md) | Permission = route name, panel admin |
+| [RBAC Fase 1](./rbac-phase1/README.md) | Permission database-driven, wildcard Spatie |
+| [RBAC Fase 2](./rbac-phase2/README.md) | UserScope, 16 role kanonik, technical debt Fase 3 |
+
+Sub-dokumen RBAC: `permission-matrix.md`, `role-mapping.md`, `migration-plan.md`, `rollback-plan.md`, `testing-checklist.md` di masing-masing folder fase.
 
 ---
 
-## 📞 Support & Kontak
+## Fitur Teknis
 
-Jika ada pertanyaan atau butuh bantuan:
-- **Email:** support@example.com
-- **Phone:** +62-xxx-xxxx-xxxx
-- **Documentation:** [Link ke dokumentasi lengkap]
-
----
-
-## 📝 Changelog
-
-### Version 1.0
-- ✅ Dokumentasi Alur Transaksi lengkap
-- ✅ Diagram Alur Transaksi visual
-- ✅ Role & Permission Matrix
-- ✅ Troubleshooting guide
+| Dokumen | Isi |
+|---------|-----|
+| [Daftar Dokumen Cetak](./DAFTAR_DOKUMEN_CETAK.md) | Template PDF/SBBK dan status integrasi |
+| [TTE Desain Tahap 1](./TTE_DESAIN_TAHAP_1.md) | Tanda tangan elektronik KIR |
+| [Modul RKU & Notifikasi](./MODUL_RKU_DAN_NOTIFIKASI.md) | RKU workflow + fondasi notifikasi |
+| [Variabel Permission Sync](./DAFTAR_VARIABEL_PERMISSION_SYNC_ROUTES.md) | Referensi sync route → permission |
+| [Variabel Detail Distribusi](./DAFTAR_VARIABEL_DETAIL_DISTRIBUSI.md) | Payload template SBBK/distribusi |
 
 ---
 
-**Last Updated:** April 2026
-**Maintained by:** Tim Development SI-MANTIK
+## Quick Start
 
+**User baru:** Mulai dari [Panduan Pengguna](./panduan-pengguna/README.md).
 
+**Developer:** Baca [HAK_AKSES](./HAK_AKSES_ROLE_DAN_DELEGASI.md) + [RBAC Fase 1](./rbac-phase1/README.md), lalu [Audit Sistem](./AUDIT_SISTEM_LENGKAP_2026-06-21.md) untuk gap terkini.
 
+**Agent/CI context:** Lihat juga `AGENTS.md` di root proyek.
+
+---
+
+**Terakhir diperbarui:** Juni 2026

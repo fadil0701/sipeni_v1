@@ -5,13 +5,17 @@ namespace App\Providers;
 use App\Helpers\PermissionHelper;
 use App\Models\DataInventory;
 use App\Models\PermintaanBarang;
+use App\Models\User;
 use App\Observers\DataInventoryObserver;
 use App\Observers\PermintaanBarangObserver;
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\View;
+use App\Support\SipeniPassword;
+use App\Support\View\SharedLayoutData;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rules\Password;
 
-class AppServiceProvider extends ServiceProvider
+
+class AppServiceProvider extends \Illuminate\Support\ServiceProvider
 {
     /**
      * Register any application services.
@@ -26,37 +30,44 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if ($rootUrl = config('app.url')) {
-            URL::forceRootUrl($rootUrl);
+        Password::defaults(fn () => SipeniPassword::configureDefaults());
+
+        $rootUrl = \call_user_func('\\config', 'app.url');
+        $isLocal = \call_user_func('\\app')->environment('local');
+        if (! $isLocal && $rootUrl) {
+            \call_user_func('\\url')->forceRootUrl($rootUrl);
         }
 
-        // Register observers
-        DataInventory::observe(DataInventoryObserver::class);
-        PermintaanBarang::observe(PermintaanBarangObserver::class);
-        
-        // Share variabel akses user dan role ke semua view (konsisten di seluruh app)
-        View::composer('*', function ($view) {
-            if (auth()->check()) {
-                $user = auth()->user();
-                // Eager load roles dan modules untuk menghindari N+1 dan memastikan menu/permission akurat
-                if (!$user->relationLoaded('roles')) {
-                    $user->load('roles');
-                }
-                if (!$user->relationLoaded('modules')) {
-                    $user->load('modules');
-                }
-                $view->with('currentUser', $user);
-                $view->with('accessibleMenus', PermissionHelper::getAccessibleMenus($user));
-                $view->with('userRoles', $user->roles->pluck('name')->toArray());
-                $view->with('userRoleIds', $user->roles->pluck('id')->toArray());
-                $view->with('userPrimaryRole', $user->roles->first());
-            } else {
-                $view->with('currentUser', null);
-                $view->with('accessibleMenus', []);
-                $view->with('userRoles', []);
-                $view->with('userRoleIds', []);
-                $view->with('userPrimaryRole', null);
+        Gate::before(function ($user, string $ability = null): ?bool {
+            if ($user instanceof User && PermissionHelper::hasEnterpriseBypassRole($user)) {
+                return true;
             }
+
+            return null;
+        });
+
+        Gate::define('permission', function (User $user, string $permission): bool {
+            return PermissionHelper::canAccess($user, $permission);
+        });
+
+        Blade::if('canAccess', function (string $permission): bool {
+            $user = auth()->user();
+            if (! $user instanceof User) {
+                return false;
+            }
+
+            return PermissionHelper::canAccess($user, $permission);
+        });
+
+        // Register observers
+        \call_user_func([DataInventory::class, 'observe'], DataInventoryObserver::class);
+        \call_user_func([PermintaanBarang::class, 'observe'], PermintaanBarangObserver::class);
+        
+        // Share variabel layout ke semua view — dihitung sekali per request (bukan per partial).
+        \call_user_func('\\view')->composer('*', function ($view) {
+            $view->with(SharedLayoutData::resolve(
+                \call_user_func('\\auth')->check() ? \call_user_func('\\auth')->user() : null
+            ));
         });
     }
 }

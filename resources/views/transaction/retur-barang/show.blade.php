@@ -24,7 +24,20 @@
             @php
                 use App\Helpers\PermissionHelper;
                 $user = auth()->user();
+                $returTemplateActive = false;
+                if ((bool) config('sipeni.feature_print_templates', false)) {
+                    $returTemplateActive = \App\Models\PrintTemplate::query()
+                        ->where('key', 'retur.pengembalian')
+                        ->where('is_active', true)
+                        ->exists();
+                }
             @endphp
+            @if($returTemplateActive && PermissionHelper::canAccess($user, 'transaction.retur-barang.print'))
+                <a href="{{ route('transaction.retur-barang.print', $retur->id_retur) }}" target="_blank" rel="noopener"
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Cetak Pengembalian
+                </a>
+            @endif
             @if(in_array($retur->status_retur, ['DRAFT', 'DIAJUKAN']) && PermissionHelper::canAccess($user, 'transaction.retur-barang.edit'))
                 <a 
                     href="{{ route('transaction.retur-barang.edit', $retur->id_retur) }}" 

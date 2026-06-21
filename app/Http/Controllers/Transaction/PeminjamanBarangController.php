@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Transaction;
 
+use App\Support\Rbac\UserScope;
+
 use App\Http\Controllers\Controller;
 use App\Models\DetailPeminjamanBarang;
 use App\Models\MasterDataBarang;
@@ -95,7 +97,7 @@ class PeminjamanBarangController extends Controller
     {
         $user = Auth::user();
         $pegawai = MasterPegawai::query()->where('user_id', Auth::id())->first();
-        $isAdminWithoutPegawai = (!$pegawai && $user && $user->hasRole('admin'));
+        $isAdminWithoutPegawai = (!$pegawai && $user && UserScope::canViewCrossUnitData($user));
 
         if (!$pegawai && !$isAdminWithoutPegawai) {
             abort(422, 'Data pegawai yang terhubung dengan user tidak ditemukan. Hubungkan user ke master pegawai atau login dengan akun yang sudah terhubung.');
@@ -153,7 +155,7 @@ class PeminjamanBarangController extends Controller
     {
         $user = Auth::user();
         $pegawai = MasterPegawai::query()->where('user_id', Auth::id())->first();
-        $isAdminWithoutPegawai = (!$pegawai && $user && $user->hasRole('admin'));
+        $isAdminWithoutPegawai = (!$pegawai && $user && UserScope::canViewCrossUnitData($user));
 
         if (!$pegawai && !$isAdminWithoutPegawai) {
             abort(422, 'Data pegawai yang terhubung dengan user tidak ditemukan. Hubungkan user ke master pegawai atau login dengan akun yang sudah terhubung.');
@@ -349,16 +351,14 @@ class PeminjamanBarangController extends Controller
 
     public function createPengembalian($id)
     {
-        $this->authorizeRole(['admin', 'pegawai']);
         $peminjaman = $this->findAndGuardStatus($id, PeminjamanBarang::STATUS_SERAH_TERIMA);
-        $this->ensureSameUnitForRole($peminjaman->id_unit_peminjam, 'pegawai');
+        $this->ensureSameUnitForRole($peminjaman->id_unit_peminjam, 'admin_unit');
 
         return view('transaction.peminjaman-barang.pengembalian', compact('peminjaman'));
     }
 
     public function verifikasiUnitA(Request $request, $id)
     {
-        $this->authorizeRole(['admin', 'kepala_unit']);
         $peminjaman = $this->findAndGuardStatus($id, PeminjamanBarang::STATUS_DIAJUKAN);
         $this->ensureSameUnitForRole($peminjaman->id_unit_peminjam, 'kepala_unit');
 
@@ -370,7 +370,6 @@ class PeminjamanBarangController extends Controller
 
     public function approveUnitB(Request $request, $id)
     {
-        $this->authorizeRole(['admin', 'kepala_unit']);
         $peminjaman = $this->findAndGuardStatus($id, PeminjamanBarang::STATUS_MENUNGGU_PERSETUJUAN_UNIT_B);
         $this->ensureSameUnitForRole((int) $peminjaman->id_unit_pemilik, 'kepala_unit');
 
@@ -382,7 +381,6 @@ class PeminjamanBarangController extends Controller
 
     public function rejectUnitB(Request $request, $id)
     {
-        $this->authorizeRole(['admin', 'kepala_unit']);
         $peminjaman = $this->findAndGuardStatus($id, PeminjamanBarang::STATUS_MENUNGGU_PERSETUJUAN_UNIT_B);
         $this->ensureSameUnitForRole((int) $peminjaman->id_unit_pemilik, 'kepala_unit');
 
@@ -394,7 +392,6 @@ class PeminjamanBarangController extends Controller
 
     public function approvePengurus(Request $request, $id)
     {
-        $this->authorizeRole(['admin', 'admin_gudang']);
         $peminjaman = $this->findAndGuardStatuses($id, [
             PeminjamanBarang::STATUS_DIVERIFIKASI_UNIT_A,
             // fallback kompatibilitas data lama
@@ -411,7 +408,6 @@ class PeminjamanBarangController extends Controller
 
     public function rejectPengurus(Request $request, $id)
     {
-        $this->authorizeRole(['admin', 'admin_gudang']);
         $peminjaman = $this->findAndGuardStatuses($id, [
             PeminjamanBarang::STATUS_DIVERIFIKASI_UNIT_A,
             // fallback kompatibilitas data lama
@@ -425,7 +421,6 @@ class PeminjamanBarangController extends Controller
 
     public function mengetahuiKasubagTu(Request $request, $id)
     {
-        $this->authorizeRole(['admin', 'kasubbag_tu']);
         $peminjaman = $this->findAndGuardStatus($id, PeminjamanBarang::STATUS_DISETUJUI_PENGURUS);
         $catatan = $request->string('catatan')->toString();
         $this->updateStatus($peminjaman, 'mengetahui_kasubag_tu', PeminjamanBarang::STATUS_DIKETAHUI_KASUBAG_TU, $catatan);
@@ -435,7 +430,6 @@ class PeminjamanBarangController extends Controller
 
     public function serahTerima(Request $request, $id)
     {
-        $this->authorizeRole(['admin', 'admin_gudang', 'admin_gudang_unit']);
         $peminjaman = $this->findAndGuardStatus($id, PeminjamanBarang::STATUS_DIKETAHUI_KASUBAG_TU);
         $validated = $request->validate(['kondisi_serah' => 'required|string|max:100']);
 
@@ -464,9 +458,8 @@ class PeminjamanBarangController extends Controller
 
     public function pengembalian(Request $request, $id)
     {
-        $this->authorizeRole(['admin', 'pegawai']);
         $peminjaman = $this->findAndGuardStatus($id, PeminjamanBarang::STATUS_SERAH_TERIMA);
-        $this->ensureSameUnitForRole($peminjaman->id_unit_peminjam, 'pegawai');
+        $this->ensureSameUnitForRole($peminjaman->id_unit_peminjam, 'admin_unit');
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.id_detail_peminjaman' => 'required|exists:detail_peminjaman_barang,id_detail_peminjaman',
@@ -499,7 +492,6 @@ class PeminjamanBarangController extends Controller
 
     public function selesai(Request $request, $id)
     {
-        $this->authorizeRole(['admin', 'admin_gudang']);
         $peminjaman = $this->findAndGuardStatus($id, PeminjamanBarang::STATUS_PENGEMBALIAN);
         $catatan = $request->string('catatan')->toString();
         $this->updateStatus($peminjaman, 'selesai', PeminjamanBarang::STATUS_SELESAI, $catatan ?: 'Alur peminjaman selesai.');
@@ -542,16 +534,10 @@ class PeminjamanBarangController extends Controller
         return $pegawai;
     }
 
-    private function authorizeRole(array $allowedRoles): void
-    {
-        $user = Auth::user();
-        abort_if(!$user || !$user->hasAnyRole($allowedRoles), 403, 'Anda tidak memiliki akses untuk aksi ini.');
-    }
-
     private function ensureSameUnitForRole(int $expectedUnitId, string ...$roleNames): void
     {
         $user = Auth::user();
-        if (!$user || $user->hasRole('admin')) {
+        if (!$user || UserScope::canViewCrossUnitData($user)) {
             return;
         }
 

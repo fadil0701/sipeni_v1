@@ -13,11 +13,9 @@
 <div class="bg-white shadow-sm rounded-lg border border-gray-200">
     <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-center">
         <div>
-            <h2 class="text-xl font-semibold text-gray-900">Detail Role</h2>
+            <h2 class="text-xl font-semibold text-gray-900">Profil Role</h2>
             <p class="text-sm text-gray-600 mt-1">
                 <span class="font-semibold text-gray-900">{{ $role->display_name }}</span>
-                <span class="text-gray-400">·</span>
-                <code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{{ $role->name }}</code>
             </p>
         </div>
         <a 
@@ -34,12 +32,11 @@
     <div class="p-6">
         <div class="grid grid-cols-1 gap-6">
             <div>
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi role</h3>
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Role</h3>
                 <dl class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                     <div>
-                        <dt class="text-sm font-medium text-gray-500 mb-1">Kode role (internal)</dt>
-                        <dd class="text-sm font-mono text-gray-900">{{ $role->name }}</dd>
-                        <p class="text-xs text-gray-500 mt-1">Digunakan di logika sistem; jangan diubah sembarangan jika sudah dipakai integrasi.</p>
+                        <dt class="text-sm font-medium text-gray-500 mb-1">Kategori Akses</dt>
+                        <dd class="text-sm text-gray-900">{{ $role->level_akses === 'pusat' ? 'Pusat' : 'Unit Kerja' }}</dd>
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500 mb-1">Nama tampilan</dt>
@@ -55,32 +52,40 @@
             </div>
 
             <div>
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Hak akses (permission) — {{ $role->permissions->count() }} entri</h3>
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Hak Akses Modul — {{ $role->permissions->count() }} entri</h3>
                 @if($role->permissions->count() > 0)
-                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
-                        @foreach($permissionGroups as $group)
-                            <div class="mb-6 last:mb-0">
-                                <h4 class="text-sm font-semibold text-gray-900 mb-2">
-                                    {{ $group['label'] }}
-                                </h4>
-                                <div class="space-y-2 pl-1">
-                                    @foreach($group['items'] as $permission)
-                                        <div class="flex items-start border-b border-gray-100 pb-2 last:border-0">
-                                            <svg class="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                            </svg>
-                                            <div>
-                                                <span class="text-sm text-gray-800 font-medium">{{ $permission->display_name }}</span>
-                                                @if($permission->description)
-                                                    <p class="text-xs text-gray-600 mt-0.5">{{ $permission->description }}</p>
+                    <div class="overflow-x-auto rounded-xl border border-gray-200">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-100 text-gray-700">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">Modul</th>
+                                    <th class="px-3 py-2 text-center">View</th>
+                                    <th class="px-3 py-2 text-center">Create</th>
+                                    <th class="px-3 py-2 text-center">Update</th>
+                                    <th class="px-3 py-2 text-center">Approve</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($simplifiedMatrix as $modKey => $item)
+                                    <tr class="border-t border-gray-200">
+                                        <td class="px-3 py-2">
+                                            <p class="font-medium text-gray-800">{{ $item['label'] }}</p>
+                                        </td>
+                                        @foreach (['view', 'create', 'update', 'approve'] as $action)
+                                            <td class="px-3 py-2 text-center">
+                                                @if ($item['actions'][$action]['ids'] ?? false)
+                                                    <svg class="inline-block h-5 w-5 {{ $item['actions'][$action]['all_checked'] ? 'text-green-600' : 'text-amber-500' }}" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                    </svg>
+                                                @else
+                                                    <span class="text-gray-300">–</span>
                                                 @endif
-                                                <p class="text-xs text-gray-400 mt-1 font-mono">{{ $permission->name }}</p>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endforeach
+                                            </td>
+                                        @endforeach
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
                 @else
                     <p class="text-sm text-gray-500">Role ini belum memiliki hak akses. <a href="{{ route('admin.roles.edit', $role->id) }}" class="text-blue-600 hover:text-blue-800">Atur di halaman edit</a></p>

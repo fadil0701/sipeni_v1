@@ -21,9 +21,10 @@ class CriticalFlowSmokeTest extends TestCase
         $this->get('/transaction/retur-barang')->assertRedirect('/login');
     }
 
-    public function test_guest_redirected_from_pemakaian_index(): void
+    public function test_pemakaian_barang_route_disabled_returns_not_found(): void
     {
-        $this->get('/transaction/pemakaian-barang')->assertRedirect('/login');
+        // Resource pemakaian-barang sengaja dinonaktifkan di routes/web.php (404, bukan redirect login).
+        $this->get('/transaction/pemakaian-barang')->assertNotFound();
     }
 
     public function test_guest_redirected_from_permintaan_index(): void
@@ -49,6 +50,26 @@ class CriticalFlowSmokeTest extends TestCase
     public function test_guest_redirected_from_report_kartu_stok(): void
     {
         $this->get('/reports/kartu-stok')->assertRedirect('/login');
+    }
+
+    public function test_guest_redirected_from_inventory_data_stock_merk_breakdown(): void
+    {
+        $this->get('/inventory/data-stock/merk-breakdown?id_data_barang=1&id_gudang=1')->assertRedirect('/login');
+    }
+
+    public function test_guest_redirected_from_inventory_farmasi_kedaluwarsa(): void
+    {
+        $this->get('/inventory/farmasi-kedaluwarsa')->assertRedirect('/login');
+    }
+
+    public function test_guest_redirected_from_inventory_farmasi_kedaluwarsa_export(): void
+    {
+        $this->get('/inventory/farmasi-kedaluwarsa/export')->assertRedirect('/login');
+    }
+
+    public function test_guest_redirected_from_report_kartu_stok_merk_breakdown(): void
+    {
+        $this->get('/reports/kartu-stok/merk-breakdown?id_data_barang=1&id_gudang=1')->assertRedirect('/login');
     }
 
     public function test_guest_redirected_from_report_transaksi_summary(): void

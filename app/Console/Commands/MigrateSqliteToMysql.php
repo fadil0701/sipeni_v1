@@ -211,6 +211,8 @@ class MigrateSqliteToMysql extends Command
             'user_modules',
             'permission_role',
             'role_user',
+            'model_has_roles',
+            'model_has_permissions',
             
             // Then tables with dependencies
             'master_data_barang',

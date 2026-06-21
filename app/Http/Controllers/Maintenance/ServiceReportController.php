@@ -10,6 +10,7 @@ use App\Models\RegisterAset;
 use App\Models\RiwayatPemeliharaan;
 use App\Models\JadwalMaintenance;
 use App\Models\MasterPegawai;
+use App\Support\Storage\PrivateStorage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -104,9 +105,9 @@ class ServiceReportController extends Controller
 
             $filePath = null;
             if ($request->hasFile('file_laporan_kamera')) {
-                $filePath = $request->file('file_laporan_kamera')->store('service-report', 'public');
+                $filePath = PrivateStorage::storeUploadedFile($request->file('file_laporan_kamera'), 'service-report');
             } elseif ($request->hasFile('file_laporan')) {
-                $filePath = $request->file('file_laporan')->store('service-report', 'public');
+                $filePath = PrivateStorage::storeUploadedFile($request->file('file_laporan'), 'service-report');
             }
 
             $totalBiaya = ($request->biaya_service ?? 0) + ($request->biaya_sparepart ?? 0);
@@ -198,13 +199,11 @@ class ServiceReportController extends Controller
         try {
             $filePath = $serviceReport->file_laporan;
             if ($request->hasFile('file_laporan') || $request->hasFile('file_laporan_kamera')) {
-                if ($filePath && Storage::disk('public')->exists($filePath)) {
-                    Storage::disk('public')->delete($filePath);
-                }
+                PrivateStorage::delete($filePath);
                 if ($request->hasFile('file_laporan_kamera')) {
-                    $filePath = $request->file('file_laporan_kamera')->store('service-report', 'public');
+                    $filePath = PrivateStorage::storeUploadedFile($request->file('file_laporan_kamera'), 'service-report');
                 } else {
-                    $filePath = $request->file('file_laporan')->store('service-report', 'public');
+                    $filePath = PrivateStorage::storeUploadedFile($request->file('file_laporan'), 'service-report');
                 }
             }
 
@@ -273,9 +272,7 @@ class ServiceReportController extends Controller
     {
         $serviceReport = ServiceReport::findOrFail($id);
         
-        if ($serviceReport->file_laporan && Storage::disk('public')->exists($serviceReport->file_laporan)) {
-            Storage::disk('public')->delete($serviceReport->file_laporan);
-        }
+        PrivateStorage::delete($serviceReport->file_laporan);
 
         $serviceReport->delete();
 

@@ -7,6 +7,7 @@ use App\Models\DataInventory;
 use App\Models\MasterGudang;
 use App\Models\MasterPegawai;
 use App\Models\MasterRuangan;
+use App\Support\Rbac\UserScope;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -19,6 +20,8 @@ class MasterLookupController extends Controller
      */
     public function gudangByUnit(int $id_unit_kerja): JsonResponse
     {
+        UserScope::assertCanAccessUnitKerjaData(request()->user(), $id_unit_kerja);
+
         $rows = MasterGudang::query()
             ->where('id_unit_kerja', $id_unit_kerja)
             ->orderBy('nama_gudang')
@@ -41,6 +44,8 @@ class MasterLookupController extends Controller
      */
     public function ruanganByUnit(int $id_unit_kerja): JsonResponse
     {
+        UserScope::assertCanAccessUnitKerjaData(request()->user(), $id_unit_kerja);
+
         $rows = MasterRuangan::query()
             ->with('unitKerja')
             ->where('id_unit_kerja', $id_unit_kerja)
@@ -63,6 +68,8 @@ class MasterLookupController extends Controller
      */
     public function pegawaiByUnit(int $id_unit_kerja): JsonResponse
     {
+        UserScope::assertCanAccessUnitKerjaData(request()->user(), $id_unit_kerja);
+
         $rows = MasterPegawai::query()
             ->with(['unitKerja', 'jabatan'])
             ->where('id_unit_kerja', $id_unit_kerja)
@@ -89,6 +96,8 @@ class MasterLookupController extends Controller
      */
     public function inventoryByUnit(int $id_unit_kerja): JsonResponse
     {
+        UserScope::assertCanAccessUnitKerjaData(request()->user(), $id_unit_kerja);
+
         $rows = DataInventory::query()
             ->with(['dataBarang', 'satuan', 'gudang'])
             ->whereHas('gudang', static function ($q) use ($id_unit_kerja) {

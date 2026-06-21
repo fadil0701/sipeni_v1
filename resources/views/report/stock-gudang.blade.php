@@ -2,25 +2,44 @@
 
 @section('content')
 <!-- Page Header -->
-<div class="mb-6 flex justify-between items-center">
+<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-start">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Laporan Stock Gudang</h1>
         <p class="mt-1 text-sm text-gray-600">Laporan detail stok barang di gudang</p>
+        @if(\App\Helpers\StockWarehouseSummaryViewHelper::shouldLimitStockViewsToPersediaanFarmasiForUnit(auth()->user()))
+            <p class="mt-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 inline-block">Akun gudang unit: laporan ini hanya memuat baris stok <strong>Persediaan</strong> dan <strong>Farmasi</strong>.</p>
+        @endif
     </div>
-    <a 
-        href="{{ route('reports.stock-gudang.export', request()->all()) }}" 
-        class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-    >
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        Export
-    </a>
+    <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        @if($showWarehouseSummaryCards ?? false)
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="text-sm font-medium text-gray-700">Tampilan</span>
+            <a
+                href="{{ request()->fullUrlWithQuery(['tampilan' => 'tabel']) }}"
+                class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium border transition-colors {{ ($tampilan ?? 'tabel') === 'tabel' ? 'border-blue-600 bg-blue-50 text-blue-800 ring-2 ring-blue-500 ring-offset-1' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}"
+            >Tabel</a>
+            <a
+                href="{{ request()->fullUrlWithQuery(['tampilan' => 'cards']) }}"
+                class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium border transition-colors {{ ($tampilan ?? 'tabel') === 'cards' ? 'border-blue-600 bg-blue-50 text-blue-800 ring-2 ring-blue-500 ring-offset-1' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}"
+            >Ringkasan per gudang</a>
+        </div>
+        @endif
+        <a
+            href="{{ route('reports.stock-gudang.export', request()->query()) }}"
+            class="inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+        >
+            <svg class="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Export
+        </a>
+    </div>
 </div>
 
 <!-- Filters -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
     <form method="GET" action="{{ route('reports.stock-gudang') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <input type="hidden" name="tampilan" value="{{ $tampilan ?? 'tabel' }}">
         <div>
             <label for="gudang" class="block text-sm font-medium text-gray-700 mb-1">Gudang</label>
             <select 
@@ -102,7 +121,15 @@
     </form>
 </div>
 
+@if($showWarehouseSummaryCards ?? false)
+@include('partials.gudang-stock-summary-cards', [
+    'routeName' => 'reports.stock-gudang',
+    'helpText' => 'Ringkasan mengikuti rentang tanggal update dan pencarian; filter gudang di form tidak membatasi total per kartu. Klik kartu untuk membuka tabel rinci hanya untuk gudang tersebut.',
+])
+@endif
+
 <!-- Table Card -->
+@if(($tampilan ?? 'tabel') === 'tabel')
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -177,5 +204,10 @@
         </div>
     @endif
 </div>
+@else
+    <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">
+        Tabel disembunyikan pada tampilan ringkasan. Pilih kartu gudang di atas, ubah ke <strong>Tabel</strong>, atau gunakan <strong>Export</strong> untuk mengunduh data sesuai filter.
+    </div>
+@endif
 @endsection
 

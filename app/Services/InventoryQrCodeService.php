@@ -29,14 +29,29 @@ class InventoryQrCodeService
             $qrCodePath = 'qrcodes/inventory_item/'.str_replace('\\', '/', $kodeRegister).'.'.$format;
             $scanUrl = rtrim((string) config('app.url'), '/').'/scan/inventory-item?kode_register='.urlencode($kodeRegister);
             $qrContent = QrCode::format($format)->size(200)->generate($scanUrl);
+            $binary = (string) $qrContent;
 
-            Storage::disk('public')->put($qrCodePath, $qrContent);
+            $disk = Storage::disk('public');
+            $directory = dirname($qrCodePath);
+            if ($directory !== '.' && $directory !== '') {
+                $disk->makeDirectory($directory, 0755, true);
+            }
+
+            if (! $disk->put($qrCodePath, $binary)) {
+                Log::error('QR Code: gagal menulis berkas (cek izin folder storage/app/public).', [
+                    'kode_register' => $kodeRegister,
+                    'path' => $qrCodePath,
+                ]);
+
+                return null;
+            }
 
             return $qrCodePath;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('QR Code generation failed: '.$e->getMessage(), [
                 'kode_register' => $kodeRegister,
                 'error' => $e->getMessage(),
+                'hint' => 'Pastikan direktori storage/app/public dan turunannya dapat ditulis oleh user web server (Linux: chmod/chown; Laragon: jalankan web server dengan user yang punya akses tulis ke folder proyek).',
             ]);
 
             return null;

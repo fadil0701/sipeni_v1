@@ -5,14 +5,98 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\WorkflowPermission;
+use App\Models\WorkflowStatus;
 use App\Helpers\PermissionHelper;
+use App\Services\Audit\AuditLogService;
+use App\Services\PermissionModuleService;
+use App\Services\Rbac\RolePermissionResolver;
+use App\Support\Admin\SystemRole;
 use App\Support\AssignablePermissions;
 use App\Support\PermissionModule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Spatie\Permission\PermissionRegistrar;
 
 class RoleController extends Controller
 {
+    /**
+     * @return array<int, string>
+     */
+    private function workflowAbilities(): array
+    {
+        return ['create', 'approve', 'reject', 'verify', 'process', 'finish'];
+    }
+    /**
+     * Pengelompokan domain agar checklist role lebih mudah dipahami user non-teknis.
+     * Value berisi prefix permission (route-style) yang akan dimasukkan ke bucket tersebut.
+     */
+    private const PERMISSION_DOMAIN_GROUPS = [
+        'unit-kerja' => [
+            'label' => 'Modul Khusus Unit Kerja (Pegawai/Kepala/Admin Gudang Unit)',
+            'prefixes' => [
+                'user.',
+                'transaction.permintaan-barang.',
+                'transaction.peminjaman-barang.',
+                'transaction.pengembalian-barang.',
+                'transaction.penerimaan-barang.',
+                'transaction.retur',
+                'maintenance.permintaan-pemeliharaan.',
+                'inventory.data-stock.',
+                'inventory.data-inventory.',
+                'inventory.farmasi-kedaluwarsa.',
+                'asset.register-aset.',
+            ],
+        ],
+        'gudang-pusat' => [
+            'label' => 'Modul Gudang Pusat (Pengurus Barang/Admin Gudang)',
+            'prefixes' => [
+                'transaction.draft-distribusi.',
+                'transaction.compile-distribusi.',
+                'transaction.distribusi.',
+                'transaction.approval.',
+                'inventory.',
+                'reports.stock-gudang',
+                'reports.kartu-stok',
+                'master.gudang.',
+                'master-data.data-barang.',
+            ],
+        ],
+        'master-manajemen' => [
+            'label' => 'Modul Master Manajemen',
+            'prefixes' => [
+                'master-manajemen.',
+                'master.',
+                'master-data.',
+            ],
+        ],
+        'perencanaan-pengadaan-keuangan' => [
+            'label' => 'Modul Perencanaan, Pengadaan, dan Keuangan',
+            'prefixes' => [
+                'planning.',
+                'procurement.',
+                'finance.',
+            ],
+        ],
+        'maintenance' => [
+            'label' => 'Modul Maintenance',
+            'prefixes' => [
+                'maintenance.',
+            ],
+        ],
+        'laporan' => [
+            'label' => 'Modul Laporan',
+            'prefixes' => [
+                'reports.',
+            ],
+        ],
+        'admin-sistem' => [
+            'label' => 'Modul Administrasi Sistem',
+            'prefixes' => [
+                'admin.',
+            ],
+        ],
+    ];
     /**
      * Modul permission teknis yang tidak perlu tampil sebagai checklist role.
      * Permission untuk modul ini tetap bisa ada di database untuk kebutuhan internal.
@@ -54,20 +138,38 @@ class RoleController extends Controller
      */
     private function buildPermissionGroups(Collection $permissionsByModule, array $checkedIds): array
     {
-        $sortedKeys = PermissionModule::sortModuleKeys($permissionsByModule->keys()->map(fn ($k) => (string) $k)->toArray());
-        $groups = [];
+        $rawAll = $permissionsByModule->flatten(1)->values();
+        if ($rawAll->isEmpty()) {
+            return [];
+        }
 
-        foreach ($sortedKeys as $module) {
-            if (in_array($module, self::HIDDEN_PERMISSION_MODULES, true)) {
+        $groupedByDomain = $rawAll->groupBy(function (Permission $permission): string {
+            return $this->permissionDomainKey($permission->name, (string) ($permission->module ?? ''));
+        });
+
+        $sortedKeys = $this->sortDomainKeys($groupedByDomain->keys()->map(fn ($k) => (string) $k)->toArray());
+        $groups = [];
+        $rawItemByName = $rawAll->keyBy('name');
+
+        foreach ($sortedKeys as $domainKey) {
+            $rawItems = $groupedByDomain->get($domainKey);
+            if (! $rawItems || $rawItems->isEmpty()) {
                 continue;
             }
-            $rawItems = $permissionsByModule->get($module);
+
+            // Kalau bucket fallback berbasis module teknis dan termasuk hidden, skip.
+            if (str_starts_with($domainKey, 'module:')) {
+                $module = str_replace('module:', '', $domainKey);
+                if (in_array($module, self::HIDDEN_PERMISSION_MODULES, true)) {
+                    continue;
+                }
+            }
+
             $items = $this->simplifyPermissionItems($rawItems);
             if (! $items || $items->isEmpty()) {
                 continue;
             }
 
-            $rawItemByName = $rawItems?->keyBy('name') ?? collect();
             $checked = [];
             foreach ($items as $permission) {
                 if ($this->isPermissionChecked($permission, $checkedIds, $rawItemByName)) {
@@ -77,8 +179,8 @@ class RoleController extends Controller
 
             $itemIds = $items->pluck('id')->map(fn ($id) => (int) $id)->toArray();
             $groups[] = [
-                'module' => $module,
-                'label' => PermissionModule::label($module),
+                'module' => $domainKey,
+                'label' => $this->permissionDomainLabel($domainKey),
                 'items' => $items,
                 'checked_ids' => $checked,
                 'all_checked' => count($checked) === count($itemIds),
@@ -87,6 +189,53 @@ class RoleController extends Controller
         }
 
         return $groups;
+    }
+
+    private function permissionDomainKey(string $permissionName, string $module): string
+    {
+        foreach (self::PERMISSION_DOMAIN_GROUPS as $domainKey => $meta) {
+            foreach (($meta['prefixes'] ?? []) as $prefix) {
+                if (str_starts_with($permissionName, (string) $prefix)) {
+                    return $domainKey;
+                }
+            }
+        }
+
+        return 'module:'.$module;
+    }
+
+    private function permissionDomainLabel(string $domainKey): string
+    {
+        if (isset(self::PERMISSION_DOMAIN_GROUPS[$domainKey]['label'])) {
+            return (string) self::PERMISSION_DOMAIN_GROUPS[$domainKey]['label'];
+        }
+
+        if (str_starts_with($domainKey, 'module:')) {
+            $module = str_replace('module:', '', $domainKey);
+
+            return PermissionModule::label($module);
+        }
+
+        return PermissionModule::label($domainKey);
+    }
+
+    /**
+     * @param  array<int, string>  $keys
+     * @return array<int, string>
+     */
+    private function sortDomainKeys(array $keys): array
+    {
+        $domainOrder = array_keys(self::PERMISSION_DOMAIN_GROUPS);
+        usort($keys, function (string $a, string $b) use ($domainOrder): int {
+            $ai = array_search($a, $domainOrder, true);
+            $bi = array_search($b, $domainOrder, true);
+            $aIdx = $ai === false ? 999 : $ai;
+            $bIdx = $bi === false ? 999 : $bi;
+
+            return $aIdx <=> $bIdx ?: strcmp($a, $b);
+        });
+
+        return $keys;
     }
 
     /**
@@ -252,7 +401,8 @@ class RoleController extends Controller
     public function index(Request $request)
     {
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
-        $query = Role::withCount('users')->latest();
+
+        $query = Role::query()->withCount(['users', 'permissions']);
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -263,9 +413,14 @@ class RoleController extends Controller
             });
         }
 
-        $roles = $query->paginate($perPage)->appends($request->query());
+        $roles = $query->latest()->paginate($perPage)->appends($request->query());
 
-        return view('admin.roles.index', compact('roles'));
+        $summary = [
+            'total_roles' => Role::count(),
+            'roles_in_use' => Role::query()->has('users')->count(),
+        ];
+
+        return view('admin.roles.index', compact('roles', 'summary'));
     }
 
     public function create(Request $request)
@@ -274,10 +429,18 @@ class RoleController extends Controller
         $canDelegateAllPermissions = AssignablePermissions::editorMayAssignAll($editor);
 
         $permissionsByModule = AssignablePermissions::assignablePermissionsGroupedByModule($editor);
+        $assignablePermissions = $permissionsByModule->flatten(1)->values();
         $permissionGroups = $this->buildPermissionGroups($permissionsByModule, []);
         $lockedPermissionGroups = [];
 
-        return view('admin.roles.create', compact('permissionGroups', 'lockedPermissionGroups', 'canDelegateAllPermissions'));
+        $moduleService = app(PermissionModuleService::class);
+        $simplifiedMatrix = $moduleService->buildMatrix($assignablePermissions, []);
+        $groupedMatrix = $moduleService->buildGroupedMatrix($assignablePermissions, []);
+
+        return view('admin.roles.create', compact(
+            'permissionGroups', 'lockedPermissionGroups', 'canDelegateAllPermissions',
+            'assignablePermissions', 'simplifiedMatrix', 'groupedMatrix'
+        ));
     }
 
     public function store(Request $request)
@@ -288,6 +451,9 @@ class RoleController extends Controller
             'name' => 'required|string|max:255|unique:roles,name',
             'display_name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'level_akses' => 'required|in:pusat,unit',
+            'is_active' => 'nullable|boolean',
+            'clone_from_role_id' => 'nullable|exists:roles,id',
             'permissions' => 'nullable|array',
             'permissions.*' => 'exists:permissions,id',
         ]);
@@ -298,12 +464,30 @@ class RoleController extends Controller
 
         $role = Role::create([
             'name' => $validated['name'],
+            'kode_role' => $validated['name'],
             'display_name' => $validated['display_name'],
+            'nama_role' => $validated['display_name'],
+            'level_akses' => $validated['level_akses'],
+            'is_active' => (bool) ($validated['is_active'] ?? true),
             'description' => $validated['description'] ?? null,
         ]);
 
+        if (! empty($validated['clone_from_role_id'])) {
+            $baseIds = Role::query()->find($validated['clone_from_role_id'])?->permissions()->pluck('permissions.id')->all() ?? [];
+            $submitted = array_values(array_unique(array_merge($baseIds, $submitted)));
+        }
+
         $role->permissions()->sync($submitted);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
         PermissionHelper::bumpAccessibleMenusCacheGeneration();
+
+        AuditLogService::logCreate(
+            module: AuditLogService::MODULE_USER_MANAGEMENT,
+            entity: $role,
+            attributes: $role->only(['name', 'display_name', 'level_akses', 'is_active', 'description']),
+            description: 'Role created',
+            metadata: ['permission_ids' => $submitted],
+        );
 
         return redirect()->route('admin.roles.index')
             ->with('success', 'Role berhasil dibuat.');
@@ -321,7 +505,13 @@ class RoleController extends Controller
             $role->permissions->pluck('id')->toArray()
         );
 
-        return view('admin.roles.show', compact('role', 'permissionGroups'));
+        $moduleService = app(PermissionModuleService::class);
+        $simplifiedMatrix = $moduleService->buildMatrix(
+            $role->permissions,
+            $role->permissions->pluck('id')->map(fn ($id) => (int) $id)->toArray()
+        );
+
+        return view('admin.roles.show', compact('role', 'permissionGroups', 'simplifiedMatrix'));
     }
 
     public function edit(Request $request, $id)
@@ -341,6 +531,7 @@ class RoleController extends Controller
 
         $permissionsByModule = AssignablePermissions::assignablePermissionsGroupedByModule($editor);
         $permissionGroups = $this->buildPermissionGroups($permissionsByModule, $checkedIds);
+        $assignablePermissions = $permissionsByModule->flatten(1)->values();
 
         $locked = AssignablePermissions::lockedPermissionsOnRole($editor, $role->permissions);
         $lockedPermissionGroups = [];
@@ -351,12 +542,29 @@ class RoleController extends Controller
             );
         }
 
+        $statuses = WorkflowStatus::query()->orderBy('urutan')->get();
+        $existingWorkflow = WorkflowPermission::query()
+            ->where('role_id', $role->id)
+            ->get()
+            ->keyBy('workflow_status_id');
+        $abilities = $this->workflowAbilities();
+
+        $moduleService = app(PermissionModuleService::class);
+        $simplifiedMatrix = $moduleService->buildMatrix($assignablePermissions, $checkedIds);
+        $groupedMatrix = $moduleService->buildGroupedMatrix($assignablePermissions, $checkedIds);
+
         return view('admin.roles.edit', compact(
             'role',
             'permissionGroups',
             'lockedPermissionGroups',
             'totalChecked',
-            'canDelegateAllPermissions'
+            'canDelegateAllPermissions',
+            'assignablePermissions',
+            'statuses',
+            'existingWorkflow',
+            'abilities',
+            'simplifiedMatrix',
+            'groupedMatrix'
         ));
     }
 
@@ -364,11 +572,15 @@ class RoleController extends Controller
     {
         $editor = $request->user();
         $role = Role::with('permissions')->findOrFail($id);
+        $before = $role->only(['name', 'display_name', 'level_akses', 'is_active', 'description']);
+        $beforePermissionIds = $role->permissions->pluck('id')->map(fn ($pid) => (int) $pid)->sort()->values()->all();
 
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:roles,name,' . $id,
             'display_name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'level_akses' => 'required|in:pusat,unit',
+            'is_active' => 'nullable|boolean',
             'permissions' => 'nullable|array',
             'permissions.*' => 'exists:permissions,id',
         ]);
@@ -379,9 +591,22 @@ class RoleController extends Controller
 
         $role->update([
             'name' => $validated['name'],
+            'kode_role' => $validated['name'],
             'display_name' => $validated['display_name'],
+            'nama_role' => $validated['display_name'],
+            'level_akses' => $validated['level_akses'],
+            'is_active' => (bool) ($validated['is_active'] ?? false),
             'description' => $validated['description'] ?? null,
         ]);
+        $role->refresh();
+
+        AuditLogService::logUpdate(
+            module: AuditLogService::MODULE_USER_MANAGEMENT,
+            entity: $role,
+            old: $before,
+            new: $role->only(['name', 'display_name', 'level_akses', 'is_active', 'description']),
+            description: 'Role updated',
+        );
 
         $role->load('permissions');
 
@@ -395,6 +620,19 @@ class RoleController extends Controller
             $role->permissions()->sync(array_values(array_unique(array_merge($submitted, $lockedIds))));
         }
 
+        $afterPermissionIds = collect($submitted)->sort()->values()->all();
+        if ($beforePermissionIds !== $afterPermissionIds) {
+            AuditLogService::logAction(
+                module: AuditLogService::MODULE_USER_MANAGEMENT,
+                action: 'permission_matrix_updated',
+                description: 'Role permission matrix updated',
+                entity: $role,
+                old: ['permission_ids' => $beforePermissionIds],
+                new: ['permission_ids' => $afterPermissionIds],
+            );
+        }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
         PermissionHelper::bumpAccessibleMenusCacheGeneration();
 
         return redirect()->route('admin.roles.index')
@@ -405,15 +643,68 @@ class RoleController extends Controller
     {
         $role = Role::findOrFail($id);
 
+        if (SystemRole::isProtected($role)) {
+            return redirect()->route('admin.roles.index')
+                ->with('error', 'Role sistem tidak dapat dihapus.');
+        }
+
         if ($role->users()->count() > 0) {
             return redirect()->route('admin.roles.index')
                 ->with('error', 'Role tidak dapat dihapus karena masih memiliki user.');
         }
 
+        $role->load('permissions');
+        $snapshot = $role->only(['name', 'display_name', 'level_akses', 'is_active', 'description']);
+        $permissionIds = $role->permissions->pluck('id')->map(fn ($pid) => (int) $pid)->all();
+
+        AuditLogService::logDelete(
+            module: AuditLogService::MODULE_USER_MANAGEMENT,
+            entity: $role,
+            snapshot: array_merge($snapshot, ['permission_ids' => $permissionIds]),
+            description: 'Role deleted',
+        );
+
         $role->delete();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         return redirect()->route('admin.roles.index')
             ->with('success', 'Role berhasil dihapus.');
+    }
+
+    public function editWorkflowPermissions($id)
+    {
+        Role::query()->findOrFail($id);
+
+        return redirect()
+            ->route('admin.roles.edit', $id)
+            ->with('info', 'Konfigurasi workflow per status belum aktif di UI. Kelola hak akses melalui permission matrix pada halaman edit role.');
+    }
+
+    public function updateWorkflowPermissions(Request $request, $id)
+    {
+        $role = Role::query()->findOrFail($id);
+        $statuses = WorkflowStatus::query()->orderBy('urutan')->get();
+        $abilities = $this->workflowAbilities();
+        $matrix = (array) $request->input('matrix', []);
+
+        foreach ($statuses as $status) {
+            $row = (array) ($matrix[$status->id] ?? []);
+            $payload = [];
+            foreach ($abilities as $ability) {
+                $payload['can_'.$ability] = isset($row[$ability]) && (string) $row[$ability] === '1';
+            }
+
+            WorkflowPermission::query()->updateOrCreate(
+                [
+                    'role_id' => $role->id,
+                    'workflow_status_id' => $status->id,
+                ],
+                $payload
+            );
+        }
+
+        return redirect()->route('admin.roles.edit', ['role' => $role->id, 'tab' => 'workflow'])
+            ->with('success', 'Alur proses role berhasil diperbarui pada halaman Role Management.');
     }
 
     /**
@@ -443,32 +734,7 @@ class RoleController extends Controller
             ->flatten(1)
             ->values();
 
-        if ($assignablePermissions->isEmpty()) {
-            return [];
-        }
-
-        $byId = $assignablePermissions->keyBy(fn (Permission $p) => (int) $p->id);
-        $groupedIds = [];
-        foreach ($assignablePermissions as $permission) {
-            $groupKey = $this->permissionGroupKey($permission->name);
-            $groupedIds[$groupKey] ??= [];
-            $groupedIds[$groupKey][] = (int) $permission->id;
-        }
-
-        $expanded = [];
-        foreach ($submittedIds as $id) {
-            $permission = $byId->get((int) $id);
-            if (! $permission) {
-                continue;
-            }
-
-            $groupKey = $this->permissionGroupKey($permission->name);
-            foreach ($groupedIds[$groupKey] ?? [(int) $id] as $groupId) {
-                $expanded[] = (int) $groupId;
-            }
-        }
-
-        return array_values(array_unique($expanded));
+        return app(RolePermissionResolver::class)->expand($submittedIds, $assignablePermissions);
     }
 
     /**

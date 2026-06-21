@@ -39,20 +39,6 @@
         </div>
     @endif
 
-    @if(session('error'))
-        <div class="mx-6 mt-4 bg-red-50 border-l-4 border-red-400 p-4 rounded">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
-                </div>
-            </div>
-        </div>
-    @endif
     
     <form action="{{ route('transaction.draft-distribusi.store') }}" method="POST" class="p-6" id="formDraftDistribusi">
         @csrf
@@ -495,8 +481,6 @@ function populateInventoryForAllGudangs(inventorySelect) {
         inv.jenis_inventory === kategoriGudang
     );
     
-    console.log('Populating inventory for all gudangs, kategori:', kategoriGudang);
-    console.log('Available inventory:', allInventory.length, 'items');
     
     inventorySelect.innerHTML = '<option value="">Pilih Inventory</option>';
     
@@ -629,7 +613,6 @@ function addItemRow() {
     }
     
     itemIndex++;
-    console.log('Item row added successfully, current index:', itemIndex);
 }
 
 // Event listener untuk tombol tambah item dan initialization
@@ -659,7 +642,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         formDraftDistribusi.addEventListener('submit', function(e) {
-            console.log('Form submit triggered');
             
             // Pastikan kategori_gudang terisi
             const hiddenKategoriField = document.getElementById('hiddenKategoriGudang');
@@ -668,7 +650,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             const detailRows = detailContainer.querySelectorAll('.item-row');
-            console.log('Detail rows found:', detailRows.length);
             
             if (detailRows.length === 0) {
                 e.preventDefault();
@@ -685,15 +666,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const qtyDistribusi = row.querySelector('[name*="[qty_distribusi]"]');
                 const idSatuan = row.querySelector('[name*="[id_satuan]"]');
                 const hargaSatuan = row.querySelector('[name*="[harga_satuan]"]');
-                
-                console.log(`Validating row ${index + 1}:`, {
-                    inventory: idInventory?.value,
-                    gudang: idGudangAsal?.value,
-                    qty: qtyDistribusi?.value,
-                    satuan: idSatuan?.value,
-                    harga: hargaSatuan?.value
-                });
-                
+
                 if (!idInventory || !idInventory.value) {
                     isValid = false;
                     emptyFields.push(`Item ${index + 1}: Inventory`);
@@ -722,12 +695,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
             
-            console.log('Validation passed, submitting form...');
         });
     }
 });
 </script>
 @endpush
 @endsection
-
 

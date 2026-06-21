@@ -2,25 +2,43 @@
 
 @section('content')
 <!-- Page Header -->
-<div class="mb-6 flex justify-between items-center">
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Data Stok Gudang</h1>
         <p class="mt-1 text-sm text-gray-600">Daftar stok barang di semua gudang</p>
+        @if(\App\Helpers\StockWarehouseSummaryViewHelper::shouldLimitStockViewsToPersediaanFarmasiForUnit(auth()->user()))
+            <p class="mt-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 inline-block">Akun gudang unit: tabel dan ringkasan hanya memuat stok <strong>Persediaan</strong> dan <strong>Farmasi</strong>.</p>
+        @endif
     </div>
-    <a 
-        href="#" 
-        class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-    >
+    @if($showWarehouseSummaryCards ?? false)
+    <div class="flex flex-wrap items-center gap-2 shrink-0">
+        <span class="text-sm font-medium text-gray-700">Tampilan</span>
+        <a
+            href="{{ request()->fullUrlWithQuery(['tampilan' => 'tabel']) }}"
+            class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium border transition-colors {{ ($tampilan ?? 'tabel') === 'tabel' ? 'border-blue-600 bg-blue-50 text-blue-800 ring-2 ring-blue-500 ring-offset-1' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}"
+        >
+            Tabel
+        </a>
+        <a
+            href="{{ request()->fullUrlWithQuery(['tampilan' => 'cards']) }}"
+            class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium border transition-colors {{ ($tampilan ?? 'tabel') === 'cards' ? 'border-blue-600 bg-blue-50 text-blue-800 ring-2 ring-blue-500 ring-offset-1' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}"
+        >
+            Ringkasan per gudang
+        </a>
+    </div>
+    @endif
+    {{-- <a href="#" class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
         Tambah Stok
-    </a>
+    </a> --}}
 </div>
 
 <!-- Filters -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
     <form method="GET" action="{{ route('inventory.data-stock.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <input type="hidden" name="tampilan" value="{{ $tampilan ?? 'tabel' }}">
         <div>
             <label for="gudang" class="block text-sm font-medium text-gray-700 mb-1">Gudang</label>
             <select 
@@ -93,10 +111,37 @@
                 >
             </div>
         </div>
+
+        <div class="col-span-full flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4 mt-1">
+            <button
+                type="submit"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+                Terapkan filter
+            </button>
+            <a
+                href="{{ route('inventory.data-stock.index', array_filter([
+                    'tampilan' => $tampilan ?? 'tabel',
+                    'per_page' => request('per_page'),
+                ], fn ($v) => $v !== null && $v !== '')) }}"
+                class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+                Reset filter
+            </a>
+        </div>
     </form>
 </div>
 
+@if($showWarehouseSummaryCards ?? false)
+@include('partials.gudang-stock-summary-cards', [
+    'routeName' => 'inventory.data-stock.index',
+    'helpText' => 'Ringkasan mengikuti filter di atas (jenis, merk, batch, pencarian). Klik kartu untuk membuka tabel rinci hanya untuk gudang tersebut.',
+    'emptyMessage' => 'Tidak ada gudang yang dapat ditampilkan untuk akun Anda.',
+])
+@endif
+
 <!-- Table Card -->
+@if(($tampilan ?? 'tabel') === 'tabel')
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table
@@ -112,6 +157,9 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Tersedia</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
+                    @if(\App\Helpers\PermissionHelper::canAccess(auth()->user(), 'inventory.data-stock.merk-breakdown'))
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                    @endif
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
@@ -157,10 +205,29 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ $stock->satuan->nama_satuan ?? '-' }}</div>
                         </td>
+                        @if(\App\Helpers\PermissionHelper::canAccess(auth()->user(), 'inventory.data-stock.merk-breakdown'))
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <a
+                                    href="{{ route('inventory.data-stock.merk-breakdown', array_merge(
+                                        ['id_data_barang' => $stock->id_data_barang, 'id_gudang' => $stock->id_gudang],
+                                        request()->only(['gudang', 'jenis', 'merk', 'no_batch', 'search', 'tampilan'])
+                                    )) }}"
+                                    class="inline-flex items-center justify-center p-2 rounded-md text-white bg-red-500 border border-red-600 shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                    title="Rincian stok per merk"
+                                    aria-label="Rincian stok per merk"
+                                >
+                                    <span class="sr-only">Rincian stok per merk</span>
+                                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </a>
+                            </td>
+                        @endif
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center">
+                        <td colspan="{{ \App\Helpers\PermissionHelper::canAccess(auth()->user(), 'inventory.data-stock.merk-breakdown') ? '8' : '7' }}" class="px-6 py-12 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>
@@ -179,6 +246,11 @@
         </div>
     @endif
 </div>
+@else
+    <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">
+        Tabel disembunyikan pada tampilan ringkasan. Pilih salah satu kartu gudang di atas, atau ubah tampilan ke <strong>Tabel</strong> untuk melihat seluruh baris stok sekaligus.
+    </div>
+@endif
 
 @push('scripts')
 <script>

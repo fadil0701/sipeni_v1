@@ -23,5 +23,9 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
+# E2E otomasi Python
+scripts/e2e/.env
+scripts/e2e/reports/*.html
+
 # Temporary lock files from Microsoft Office/Excel
 ~$*.xlsx

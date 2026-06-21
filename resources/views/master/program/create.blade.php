@@ -18,20 +18,40 @@
     <form action="{{ route('master.program.store') }}" method="POST" class="p-6">
         @csrf
         
-        <div class="max-w-2xl space-y-6">
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
                 <label for="kode_program" class="block text-sm font-medium text-gray-700 mb-2">
                     Kode Program <span class="text-red-500">*</span>
                 </label>
-                <input type="text" id="kode_program" name="kode_program" required value="{{ old('kode_program') }}" autocomplete="off" placeholder="Contoh: 1.02.03" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm font-mono @error('kode_program') border-red-500 @enderror">
+                <input type="text" id="kode_program" name="kode_program" required value="{{ old('kode_program') }}" placeholder="Contoh: 1.02.03" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('kode_program') border-red-500 @enderror">
                 @error('kode_program')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
+
             <div>
+                <label for="is_active" class="block text-sm font-medium text-gray-700 mb-2">
+                    Status <span class="text-red-500">*</span>
+                </label>
+                <select id="is_active" name="is_active" required class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('is_active') border-red-500 @enderror">
+                    <option value="1" {{ old('is_active') == '1' ? 'selected' : '' }}>Aktif</option>
+                    <option value="0" {{ old('is_active') == '0' ? 'selected' : '' }}>Nonaktif</option>
+                </select>
+                @error('is_active')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
+
+            <div class="sm:col-span-2">
                 <label for="nama_program" class="block text-sm font-medium text-gray-700 mb-2">
                     Nama Program <span class="text-red-500">*</span>
                 </label>
-                <input type="text" id="nama_program" name="nama_program" required value="{{ old('nama_program') }}" placeholder="Masukkan nama program" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm @error('nama_program') border-red-500 @enderror">
+                <input type="text" id="nama_program" name="nama_program" required value="{{ old('nama_program') }}" placeholder="Masukkan nama program" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('nama_program') border-red-500 @enderror">
                 @error('nama_program')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
+
+            <div class="sm:col-span-2">
+                <label for="keterangan" class="block text-sm font-medium text-gray-700 mb-2">
+                    Keterangan
+                </label>
+                <textarea id="keterangan" name="keterangan" rows="3" placeholder="Catatan tambahan (opsional)" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('keterangan') border-red-500 @enderror">{{ old('keterangan') }}</textarea>
+                @error('keterangan')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
         </div>
 
@@ -42,4 +62,3 @@
     </form>
 </div>
 @endsection
-

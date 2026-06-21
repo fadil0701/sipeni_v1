@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\User;
 
+use App\Support\Rbac\RbacRoles;
+use App\Support\Rbac\UserScope;
+
 use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use App\Models\MasterPegawai;
@@ -45,7 +48,7 @@ class AssetController extends Controller
     private function scopePortalAssetsForUser(Builder $query): Builder
     {
         $user = Auth::user();
-        if ($user->hasRole('admin')) {
+        if (UserScope::canViewCrossUnitData($user)) {
             return $query;
         }
 

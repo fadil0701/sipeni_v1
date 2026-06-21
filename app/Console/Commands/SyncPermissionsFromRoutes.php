@@ -32,8 +32,7 @@ class SyncPermissionsFromRoutes extends Command
                 str_starts_with($routeName, 'livewire.') ||
                 str_starts_with($routeName, 'storage.') ||
                 $routeName === 'login' ||
-                $routeName === 'logout' ||
-                $routeName === 'logout.get') {
+                $routeName === 'logout') {
                 continue;
             }
             
@@ -98,9 +97,10 @@ class SyncPermissionsFromRoutes extends Command
             $bar->start();
 
             foreach ($permissions as $permission) {
+                $row = array_merge(['guard_name' => 'web'], $permission);
                 Permission::updateOrCreate(
-                    ['name' => $permission['name']],
-                    $permission
+                    ['name' => $permission['name'], 'guard_name' => 'web'],
+                    $row
                 );
                 $bar->advance();
             }

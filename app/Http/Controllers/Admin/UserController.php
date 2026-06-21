@@ -3,21 +3,35 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\MasterPegawai;
-use App\Models\Module;
 use App\Helpers\PermissionHelper;
-use App\Support\AssignablePermissions;
+use App\Services\Audit\AuditLogService;
+use App\Support\Admin\SuperAdminGuard;
+use App\Support\SipeniPassword;
+use Spatie\Permission\PermissionRegistrar;
 
 class UserController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * @return array<int, int>
+     */
+    private function validatedRoleIds($request): array
     {
+        $ids = $request->input('role_ids', []);
+        if (! is_array($ids)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(array_map('intval', $ids), fn (int $id) => $id > 0)));
+    }
+
+    public function index(mixed $request = null)
+    {
+        $request ??= \call_user_func('\\app', 'request');
         $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
-        $query = User::with('roles')->latest();
+        $query = \call_user_func([User::class, 'with'], ['roles', 'pegawai.jabatan', 'pegawai.unitKerja'])->latest();
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -33,187 +47,200 @@ class UserController extends Controller
             });
         }
 
-        $users = $query->paginate($perPage)->appends($request->query());
-        $roles = Role::orderBy('display_name')->get();
+        if ($request->boolean('needs_attention')) {
+            $query->doesntHave('roles');
+        }
 
-        return view('admin.users.index', compact('users', 'roles'));
+        $users = $query->paginate($perPage)->appends($request->query());
+        $roles = \call_user_func([Role::class, 'orderBy'], 'display_name')->get();
+
+        $summary = [
+            'total_users' => User::count(),
+            'users_without_roles' => User::query()->doesntHave('roles')->count(),
+        ];
+
+        return \call_user_func('\\view', 'admin.users.index', compact('users', 'roles', 'summary'));
     }
 
-    public function create(Request $request)
+    public function create(mixed $request = null)
     {
+        $request ??= \call_user_func('\\app', 'request');
         $editor = $request->user();
-        $roles = Role::all();
-        $allowedModuleNames = AssignablePermissions::assignableModuleNamesForUserForm($editor);
-        $modules = Module::orderBy('sort_order')
-            ->get()
-            ->filter(fn (Module $m) => in_array($m->name, $allowedModuleNames, true))
-            ->values();
-        $canDelegateAllPermissions = AssignablePermissions::editorMayAssignAll($editor);
+        $roles = \call_user_func([Role::class, 'all']);
 
-        $pegawais = MasterPegawai::with('unitKerja')
+        $pegawais = \call_user_func([MasterPegawai::class, 'with'], 'unitKerja')
             ->orderBy('nama_pegawai')
             ->get();
 
-        $lockedModules = collect();
-
-        return view('admin.users.create', compact('roles', 'pegawais', 'modules', 'lockedModules', 'canDelegateAllPermissions'));
+        return \call_user_func('\\view', 'admin.users.create', compact('roles', 'pegawais'));
     }
 
-    public function store(Request $request)
+    public function store(mixed $request = null)
     {
-        $this->assertEditorMayAssignModules($request->user(), $request->input('modules', []));
+        $request ??= \call_user_func('\\app', 'request');
+        $editor = $request->user();
+
+        $roleIds = $this->validatedRoleIds($request);
+        if ($error = SuperAdminGuard::validateRoleAssignment($editor, $roleIds)) {
+            return \call_user_func('\\back')->withInput()->with('error', $error);
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'role_id' => 'required|exists:roles,id',
-            'modules' => 'nullable|array',
-            'modules.*' => 'exists:modules,name',
+            'password' => SipeniPassword::requiredConfirmed(),
+            'is_active' => 'nullable|boolean',
+            'role_ids' => 'required|array|min:1',
+            'role_ids.*' => 'exists:roles,id',
         ]);
 
-        $user = User::create([
+        $user = \call_user_func([User::class, 'create'], [
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'password' => \call_user_func('\\bcrypt', $validated['password']),
+            'is_active' => $request->boolean('is_active', true),
         ]);
 
-        // Assign role
-        $user->roles()->attach($validated['role_id']);
+        AuditLogService::logCreate(
+            module: AuditLogService::MODULE_USER_MANAGEMENT,
+            entity: $user,
+            attributes: $user->only(['name', 'email', 'is_active']),
+            description: 'User account created',
+            metadata: ['role_ids' => $this->validatedRoleIds($request)],
+        );
 
-        // Assign modules
-        if ($request->has('modules')) {
-            $user->modules()->sync($request->modules);
-        }
+        // Assign roles (multi-choice) — Spatie model_has_roles
+        $user->syncUnifiedRoles($this->validatedRoleIds($request));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         PermissionHelper::forgetAccessibleMenusCacheForUser($user->id);
 
-        return redirect()->route('admin.users.index')
+        return \call_user_func('\\redirect')->route('admin.users.index')
             ->with('success', 'User berhasil dibuat.');
     }
 
-    public function show($id)
+    public function show(int|string $id)
     {
-        $user = User::with('roles')->findOrFail($id);
-        return view('admin.users.show', compact('user'));
+        $user = \call_user_func([User::class, 'with'], 'roles')->findOrFail($id);
+        return \call_user_func('\\view', 'admin.users.show', compact('user'));
     }
 
-    public function edit(Request $request, $id)
+    public function edit(int|string $id, mixed $request = null)
     {
+        $request ??= \call_user_func('\\app', 'request');
         $editor = $request->user();
-        $user = User::with(['roles', 'modules'])->findOrFail($id);
-        $roles = Role::all();
-        $allowedModuleNames = AssignablePermissions::assignableModuleNamesForUserForm($editor);
-        $modules = Module::orderBy('sort_order')
-            ->get()
-            ->filter(fn (Module $m) => in_array($m->name, $allowedModuleNames, true))
-            ->values();
-        $canDelegateAllPermissions = AssignablePermissions::editorMayAssignAll($editor);
+        $user = \call_user_func([User::class, 'with'], ['roles', 'pegawai'])->findOrFail($id);
+        $roles = \call_user_func([Role::class, 'all']);
 
-        $userModuleNames = $user->modules->pluck('name')->all();
-        $lockedModuleNames = array_values(array_diff($userModuleNames, $allowedModuleNames));
-        $lockedModules = $lockedModuleNames === []
-            ? collect()
-            : Module::whereIn('name', $lockedModuleNames)->orderBy('sort_order')->get();
-
-        // Ambil pegawai yang belum punya user atau pegawai yang sudah terhubung dengan user ini
-        $pegawais = MasterPegawai::where(function($query) use ($id) {
-                $query->whereDoesntHave('user')
-                      ->orWhereNull('user_id')
-                      ->orWhere('user_id', $id);
-            })
+        $pegawais = \call_user_func([MasterPegawai::class, 'where'], function ($query) use ($id) {
+            $query->whereDoesntHave('user')
+                ->orWhereNull('user_id')
+                ->orWhere('user_id', $id);
+        })
             ->orderBy('nama_pegawai')
             ->get();
-        return view('admin.users.edit', compact('user', 'roles', 'pegawais', 'modules', 'lockedModules', 'canDelegateAllPermissions'));
+
+        return \call_user_func('\\view', 'admin.users.edit', compact('user', 'roles', 'pegawais'));
     }
 
-    public function update(Request $request, $id)
+    public function update(int|string $id, mixed $request = null)
     {
-        $this->assertEditorMayAssignModules($request->user(), $request->input('modules', []));
+        $request ??= \call_user_func('\\app', 'request');
 
-        $user = User::findOrFail($id);
+        $user = \call_user_func([User::class, 'findOrFail'], $id);
+        $before = $user->only(['name', 'email', 'is_active']);
+        $beforeRoleIds = $user->roles()->pluck('roles.id')->map(fn ($rid) => (int) $rid)->sort()->values()->all();
+
+        $roleIds = $this->validatedRoleIds($request);
+        if (SuperAdminGuard::wouldRemoveLastSuperAdministrator($user, $roleIds)) {
+            return \call_user_func('\\redirect')->route('admin.users.edit', $id)
+                ->with('error', 'Tidak dapat menghapus role Super Administrator dari user terakhir yang aktif.');
+        }
+
+        if ($error = SuperAdminGuard::validateRoleAssignment($request->user(), $roleIds)) {
+            return \call_user_func('\\redirect')->route('admin.users.edit', $id)
+                ->with('error', $error);
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $id,
-            'password' => 'nullable|string|min:8|confirmed',
-            'role_id' => 'required|exists:roles,id',
-            'modules' => 'nullable|array',
-            'modules.*' => 'exists:modules,name',
+            'password' => SipeniPassword::optionalConfirmed(),
+            'is_active' => 'nullable|boolean',
+            'role_ids' => 'required|array|min:1',
+            'role_ids.*' => 'exists:roles,id',
         ]);
 
         $updateData = [
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'is_active' => $request->boolean('is_active'),
         ];
 
         if ($request->filled('password')) {
-            $updateData['password'] = Hash::make($validated['password']);
+            $updateData['password'] = \call_user_func('\\bcrypt', $validated['password']);
         }
 
         $user->update($updateData);
+        $user->refresh();
 
-        // Update role
-        $user->roles()->sync([$validated['role_id']]);
+        AuditLogService::logUpdate(
+            module: AuditLogService::MODULE_USER_MANAGEMENT,
+            entity: $user,
+            old: $before,
+            new: $user->only(['name', 'email', 'is_active']),
+            description: 'User account updated',
+        );
 
-        $user->load('modules');
-        $submittedModules = (array) $request->input('modules', []);
-
-        if (AssignablePermissions::editorMayAssignAll($request->user())) {
-            if ($request->has('modules')) {
-                $user->modules()->sync($submittedModules);
-            } else {
-                $user->modules()->detach();
-            }
-        } else {
-            $allowed = array_flip(AssignablePermissions::assignableModuleNamesForUserForm($request->user()));
-            $lockedNames = $user->modules->pluck('name')->filter(fn ($n) => ! isset($allowed[(string) $n]))->values()->all();
-            $user->modules()->sync(array_values(array_unique(array_merge($submittedModules, $lockedNames))));
+        // Update roles (multi-choice) — Spatie model_has_roles
+        $user->syncUnifiedRoles($this->validatedRoleIds($request));
+        $afterRoleIds = collect($this->validatedRoleIds($request))->sort()->values()->all();
+        if ($beforeRoleIds !== $afterRoleIds) {
+            AuditLogService::logAction(
+                module: AuditLogService::MODULE_USER_MANAGEMENT,
+                action: 'roles_assigned',
+                description: 'User roles updated',
+                entity: $user,
+                old: ['role_ids' => $beforeRoleIds],
+                new: ['role_ids' => $afterRoleIds],
+            );
         }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         PermissionHelper::forgetAccessibleMenusCacheForUser($user->id);
 
-        return redirect()->route('admin.users.index')
+        return \call_user_func('\\redirect')->route('admin.users.index')
             ->with('success', 'User berhasil diperbarui.');
     }
 
-    public function destroy($id)
+    public function destroy(int|string $id)
     {
-        $user = User::findOrFail($id);
+        $user = \call_user_func([User::class, 'findOrFail'], $id);
 
         // Prevent deletion of own account
-        if ($user->id === auth()->id()) {
-            return redirect()->route('admin.users.index')
+        if ($user->id === \call_user_func('\\auth')->id()) {
+            return \call_user_func('\\redirect')->route('admin.users.index')
                 ->with('error', 'Anda tidak dapat menghapus akun sendiri.');
         }
 
         $uid = $user->id;
-        $user->roles()->detach();
+        $snapshot = $user->only(['name', 'email', 'is_active']);
+        $user->syncUnifiedRoles([]);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
         $user->delete();
+
+        AuditLogService::logDelete(
+            module: AuditLogService::MODULE_USER_MANAGEMENT,
+            entity: $user,
+            snapshot: $snapshot,
+            description: 'User account deleted',
+        );
 
         PermissionHelper::forgetAccessibleMenusCacheForUser($uid);
 
-        return redirect()->route('admin.users.index')
+        return \call_user_func('\\redirect')->route('admin.users.index')
             ->with('success', 'User berhasil dihapus.');
     }
 
-    /**
-     * @param  array<mixed>  $moduleNames
-     */
-    private function assertEditorMayAssignModules(\App\Models\User $editor, array $moduleNames): void
-    {
-        if (! is_array($moduleNames)) {
-            return;
-        }
-
-        $allowed = array_flip(AssignablePermissions::assignableModuleNamesForUserForm($editor));
-        foreach ($moduleNames as $name) {
-            if ($name === null || $name === '') {
-                continue;
-            }
-            if (! isset($allowed[(string) $name])) {
-                abort(403, 'Anda tidak dapat memberikan modul menu yang dipilih.');
-            }
-        }
-    }
 }

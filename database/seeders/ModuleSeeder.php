@@ -8,7 +8,9 @@ use App\Models\Module;
 class ModuleSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Data modul legacy (pivot user_modules).
+     * Metadata modul untuk permission matrix: config/module_permissions.php + ModuleRegistry.
+     * Sidebar production: permission route per role (bukan pivot ini).
      */
     public function run(): void
     {

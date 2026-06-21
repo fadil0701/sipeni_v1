@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::table('retur_barang', function (Blueprint $table) {
             if (Schema::hasColumn('retur_barang', 'id_penerimaan')) {
-                $table->dropForeign('retur_barang_id_penerimaan_foreign');
+                $table->dropForeign(['id_penerimaan']);
                 $table->dropColumn('id_penerimaan');
             }
 
             if (Schema::hasColumn('retur_barang', 'id_distribusi')) {
-                $table->dropForeign('retur_barang_id_distribusi_foreign');
+                $table->dropForeign(['id_distribusi']);
                 $table->dropColumn('id_distribusi');
             }
 

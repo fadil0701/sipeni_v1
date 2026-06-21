@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Support\Storage\PrivateStorage;
 use Illuminate\Support\Facades\Storage;
 use App\Models\MasterDataBarang;
 use App\Models\MasterSubjenisBarang;
@@ -71,7 +72,7 @@ class DataBarangController extends Controller
         ]);
 
         if ($request->hasFile('upload_foto')) {
-            $validated['upload_foto'] = $request->file('upload_foto')->store('foto-barang', 'public');
+            $validated['upload_foto'] = PrivateStorage::storeUploadedFile($request->file('upload_foto'), 'foto-barang');
         }
 
         MasterDataBarang::create($validated);
@@ -109,11 +110,8 @@ class DataBarangController extends Controller
         ]);
 
         if ($request->hasFile('upload_foto')) {
-            // Hapus foto lama jika ada
-            if ($dataBarang->upload_foto) {
-                Storage::disk('public')->delete($dataBarang->upload_foto);
-            }
-            $validated['upload_foto'] = $request->file('upload_foto')->store('foto-barang', 'public');
+            PrivateStorage::delete($dataBarang->upload_foto);
+            $validated['upload_foto'] = PrivateStorage::storeUploadedFile($request->file('upload_foto'), 'foto-barang');
         }
 
         $dataBarang->update($validated);

@@ -638,7 +638,6 @@ function addItemRow() {
     }
     
     itemIndex++;
-    console.log('Item row added successfully, current index:', itemIndex);
 }
 
 // Event listener untuk tombol tambah item dan initialization
@@ -722,4 +721,3 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endpush
 @endsection
-

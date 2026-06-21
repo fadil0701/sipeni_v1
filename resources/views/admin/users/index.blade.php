@@ -1,169 +1,125 @@
 @extends('layouts.app')
 
 @section('content')
-<!-- Page Header -->
-<div class="mb-6 flex justify-between items-center">
-    <div>
-        <h1 class="text-2xl font-bold text-gray-900">Manajemen User</h1>
-        <p class="mt-1 text-sm text-gray-600">Daftar semua user dalam sistem</p>
-    </div>
-    <a 
-        href="{{ route('admin.users.create') }}" 
-        class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-    >
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Tambah User
-    </a>
-</div>
+<div class="w-full">
+    @include('admin.partials.page-header', [
+        'title' => 'User & Account Directory',
+        'subtitle' => 'Kelola akun login dan penugasan role.',
+        'actionUrl' => route('admin.users.create'),
+        'actionLabel' => 'Tambah User',
+    ])
 
-<!-- Success/Error Messages -->
-@if(session('success'))
-    <div class="mb-4 bg-green-50 border-l-4 border-green-400 p-4 rounded">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                </svg>
-            </div>
-            <div class="ml-3">
-                <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
-            </div>
+
+    @include('admin.partials.summary-cards', [
+        'cards' => [
+            [
+                'label' => 'Total User',
+                'value' => number_format($summary['total_users']),
+            ],
+            [
+                'label' => 'Perlu Perhatian (tanpa role)',
+                'value' => number_format($summary['users_without_roles']),
+                'valueClass' => $summary['users_without_roles'] > 0 ? 'text-amber-600' : 'text-slate-900',
+                'href' => route('admin.users.index', ['needs_attention' => 1]),
+                'link' => 'Tampilkan saja yang belum punya role',
+            ],
+        ],
+    ])
+
+    <form method="GET" action="{{ route('admin.users.index') }}" class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+        <div class="flex-1">
+            <input
+                type="search"
+                name="search"
+                value="{{ request('search') }}"
+                placeholder="Cari nama atau email..."
+                class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
         </div>
-    </div>
-@endif
-
-@if(session('error'))
-    <div class="mb-4 bg-red-50 border-l-4 border-red-400 p-4 rounded">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                </svg>
-            </div>
-            <div class="ml-3">
-                <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
-            </div>
-        </div>
-    </div>
-@endif
-
-<x-index.filter-toolbar
-    :action="route('admin.users.index')"
-    form-id="filterFormUsers"
-    search-placeholder="Nama, email..."
->
-    <x-slot:filters>
-        <div class="w-full shrink-0 sm:min-w-[11rem] sm:w-56">
-            <label for="role_id" class="mb-1 block text-sm font-medium text-gray-700">Role</label>
-            <select id="role_id" name="role_id" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Semua Role</option>
+        <div class="w-full sm:w-48">
+            <select name="role_id" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Semua role</option>
                 @foreach($roles as $role)
-                    <option value="{{ $role->id }}" {{ request('role_id') == $role->id ? 'selected' : '' }}>
-                        {{ $role->display_name }}
-                    </option>
+                    <option value="{{ $role->id }}" @selected((string) request('role_id') === (string) $role->id)>{{ $role->display_name }}</option>
                 @endforeach
             </select>
         </div>
-    </x-slot:filters>
-</x-index.filter-toolbar>
+        @if(request()->boolean('needs_attention'))
+            <input type="hidden" name="needs_attention" value="1">
+        @endif
+        <button type="submit" class="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Filter</button>
+        @if(request()->hasAny(['search', 'role_id', 'needs_attention']))
+            <a href="{{ route('admin.users.index') }}" class="rounded-md px-3 py-2 text-sm text-gray-600 hover:text-gray-900">Reset</a>
+        @endif
+    </form>
 
-<!-- Table Card -->
-<div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
-    <div class="overflow-x-auto">
-        <table
-            class="min-w-full divide-y divide-gray-200"
-            @if($users instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $users->firstItem() }}" @endif
-        >
-            <thead class="bg-gray-50">
-                <tr>
-                    <x-table.num-th />
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Dibuat</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                @forelse($users as $user)
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <x-table.num-td :paginator="$users" />
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">{{ $user->name }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ $user->email }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            @if($user->roles->count() > 0)
-                                @foreach($user->roles as $role)
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                                        {{ $role->display_name }}
-                                    </span>
-                                @endforeach
-                            @else
-                                <span class="text-sm text-gray-500">-</span>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ $user->created_at->format('d/m/Y') }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div class="flex items-center justify-end space-x-3">
-                                <a 
-                                    href="{{ route('admin.users.show', $user->id) }}" 
-                                    class="text-blue-600 hover:text-blue-900 transition-colors"
-                                >
-                                    Detail
-                                </a>
-                                <a 
-                                    href="{{ route('admin.users.edit', $user->id) }}" 
-                                    class="text-indigo-600 hover:text-indigo-900 transition-colors"
-                                >
-                                    Edit
-                                </a>
-                                @if($user->id !== auth()->id())
-                                    <form 
-                                        action="{{ route('admin.users.destroy', $user->id) }}" 
-                                        method="POST" 
-                                        class="inline" 
-                                        data-confirm="Apakah Anda yakin ingin menghapus user ini?"
-                                    >
-                                        @csrf
-                                        @method('DELETE')
-                                        <button 
-                                            type="submit" 
-                                            class="text-red-600 hover:text-red-900 transition-colors"
-                                        >
-                                            Hapus
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
-                        </td>
-                    </tr>
-                @empty
+    <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data</h3>
-                            <p class="mt-1 text-sm text-gray-500">Mulai dengan membuat user baru.</p>
-                        </td>
+                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nama / Email</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Pegawai</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Role</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Aksi</th>
                     </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-    
-    @if($users->hasPages())
-        <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 sm:px-6">
-            {{ $users->links() }}
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                    @forelse($users as $user)
+                        @php
+                            $pegawai = $user->pegawai;
+                            $isActive = (bool) ($user->is_active ?? true);
+                        @endphp
+                        <tr class="transition-colors hover:bg-gray-50">
+                            <td class="px-4 py-3">
+                                <p class="font-medium text-gray-900">{{ $user->name }}</p>
+                                <p class="text-xs text-gray-500">{{ $user->email }}</p>
+                            </td>
+                            <td class="px-4 py-3 text-gray-600">
+                                @if($pegawai)
+                                    <span class="text-xs">{{ $pegawai->nama_pegawai }}</span>
+                                @else
+                                    <span class="text-xs text-gray-400">—</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex flex-wrap gap-1">
+                                    @forelse($user->roles as $r)
+                                        <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700">{{ $r->display_name }}</span>
+                                    @empty
+                                        <span class="text-xs text-amber-600">Belum ada role</span>
+                                    @endforelse
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                @if($isActive)
+                                    <span class="text-xs font-medium text-green-700">Aktif</span>
+                                @else
+                                    <span class="text-xs font-medium text-gray-500">Nonaktif</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                @include('admin.partials.table-actions', [
+                                    'editUrl' => route('admin.users.edit', $user->id),
+                                    'showUrl' => route('admin.users.show', $user->id),
+                                    'deleteForm' => $user->id !== auth()->id() ? route('admin.users.destroy', $user->id) : false,
+                                    'deleteConfirm' => 'Hapus user ini?',
+                                ])
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500">Tidak ada user.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
+    </div>
+
+    @if($users->hasPages())
+        <div class="mt-4">{{ $users->links() }}</div>
     @endif
 </div>
 @endsection
-

@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers\User;
 
+use App\Enums\PermintaanBarangStatus;
+use App\Helpers\PermissionHelper;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\InventoryItem;
-use App\Models\PermintaanBarang;
-use App\Models\DataStock;
-use App\Models\DataInventory;
-use App\Models\TransaksiDistribusi;
 use App\Models\ApprovalFlowDefinition;
 use App\Models\ApprovalLog;
+use App\Models\DataInventory;
 use App\Models\DraftDetailDistribusi;
+use App\Models\InventoryItem;
 use App\Models\PenerimaanBarang;
+use App\Models\PermintaanBarang;
 use App\Models\ReturBarang;
-use App\Models\PemakaianBarang;
-use App\Enums\PermintaanBarangStatus;
+use App\Models\TransaksiDistribusi;
+use App\Services\PanduanPenggunaService;
+use App\Services\FarmasiExpiryReminderService;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -30,20 +31,18 @@ class DashboardController extends Controller
             $request->session()->put($sessionScopeKey, $workspaceScope);
         } else {
             $workspaceScope = $request->session()->get($sessionScopeKey, 'all');
-            if (!in_array($workspaceScope, $allowedScopes, true)) {
+            if (! in_array($workspaceScope, $allowedScopes, true)) {
                 $workspaceScope = 'all';
             }
         }
         $pegawaiId = optional($user->pegawai)->id;
         $isPengurusBarangWorkspace = $user->hasAnyRole([
-            'admin',
-            'admin_gudang',
+            'admin_gudang_pusat',
             'admin_gudang_aset',
             'admin_gudang_persediaan',
             'admin_gudang_farmasi',
-            'admin_gudang_unit',
         ]);
-        
+
         // Get statistics
         $totalAssets = InventoryItem::whereHas('inventory', function ($query) {
             $query->where('jenis_inventory', 'ASET');
@@ -139,10 +138,10 @@ class DashboardController extends Controller
         $latestAssets = InventoryItem::whereHas('inventory', function ($query) {
             $query->where('jenis_inventory', 'ASET');
         })
-        ->with(['inventory.dataBarang', 'ruangan'])
-        ->latest('created_at')
-        ->limit(5)
-        ->get();
+            ->with(['inventory.dataBarang', 'ruangan'])
+            ->latest('created_at')
+            ->limit(5)
+            ->get();
 
         // Get latest transactions - dari transaksi_distribusi dan penerimaan_barang
         $latestDistribusi = TransaksiDistribusi::latest('tanggal_distribusi')
@@ -156,7 +155,7 @@ class DashboardController extends Controller
                 ];
             });
 
-        $latestPenerimaan = \App\Models\PenerimaanBarang::latest('tanggal_penerimaan')
+        $latestPenerimaan = PenerimaanBarang::latest('tanggal_penerimaan')
             ->limit(3)
             ->get()
             ->map(function ($item) {
@@ -269,13 +268,6 @@ class DashboardController extends Controller
                 })
                 ->count();
 
-            $workspaceStats['pemakaian_diajukan'] = PemakaianBarang::query()
-                ->where('status_pemakaian', 'DIAJUKAN')
-                ->when($workspaceScope === 'my' && $pegawaiId, function ($q) use ($pegawaiId) {
-                    $q->where('id_pegawai_pemakai', $pegawaiId);
-                })
-                ->count();
-
             // Queue prioritas (oldest pending first, lalu dihitung skor urgensi)
             $approvalQueue = ApprovalLog::query()
                 ->with(['approvalFlow', 'permintaan'])
@@ -290,9 +282,10 @@ class DashboardController extends Controller
                 ->get()
                 ->map(function ($item) {
                     $ageHours = (int) $item->created_at->diffInHours(now());
+
                     return [
                         'source' => 'approval',
-                        'title' => $item->permintaan->no_permintaan ?? ('Approval #' . $item->id),
+                        'title' => $item->permintaan->no_permintaan ?? ('Approval #'.$item->id),
                         'subtitle' => $item->approvalFlow->nama_step ?? 'Step Approval',
                         'status' => 'MENUNGGU',
                         'age_hours' => $ageHours,
@@ -313,6 +306,7 @@ class DashboardController extends Controller
                     $ageHours = (int) optional($item->tanggal_distribusi)->diffInHours(now());
                     $status = strtoupper((string) ($item->status_distribusi?->value ?? $item->status_distribusi));
                     $base = $status === 'DIKIRIM' ? 280 : 220;
+
                     return [
                         'source' => 'distribusi',
                         'title' => $item->no_sbbk,
@@ -334,6 +328,7 @@ class DashboardController extends Controller
                 ->get()
                 ->map(function ($item) {
                     $ageHours = (int) optional($item->tanggal_retur)->diffInHours(now());
+
                     return [
                         'source' => 'retur',
                         'title' => $item->no_retur,
@@ -345,31 +340,11 @@ class DashboardController extends Controller
                     ];
                 });
 
-            $pemakaianQueue = PemakaianBarang::query()
-                ->where('status_pemakaian', 'DIAJUKAN')
-                ->when($workspaceScope === 'my' && $pegawaiId, function ($q) use ($pegawaiId) {
-                    $q->where('id_pegawai_pemakai', $pegawaiId);
-                })
-                ->orderBy('tanggal_pemakaian')
-                ->limit(8)
-                ->get()
-                ->map(function ($item) {
-                    $ageHours = (int) optional($item->tanggal_pemakaian)->diffInHours(now());
-                    return [
-                        'source' => 'pemakaian',
-                        'title' => $item->no_pemakaian,
-                        'subtitle' => 'Pemakaian Barang',
-                        'status' => 'DIAJUKAN',
-                        'age_hours' => $ageHours,
-                        'priority_score' => 180 + $ageHours,
-                        'url' => route('transaction.pemakaian-barang.show', $item->id_pemakaian),
-                    ];
-                });
+            $pemakaianQueue = collect();
 
             $urgentQueue = $approvalQueue
                 ->concat($distribusiQueue)
                 ->concat($returQueue)
-                ->concat($pemakaianQueue)
                 ->sortByDesc('priority_score')
                 ->take(5)
                 ->values();
@@ -380,6 +355,16 @@ class DashboardController extends Controller
             $workspaceSla['retur_over_sla'] = $returQueue->where('age_hours', '>', 72)->count();
             $workspaceSla['pemakaian_over_sla'] = $pemakaianQueue->where('age_hours', '>', 48)->count();
         }
+
+        $farmasiExpiryKpi = null;
+        $farmasiExpiryPreview = null;
+        if ($user && PermissionHelper::canAccess($user, 'inventory.farmasi-kedaluwarsa.index')) {
+            $farmasiExpiryKpi = FarmasiExpiryReminderService::kpiCounts($user);
+            $farmasiExpiryPreview = FarmasiExpiryReminderService::previewRows($user, 8);
+        }
+
+        $panduanRoleGuides = PanduanPenggunaService::roleGuidesForUser($user);
+        $panduanPrimaryGuide = PanduanPenggunaService::primaryRoleGuide($user);
 
         return view('user.dashboard', compact(
             'totalAssets',
@@ -399,7 +384,11 @@ class DashboardController extends Controller
             'workspaceStats',
             'urgentQueue',
             'workspaceSla',
-            'workspaceScope'
+            'workspaceScope',
+            'farmasiExpiryKpi',
+            'farmasiExpiryPreview',
+            'panduanRoleGuides',
+            'panduanPrimaryGuide',
         ));
     }
 }

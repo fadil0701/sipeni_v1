@@ -7,8 +7,26 @@ Dokumentasi lengkap penggunaan sistem transaksi barang mulai dari permintaan hin
 ## 🎯 Overview Alur Transaksi
 
 ```
-Permintaan Barang → Persetujuan → Proses Disposisi → Compile SBBK → Distribusi → Penerimaan → Retur (Opsional)
+Permintaan Barang → Persetujuan → Proses Disposisi → Buat SBBK (Distribusi) → Kirim → Verifikasi Penerimaan → Retur (Opsional)
 ```
+
+> **Catatan implementasi (2026):** Modul **Compile SBBK** terpisah telah digabung ke menu **Distribusi Barang (SBBK)**. Setelah pengadaan selesai, status permintaan otomatis lanjut ke `proses_distribusi`. Aksi **kirim** distribusi otomatis membuat record penerimaan berstatus `MENUNGGU_VERIFIKASI`.
+
+### Pemetaan status kanonik (kode) vs legacy (dokumen lama)
+
+| Status kanonik (`PermintaanBarangStatus`) | Legacy / UI lama | Keterangan |
+|-------------------------------------------|------------------|------------|
+| `draft` | DRAFT | Belum diajukan |
+| `diajukan` | DIAJUKAN | Menunggu approval |
+| `diverifikasi` | DIVERIFIKASI / DISETUJUI | Kasubbag verifikasi; bisa langsung ke distribusi jika stok ada |
+| `menunggu_pengadaan` | — | Stok pusat tidak mencukupi |
+| `proses_pengadaan` | — | Paket pengadaan aktif |
+| `barang_tersedia` | — | Pengadaan selesai (transisi singkat) |
+| `proses_distribusi` | DIPROSES | Draft/kirim SBBK |
+| `dikirim` | DIKIRIM | Distribusi terkirim |
+| `diterima` | — | Penerimaan diverifikasi sesuai |
+| `selesai` | SELESAI | Alur selesai |
+| `ditolak` | DITOLAK | Ditolak di approval |
 
 ---
 

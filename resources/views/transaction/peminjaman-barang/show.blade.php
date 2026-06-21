@@ -13,12 +13,6 @@
     </a>
 </div>
 
-@if(session('success'))
-    <div class="alert-box alert-success mb-4">{{ session('success') }}</div>
-@endif
-@if(session('error'))
-    <div class="alert-box alert-error mb-4">{{ session('error') }}</div>
-@endif
 
 <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
     <div class="border-b border-gray-200 px-6 py-5">
@@ -128,14 +122,17 @@
         </p>
         <h3 class="mb-3 text-base font-semibold text-gray-900">Aksi Workflow</h3>
         <div class="flex flex-wrap gap-2">
-            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_DIAJUKAN && ($user?->hasRole('admin') || $user?->hasRole('kepala_unit')))
+            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_DIAJUKAN)
+                @canAccess('transaction.peminjaman-barang.verifikasi-unit-a')
                 <form method="POST" action="{{ route('transaction.peminjaman-barang.verifikasi-unit-a', $peminjaman->id_peminjaman) }}">
                     @csrf
                     <button type="submit" class="btn-primary-ui">Verifikasi (Unit Kerja)</button>
                 </form>
+                @endcanAccess
             @endif
 
-            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_DIVERIFIKASI_UNIT_A && ($user?->hasRole('admin') || $user?->hasRole('admin_gudang')))
+            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_DIVERIFIKASI_UNIT_A)
+                @canAccess('transaction.peminjaman-barang.approve-pengurus')
                 <form method="POST" action="{{ route('transaction.peminjaman-barang.approve-pengurus', $peminjaman->id_peminjaman) }}">
                     @csrf
                     <button type="submit" class="btn-primary-ui">Approve + Disposisi (Pengurus Barang)</button>
@@ -145,49 +142,63 @@
                     <input type="hidden" name="catatan" value="Ditolak pengurus barang">
                     <button type="submit" class="btn-secondary-ui">Tolak (Pengurus Barang)</button>
                 </form>
+                @endcanAccess
             @endif
 
-            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_MENUNGGU_PERSETUJUAN_UNIT_B && ($user?->hasRole('admin') || $user?->hasRole('kepala_unit')))
+            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_MENUNGGU_PERSETUJUAN_UNIT_B)
+                @canAccess('transaction.peminjaman-barang.approve-unit-b')
                 <form method="POST" action="{{ route('transaction.peminjaman-barang.approve-unit-b', $peminjaman->id_peminjaman) }}">
                     @csrf
                     <button type="submit" class="btn-primary-ui">Approve (Unit yang Dipinjam)</button>
                 </form>
+                @endcanAccess
+                @canAccess('transaction.peminjaman-barang.reject-unit-b')
                 <form method="POST" action="{{ route('transaction.peminjaman-barang.reject-unit-b', $peminjaman->id_peminjaman) }}">
                     @csrf
                     <input type="hidden" name="catatan" value="Ditolak oleh Kepala Unit Pemilik">
                     <button type="submit" class="btn-secondary-ui">Tolak (Unit yang Dipinjam)</button>
                 </form>
+                @endcanAccess
             @endif
 
-            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_MENUNGGU_APPROVAL_PENGURUS && ($user?->hasRole('admin') || $user?->hasRole('admin_gudang')))
+            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_MENUNGGU_APPROVAL_PENGURUS)
+                @canAccess('transaction.peminjaman-barang.approve-pengurus')
                 <form method="POST" action="{{ route('transaction.peminjaman-barang.approve-pengurus', $peminjaman->id_peminjaman) }}">
                     @csrf
                     <button type="submit" class="btn-primary-ui">Approve + Disposisi (Pengurus Barang)</button>
                 </form>
+                @endcanAccess
+                @canAccess('transaction.peminjaman-barang.reject-pengurus')
                 <form method="POST" action="{{ route('transaction.peminjaman-barang.reject-pengurus', $peminjaman->id_peminjaman) }}">
                     @csrf
                     <input type="hidden" name="catatan" value="Ditolak pengurus barang">
                     <button type="submit" class="btn-secondary-ui">Tolak (Pengurus Barang)</button>
                 </form>
+                @endcanAccess
             @endif
 
-            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_DISETUJUI_PENGURUS && ($user?->hasRole('admin') || $user?->hasRole('kasubbag_tu')))
+            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_DISETUJUI_PENGURUS)
+                @canAccess('transaction.peminjaman-barang.mengetahui-kasubag-tu')
                 <form method="POST" action="{{ route('transaction.peminjaman-barang.mengetahui-kasubag-tu', $peminjaman->id_peminjaman) }}">
                     @csrf
                     <button type="submit" class="btn-primary-ui">Mengetahui Kasubag TU</button>
                 </form>
+                @endcanAccess
             @endif
 
-            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_DIKETAHUI_KASUBAG_TU && ($user?->hasRole('admin') || $user?->hasRole('admin_gudang') || $user?->hasRole('admin_gudang_unit')))
+            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_DIKETAHUI_KASUBAG_TU)
+                @canAccess('transaction.peminjaman-barang.serah-terima')
                 <form method="POST" action="{{ route('transaction.peminjaman-barang.serah-terima', $peminjaman->id_peminjaman) }}" class="flex items-center gap-2">
                     @csrf
                     <input type="text" name="kondisi_serah" placeholder="Kondisi serah" required class="rounded-md border border-gray-300 px-2 py-1 text-sm">
                     <button type="submit" class="btn-primary-ui">Catat Serah Terima</button>
                 </form>
+                @endcanAccess
             @endif
 
-            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_SERAH_TERIMA && ($user?->hasRole('admin') || $user?->hasRole('pegawai')))
-                @if($user?->hasRole('admin') || ((int) ($pegawai?->id_unit_kerja ?? 0) === (int) $peminjaman->id_unit_peminjam))
+            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_SERAH_TERIMA)
+                @canAccess('transaction.peminjaman-barang.pengembalian.create')
+                @if((int) ($pegawai?->id_unit_kerja ?? 0) === (int) $peminjaman->id_unit_peminjam)
                     <a href="{{ route('transaction.peminjaman-barang.pengembalian.create', $peminjaman->id_peminjaman) }}" class="btn-primary-ui inline-flex items-center">
                         Isi Form Pengembalian
                     </a>
@@ -196,13 +207,16 @@
                         Form pengembalian hanya bisa diisi pegawai dari unit peminjam.
                     </div>
                 @endif
+                @endcanAccess
             @endif
 
-            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_PENGEMBALIAN && ($user?->hasRole('admin') || $user?->hasRole('admin_gudang')))
+            @if($peminjaman->status === \App\Models\PeminjamanBarang::STATUS_PENGEMBALIAN)
+                @canAccess('transaction.peminjaman-barang.selesai')
                 <form method="POST" action="{{ route('transaction.peminjaman-barang.selesai', $peminjaman->id_peminjaman) }}">
                     @csrf
                     <button type="submit" class="btn-primary-ui">Finalisasi Pengembalian (Pengurus)</button>
                 </form>
+                @endcanAccess
             @endif
         </div>
     </div>

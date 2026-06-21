@@ -13,12 +13,19 @@ class MasterPegawai extends Model
 
     protected $fillable = [
         'nip_pegawai',
+        'nip',
         'nama_pegawai',
+        'nama',
         'id_unit_kerja',
+        'unit_kerja_id',
         'id_jabatan',
         'email_pegawai',
+        'email',
+        'jabatan',
         'no_telp',
         'user_id',
+        'is_user',
+        'status_pegawai',
     ];
 
     // Relationships

@@ -122,9 +122,9 @@ class InventoryItem extends Model
     }
 
     /**
-     * URL publik ke berkas QR di storage (mencoba .svg/.png jika path di DB tidak cocok).
+     * Path relatif berkas QR di disk "public", atau null jika tidak ada.
      */
-    public function qrCodePublicUrl(): ?string
+    public function resolveQrCodeStoragePath(): ?string
     {
         if ($this->qr_code === null || $this->qr_code === '') {
             return null;
@@ -141,15 +141,23 @@ class InventoryItem extends Model
 
         foreach (array_unique($candidates) as $path) {
             if ($disk->exists($path)) {
-                // Build URL relatif terhadap base path request (support deploy di subfolder seperti /SIMANTIK).
-                // Hindari host APP_URL agar tetap aman untuk akses via IP/docker/proxy.
-                $base = rtrim(Request::getBaseUrl(), '/');
-
-                return ($base !== '' ? $base : '').'/storage/'.$path;
+                return $path;
             }
         }
 
         return null;
+    }
+
+    /**
+     * URL untuk menampilkan QR (route aplikasi, tidak bergantung symlink public/storage).
+     */
+    public function qrCodePublicUrl(): ?string
+    {
+        if ($this->resolveQrCodeStoragePath() === null) {
+            return null;
+        }
+
+        return route('inventory.inventory-item.qr-image', $this->id_item);
     }
 
     public function fotoBarangPublicUrl(): ?string

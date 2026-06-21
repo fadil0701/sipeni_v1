@@ -16,18 +16,7 @@ class LoadUserPermissions
     {
         if (Auth::check()) {
             $user = Auth::user();
-            
-            // Pastikan roles ter-load
-            if (!$user->relationLoaded('roles')) {
-                $user->load('roles');
-            }
-            
-            // Pastikan permissions ter-load untuk setiap role
-            foreach ($user->roles as $role) {
-                if (!$role->relationLoaded('permissions')) {
-                    $role->load('permissions');
-                }
-            }
+            $user->loadMissing('roles.permissions');
         }
 
         return $next($request);

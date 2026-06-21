@@ -14,6 +14,11 @@
     </div>
     <form action="{{ route('maintenance.jadwal-maintenance.store') }}" method="POST" class="p-6 space-y-6">
         @csrf
+        @if($errors->has('error'))
+            <div class="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                {{ $errors->first('error') }}
+            </div>
+        @endif
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Unit Kerja</label>
             <select
@@ -29,6 +34,7 @@
                 @endforeach
             </select>
             @error('id_unit_kerja')<p class="text-sm text-red-600 mt-1 text-sm">{{ $message }}</p>@enderror
+            <p class="mt-1.5 text-xs text-gray-500">Sistem akan membuat satu jadwal per <strong>register aset berstatus AKTIF</strong> pada unit yang dipilih. Jika unit belum punya aset aktif, simpan akan ditolak dengan pesan validasi.</p>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div>

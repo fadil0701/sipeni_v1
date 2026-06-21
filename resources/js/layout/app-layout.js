@@ -6,21 +6,22 @@ function onReady(fn) {
     fn();
 }
 
+function isAuthPage() {
+    return !document.body || !document.body.hasAttribute('data-features');
+}
+
 function initLayoutGlobals() {
     window.__layoutEnabled = function (name) {
+        if (isAuthPage()) return false;
         var raw = (document.body && document.body.dataset.features) || '';
         var parts = raw.split(/\s+/).filter(Boolean);
-        if (!parts.length) return true;
+        if (!parts.length) return false;
         return parts.indexOf(name) !== -1;
     };
-    window.__appDebug = (document.body && document.body.dataset.appDebug) === '1';
-    window.__gLog = function () {
-        if (window.__appDebug && typeof console !== 'undefined' && console.log) {
-            console.log.apply(console, arguments);
-        }
-    };
+    window.__appDebug = false;
+    window.__gLog = function () {};
     window.__gWarn = function () {
-        if (typeof console !== 'undefined' && console.warn) {
+        if (window.__appDebug && typeof console !== 'undefined' && console.warn) {
             console.warn.apply(console, arguments);
         }
     };
@@ -38,8 +39,9 @@ function initLoadingAndConfirm() {
 
     function showLoading() {
         if (overlay) {
-            overlay.classList.remove('hidden');
-            overlay.classList.add('flex');
+            overlay.classList.add('is-active');
+            overlay.setAttribute('aria-busy', 'true');
+            overlay.setAttribute('aria-hidden', 'false');
         }
         if (bar) {
             bar.style.width = '35%';
@@ -55,8 +57,9 @@ function initLoadingAndConfirm() {
             setTimeout(function () { bar.style.width = '0'; }, 180);
         }
         if (overlay) {
-            overlay.classList.add('hidden');
-            overlay.classList.remove('flex');
+            overlay.classList.remove('is-active');
+            overlay.setAttribute('aria-busy', 'false');
+            overlay.setAttribute('aria-hidden', 'true');
         }
     }
 
@@ -77,63 +80,83 @@ function initLoadingAndConfirm() {
 
     function getConfirmationMessage(form) {
         if (form.dataset.confirm === 'off') return null;
+        if (form.dataset.confirm) return form.dataset.confirm;
         var method = resolveFormMethod(form);
         var action = (form.getAttribute('action') || '').toLowerCase();
         if (action.includes('/logout')) return null;
         if (method === 'DELETE') return 'Apakah Anda yakin data ini akan dihapus?';
         if (method === 'PUT' || method === 'PATCH') return 'Apakah Anda yakin perubahan data ini akan disimpan?';
-        // POST umumnya dipakai untuk aksi "create/store".
-        // Sesuai kebutuhan: tidak perlu modal konfirmasi saat data pertama kali dibuat,
-        // dan tetap langsung kembali/redirect ke index yang diharapkan.
-        if (method === 'POST') return null;
         return null;
     }
 
     function ensureConfirmModal() {
-        var existing = document.getElementById('global-confirm-modal');
-        if (existing) return existing;
+        var modal = document.getElementById('global-confirm-modal');
+        if (modal) {
+            return modal;
+        }
 
+        /* Fallback lama (layout tanpa komponen Blade) — akan dihapus setelah semua layout memuat x-ui.confirm-modal */
         var wrapper = document.createElement('div');
         wrapper.id = 'global-confirm-modal';
-        wrapper.className = 'fixed inset-0 z-[10000] hidden items-center justify-center';
+        wrapper.className = 'sipeni-confirm-modal';
+        wrapper.setAttribute('aria-hidden', 'true');
         wrapper.innerHTML = ''
-            + '<div data-confirm-backdrop class="absolute inset-0 bg-gray-900/50"></div>'
-            + '<div class="relative mx-4 w-full max-w-md rounded-xl bg-white shadow-2xl ring-1 ring-gray-200">'
-            + '  <div class="flex items-start gap-3 border-b border-gray-100 px-5 py-4">'
-            + '    <div class="mt-0.5 rounded-full bg-amber-100 p-2 text-amber-600">'
+            + '<div data-confirm-backdrop class="sipeni-confirm-modal__backdrop"></div>'
+            + '<div class="sipeni-confirm-modal__dialog" data-confirm-dialog>'
+            + '  <div class="sipeni-confirm-modal__body">'
+            + '    <div class="sipeni-confirm-modal__icon" aria-hidden="true">'
             + '      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">'
             + '        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z"></path>'
             + '      </svg>'
             + '    </div>'
-            + '    <div>'
-            + '      <h3 class="text-base font-semibold text-gray-900">Konfirmasi Aksi</h3>'
-            + '      <p data-confirm-message class="mt-1 text-sm text-gray-600">Apakah Anda yakin ingin melanjutkan?</p>'
+            + '    <div class="sipeni-confirm-modal__content">'
+            + '      <h3 id="global-confirm-title" class="sipeni-confirm-modal__title">Konfirmasi Aksi</h3>'
+            + '      <p data-confirm-message class="sipeni-confirm-modal__message">Apakah Anda yakin ingin melanjutkan?</p>'
             + '    </div>'
             + '  </div>'
-            + '  <div class="flex items-center justify-end gap-2 px-5 py-4">'
-            + '    <button type="button" data-confirm-cancel class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>'
-            + '    <button type="button" data-confirm-ok class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Ya, Lanjutkan</button>'
+            + '  <div class="sipeni-confirm-modal__actions" data-confirm-actions>'
+            + '    <button type="button" data-confirm-cancel class="btn-secondary-ui sipeni-confirm-modal__btn">Batal</button>'
+            + '    <button type="button" data-confirm-ok class="btn-primary-ui sipeni-confirm-modal__btn">Ya, Lanjutkan</button>'
             + '  </div>'
             + '</div>';
         document.body.appendChild(wrapper);
         return wrapper;
     }
 
+    function openConfirmModal(modal) {
+        if (!modal) return;
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeConfirmModal(modal) {
+        if (!modal) return;
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
     function showConfirmDialog(message, onConfirm, onCancel) {
         var modal = ensureConfirmModal();
+        if (!modal) {
+            if (typeof onConfirm === 'function' && window.confirm(message || 'Apakah Anda yakin ingin melanjutkan?')) {
+                onConfirm();
+            } else if (typeof onCancel === 'function') {
+                onCancel();
+            }
+            return;
+        }
+
         var messageEl = modal.querySelector('[data-confirm-message]');
         var okBtn = modal.querySelector('[data-confirm-ok]');
         var cancelBtn = modal.querySelector('[data-confirm-cancel]');
         var backdrop = modal.querySelector('[data-confirm-backdrop]');
 
         if (messageEl) messageEl.textContent = message || 'Apakah Anda yakin ingin melanjutkan?';
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        if (okBtn) okBtn.focus();
+        openConfirmModal(modal);
+        if (cancelBtn) cancelBtn.focus();
 
         function cleanup() {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+            closeConfirmModal(modal);
             if (okBtn) okBtn.removeEventListener('click', handleConfirm);
             if (cancelBtn) cancelBtn.removeEventListener('click', handleCancel);
             if (backdrop) backdrop.removeEventListener('click', handleCancel);
@@ -271,15 +294,46 @@ function initLoadingAndConfirm() {
             hideLoading();
         });
     }
+
+    window.Sipeni = window.Sipeni || {};
+    window.Sipeni.confirm = function (message) {
+        return new Promise(function (resolve) {
+            showConfirmDialog(
+                message || 'Apakah Anda yakin ingin melanjutkan?',
+                function () { resolve(true); },
+                function () { resolve(false); }
+            );
+        });
+    };
 }
 
 function initNavigationHelpers() {
+    if (isAuthPage()) return;
     window.toggleSubmenu = function (id) {
         var submenu = document.getElementById(id + '-submenu');
         var arrow = document.getElementById(id + '-arrow');
-        if (submenu) submenu.classList.toggle('hidden');
-        if (arrow) arrow.classList.toggle('rotate-90');
+        if (!submenu) return;
+
+        var willOpen = submenu.classList.contains('hidden');
+
+        document.querySelectorAll('#app-sidebar nav [id$="-submenu"]').forEach(function (el) {
+            if (el.id === id + '-submenu') return;
+            el.classList.add('hidden');
+            var otherId = el.id.replace(/-submenu$/, '');
+            var otherArrow = document.getElementById(otherId + '-arrow');
+            if (otherArrow) otherArrow.classList.remove('rotate-90');
+        });
+
+        if (willOpen) {
+            submenu.classList.remove('hidden');
+            if (arrow) arrow.classList.add('rotate-90');
+        } else {
+            submenu.classList.add('hidden');
+            if (arrow) arrow.classList.remove('rotate-90');
+        }
     };
+
+    normalizeSidebarAccordionOnLoad();
 
     window.toggleUserMenu = function () {
         var menu = document.getElementById('user-dropdown-menu');
@@ -296,6 +350,99 @@ function initNavigationHelpers() {
             var arrow = document.getElementById('user-menu-arrow');
             if (arrow) arrow.classList.remove('rotate-180');
         }
+    });
+
+    initMobileSidebar();
+}
+
+function normalizeSidebarAccordionOnLoad() {
+    var sidebar = document.getElementById('app-sidebar');
+    if (!sidebar) return;
+
+    var openSubmenus = Array.from(sidebar.querySelectorAll('[id$="-submenu"]')).filter(function (el) {
+        return !el.classList.contains('hidden');
+    });
+    if (openSubmenus.length <= 1) return;
+
+    var keep = openSubmenus.find(function (sub) {
+        return sub.querySelector('a.bg-blue-600');
+    }) || openSubmenus[0];
+
+    openSubmenus.forEach(function (sub) {
+        if (sub === keep) return;
+        sub.classList.add('hidden');
+        var groupId = sub.id.replace(/-submenu$/, '');
+        var arrow = document.getElementById(groupId + '-arrow');
+        if (arrow) arrow.classList.remove('rotate-90');
+    });
+
+    var keepId = keep.id.replace(/-submenu$/, '');
+    var keepArrow = document.getElementById(keepId + '-arrow');
+    if (keepArrow) keepArrow.classList.add('rotate-90');
+}
+
+function initMobileSidebar() {
+    var sidebar = document.getElementById('app-sidebar');
+    var backdrop = document.getElementById('sidebar-backdrop');
+    var toggleBtn = document.getElementById('sidebar-toggle');
+    var closeBtn = document.getElementById('sidebar-close');
+    if (!sidebar || !backdrop) return;
+
+    var mqDesktop = window.matchMedia('(min-width: 1024px)');
+
+    function setSidebarOpen(open) {
+        var isOpen = !!open && !mqDesktop.matches;
+        document.body.classList.toggle('sidebar-open', isOpen);
+        sidebar.classList.toggle('translate-x-0', isOpen);
+        sidebar.classList.toggle('-translate-x-full', !isOpen && !mqDesktop.matches);
+        backdrop.classList.toggle('hidden', !isOpen);
+        backdrop.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+        if (toggleBtn) {
+            toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+    }
+
+    window.closeMobileSidebar = function () {
+        setSidebarOpen(false);
+    };
+
+    window.openMobileSidebar = function () {
+        setSidebarOpen(true);
+    };
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function () {
+            var willOpen = !document.body.classList.contains('sidebar-open');
+            setSidebarOpen(willOpen);
+        });
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function () {
+            setSidebarOpen(false);
+        });
+    }
+
+    backdrop.addEventListener('click', function () {
+        setSidebarOpen(false);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            setSidebarOpen(false);
+        }
+    });
+
+    sidebar.querySelectorAll('a[href]').forEach(function (link) {
+        link.addEventListener('click', function () {
+            if (!mqDesktop.matches) {
+                setSidebarOpen(false);
+            }
+        });
+    });
+
+    mqDesktop.addEventListener('change', function () {
+        setSidebarOpen(false);
     });
 }
 
@@ -338,11 +485,37 @@ function ensureChoicesLoaded() {
 }
 
 function initChoicesHelpers() {
+    window.sipeniSelect2BaseOptions = function () {
+        return {
+            width: '100%',
+            minimumResultsForSearch: 0,
+            containerCssClass: 'sipeni-s2',
+            dropdownCssClass: 'sipeni-s2-dropdown',
+            selectionCssClass: 'sipeni-s2-selection',
+            language: {
+                noResults: function () {
+                    return 'Tidak ada hasil';
+                },
+                searching: function () {
+                    return 'Mencari...';
+                },
+                inputTooShort: function (args) {
+                    return 'Ketik minimal ' + args.minimum + ' karakter';
+                },
+            },
+        };
+    };
+
     window.initChoicesForSelect = function (selectElement, minOptions) {
         var minOpts = typeof minOptions === 'number' ? minOptions : 2;
         if (!selectElement || selectElement.tagName !== 'SELECT') return null;
         if (!(window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function')) return null;
         if (selectElement.choicesInstance) return selectElement.choicesInstance;
+        if (selectElement.dataset.sipeniSelect2Init === '1') return selectElement.choicesInstance;
+        if (window.jQuery && window.jQuery(selectElement).hasClass('select2-hidden-accessible')) {
+            selectElement.dataset.sipeniSelect2Init = '1';
+            return selectElement.choicesInstance || null;
+        }
 
         var optionCount = Array.from(selectElement.options).filter(function (opt) { return opt.value !== ''; }).length;
         var isDataBarangOrSatuan = selectElement.classList.contains('select-data-barang')
@@ -361,12 +534,12 @@ function initChoicesHelpers() {
             // Pattern requested user: class marker for single placeholder select2.
             selectElement.classList.add('js-example-placeholder-single');
 
-            $(selectElement).select2({
+            var select2Options = Object.assign({}, window.sipeniSelect2BaseOptions(), {
                 placeholder: placeholderText || 'Pilih...',
                 allowClear: allowClear,
-                width: '100%',
-                minimumResultsForSearch: 0
             });
+
+            $(selectElement).select2(select2Options);
 
             var choicesInstance = {
                 destroy: function () {
@@ -382,12 +555,41 @@ function initChoicesHelpers() {
             };
 
             selectElement.choicesInstance = choicesInstance;
+            selectElement.dataset.sipeniSelect2Init = '1';
             return choicesInstance;
         } catch (error) {
             console.error('Error initializing Select2 for select:', selectElement.id || 'unnamed select', error);
             return null;
         }
     };
+
+    function normalizeSelectOptions(select) {
+        Array.from(select.options).forEach(function (option) {
+            var rawText = option.textContent || option.innerText || option.getAttribute('label') || option.value || '';
+            option.textContent = String(rawText).replace(/\s+/g, ' ').trim();
+        });
+    }
+
+    function countNonEmptyOptions(select) {
+        return Array.from(select.options).filter(function (opt) { return opt.value !== ''; }).length;
+    }
+
+    function shouldEnhanceSelect(select) {
+        if (!select || select.tagName !== 'SELECT' || select.multiple) return false;
+        if (select.getAttribute('data-searchable') === 'false') return false;
+        if (select.choicesInstance || select.dataset.sipeniSelect2Init === '1') return false;
+        if (window.jQuery && window.jQuery(select).hasClass('select2-hidden-accessible')) return false;
+
+        var forceSearch = select.getAttribute('data-searchable') === 'true'
+            || select.classList.contains('select-searchable')
+            || select.classList.contains('select-data-barang')
+            || select.classList.contains('select-satuan');
+
+        var optionCount = countNonEmptyOptions(select);
+        if (optionCount === 0 && !select.value) return false;
+
+        return forceSearch || optionCount > 5;
+    }
 
     function initializeSearchableSelects() {
         if (typeof window.__layoutEnabled === 'function' && !window.__layoutEnabled('choices-init')) return;
@@ -402,80 +604,47 @@ function initChoicesHelpers() {
         window.choicesRetryCount = 0;
 
         var searchableFieldIds = ['id_data_barang', 'id_item', 'id_subjenis_barang', 'id_satuan', 'id_kategori_barang', 'id_jenis_barang', 'id_kode_barang', 'id_aset', 'id_ruangan', 'id_pegawai', 'id_penanggung_jawab', 'id_sub_kegiatan', 'id_program', 'id_kegiatan'];
+        var seen = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+
+        function tryInit(select, minOpts) {
+            if (!select) return;
+            if (seen && seen.has(select)) return;
+            if (seen) seen.add(select);
+            normalizeSelectOptions(select);
+            var min = typeof minOpts === 'number' ? minOpts : 5;
+            var isSpecial = select.classList.contains('select-data-barang')
+                || select.classList.contains('select-satuan')
+                || searchableFieldIds.indexOf(select.id) !== -1;
+            if (isSpecial) min = 0;
+            var inst = window.initChoicesForSelect(select, min);
+            if (inst) select.dataset.sipeniSelect2Init = '1';
+        }
+
         searchableFieldIds.forEach(function (fieldId) {
-            var selectElement = document.getElementById(fieldId);
-            if (!selectElement || selectElement.choicesInstance) return;
-            if (fieldId === 'id_satuan') {
-                Array.from(selectElement.options).forEach(function (option) {
-                    if (!option.textContent || option.textContent.trim() === '') {
-                        option.textContent = option.innerText || option.getAttribute('label') || option.value || '';
-                    }
-                });
-            }
-            var minOpts = ['id_data_barang', 'id_subjenis_barang', 'id_satuan', 'id_kategori_barang', 'id_jenis_barang', 'id_kode_barang', 'id_aset', 'id_ruangan'].includes(fieldId) ? 1 : 2;
-            window.initChoicesForSelect(selectElement, minOpts);
+            tryInit(document.getElementById(fieldId), 0);
         });
 
-        // Global searchable: terapkan ke semua select dalam form, kecuali yang opt-out.
-        // Opt-out: tambahkan data-searchable="false" pada select tertentu.
-        document.querySelectorAll('form select:not([multiple]):not([data-searchable="false"])').forEach(function (select) {
-            if (select.choicesInstance) return;
-            Array.from(select.options).forEach(function (option) {
-                var rawText = option.textContent || option.innerText || option.getAttribute('label') || option.value || '';
-                option.textContent = String(rawText).replace(/\s+/g, ' ').trim();
-            });
-
-            var optionCount = Array.from(select.options).filter(function (opt) { return opt.value !== ''; }).length;
-            var hasSelectedValue = !!select.value;
-            if (optionCount === 0 && !hasSelectedValue) return;
-
-            window.initChoicesForSelect(select, 0);
-        });
-
-        document.querySelectorAll('select[data-searchable="true"], select.select-searchable, select.select-data-barang, select.select-satuan').forEach(function (select) {
-            if (select.getAttribute('data-searchable') === 'false') {
-                return;
-            }
-            if (select.choicesInstance) return;
-            Array.from(select.options).forEach(function (option) {
-                var rawText = option.textContent || option.innerText || option.getAttribute('label') || option.value || '';
-                var normalized = String(rawText).replace(/\s+/g, ' ').trim();
-                option.textContent = normalized;
-            });
-            var minOpts = (select.classList.contains('select-data-barang') || select.classList.contains('select-satuan')) ? 0 : 2;
-            window.initChoicesForSelect(select, minOpts);
+        document.querySelectorAll('select[data-searchable="true"], select.select-searchable, select.select-data-barang, select.select-satuan, form select:not([multiple])').forEach(function (select) {
+            if (!shouldEnhanceSelect(select)) return;
+            tryInit(select, select.classList.contains('select-data-barang') || select.classList.contains('select-satuan') ? 0 : 5);
         });
     }
 
-    function waitForChoicesAndInit() {
+    function scheduleSearchableSelectInit() {
         if (typeof window.__layoutEnabled === 'function' && !window.__layoutEnabled('choices-init')) return;
         if (window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function') {
-            setTimeout(initializeSearchableSelects, 100);
+            window.requestAnimationFrame(function () { initializeSearchableSelects(); });
             return;
         }
         if (!window.choicesRetryCount) window.choicesRetryCount = 0;
-        if (window.choicesRetryCount < 50) {
+        if (window.choicesRetryCount < 30) {
             window.choicesRetryCount++;
-            setTimeout(waitForChoicesAndInit, 100);
-        } else {
-            console.error('Select2 gagal ter-load setelah 5 detik');
+            setTimeout(scheduleSearchableSelectInit, 100);
         }
     }
 
     if (typeof window.__layoutEnabled !== 'function' || window.__layoutEnabled('choices-init')) {
-        if (document.readyState === 'complete') {
-            waitForChoicesAndInit();
-        } else {
-            window.addEventListener('load', function () { setTimeout(waitForChoicesAndInit, 200); });
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function () { setTimeout(waitForChoicesAndInit, 200); });
-            } else {
-                setTimeout(waitForChoicesAndInit, 200);
-            }
-        }
-        setTimeout(function () {
-            if (window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function') initializeSearchableSelects();
-        }, 1000);
+        scheduleSearchableSelectInit();
     }
 }
 
@@ -672,13 +841,14 @@ function initActionIcons() {
         el.dataset.iconifiedAction = '1';
         el.setAttribute('title', label);
         el.setAttribute('aria-label', label);
-        el.classList.add('inline-flex', 'items-center', 'justify-center', 'h-7', 'w-7', 'rounded-full', 'border', 'transition-colors', 'duration-150');
+        el.className = 'inline-flex items-center justify-center h-7 w-7 rounded-full border transition-colors duration-150';
         if (actionKey === 'detail' || actionKey === 'lihat') el.classList.add('border-blue-200', 'bg-blue-50', 'text-blue-600', 'hover:bg-blue-100');
-        else if (actionKey === 'edit') el.classList.add('border-amber-200', 'bg-amber-50', 'text-amber-600', 'hover:bg-amber-100');
+        else if (actionKey === 'edit') el.classList.add('border-indigo-200', 'bg-indigo-50', 'text-indigo-600', 'hover:bg-indigo-100');
         else el.classList.add('border-red-200', 'bg-red-50', 'text-red-600', 'hover:bg-red-100');
         el.innerHTML = ACTION_ICON_MAP[actionKey] + '<span class="sr-only">' + label + '</span>';
     }
     document.querySelectorAll('table td a, table td button').forEach(function (el) {
+        if (el.closest('[data-skip-action-icons]')) return;
         var actionText = normalizeActionText(el.textContent);
         if (!actionText) return;
         if (actionText === 'detail' || actionText === 'lihat') toIconActionElement(el, actionText, actionText === 'detail' ? 'Detail' : 'Lihat');
@@ -688,10 +858,12 @@ function initActionIcons() {
 }
 
 function initFilterFormConsistency() {
+    if (isAuthPage()) return;
     var forms = document.querySelectorAll('main form[method="GET"], main form[method="get"]');
     forms.forEach(function (form) {
         if (form.closest('[data-index-filter-toolbar="1"]')) return;
         if (form.dataset.filterUi === 'off') return;
+        if (form.classList.contains('grid')) return;
 
         var hasSearchOrFilterField = form.querySelector('input[name*="search"], select[name], input[type="date"], input[type="text"]');
         var submitButton = form.querySelector('button[type="submit"], input[type="submit"]');
@@ -706,7 +878,7 @@ function initFilterFormConsistency() {
         });
 
         form.querySelectorAll('input[type="text"], input[type="search"], input[type="date"], select').forEach(function (field) {
-            if (field.classList.contains('choices__input')) return;
+            if (field.classList.contains('choices__input') || field.classList.contains('select2-hidden-accessible')) return;
             field.classList.add(
                 'block',
                 'w-full',
@@ -750,6 +922,7 @@ function initFilterFormConsistency() {
 }
 
 function initGlobalPaginationSizeSelector() {
+    if (isAuthPage()) return;
     var paginations = document.querySelectorAll('main nav[role="navigation"]');
     if (!paginations.length) return;
 
@@ -791,7 +964,15 @@ onReady(function () {
     initNavigationHelpers();
     initChoicesHelpers();
     initTableEnhancer();
-    initActionIcons();
     initFilterFormConsistency();
     initGlobalPaginationSizeSelector();
+
+    var runDeferredUi = function () {
+        initActionIcons();
+    };
+    if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(runDeferredUi, { timeout: 1500 });
+    } else {
+        setTimeout(runDeferredUi, 200);
+    }
 });

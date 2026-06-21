@@ -371,7 +371,6 @@ function loadDistribusiDetail(distribusiId) {
                 }
 
                 // Load detail penerimaan
-                console.log('Loading detail penerimaan with', data.details.length, 'items');
                 loadDetailPenerimaan(data.details);
             } else {
                 console.error('No details found in response:', data);
@@ -480,7 +479,6 @@ function loadDetailPenerimaan(details) {
         index++;
     });
     
-    console.log('Detail penerimaan loaded:', index, 'items');
 }
 
 // Load distribusi detail jika sudah dipilih
@@ -547,4 +545,3 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endpush
 @endsection
-

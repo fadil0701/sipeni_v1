@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Inventory;
 
+use App\Helpers\PermissionHelper;
+use App\Support\Rbac\UserScope;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\StockAdjustment;
@@ -33,7 +36,7 @@ class StockAdjustmentController extends Controller
         ]);
         
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $query->whereHas('gudang', function($q) use ($pegawai) {
@@ -71,7 +74,7 @@ class StockAdjustmentController extends Controller
         $adjustments = $query->latest('tanggal_adjustment')->paginate($perPage)->appends($request->query());
         
         // Data untuk filter
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $gudangs = MasterGudang::where('id_unit_kerja', $pegawai->id_unit_kerja)->get();
@@ -101,7 +104,7 @@ class StockAdjustmentController extends Controller
         $user = Auth::user();
 
         // Hanya admin dan admin_gudang yang bisa create
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         
@@ -112,7 +115,7 @@ class StockAdjustmentController extends Controller
             });
         
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 $query->whereHas('gudang', function($q) use ($pegawai) {
@@ -137,7 +140,7 @@ class StockAdjustmentController extends Controller
         $user = Auth::user();
 
         // Hanya admin dan admin_gudang yang bisa store
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         
@@ -179,7 +182,7 @@ class StockAdjustmentController extends Controller
                 ]);
 
                 // Jika status DIAJUKAN dan user admin, langsung setujui + update stock.
-                if ($validated['status'] === 'DIAJUKAN' && $user->hasRole('admin')) {
+                if ($validated['status'] === 'DIAJUKAN' && UserScope::canViewCrossUnitData($user)) {
                     $adjustment->update([
                         'status' => 'DISETUJUI',
                         'id_approver' => Auth::id(),
@@ -202,7 +205,7 @@ class StockAdjustmentController extends Controller
 
         if (count($createdAdjustments) === 1) {
             $adjustment = $createdAdjustments[0];
-            if ($validated['status'] === 'DIAJUKAN' && $user->hasRole('admin')) {
+            if ($validated['status'] === 'DIAJUKAN' && UserScope::canViewCrossUnitData($user)) {
                 return redirect()->route('inventory.stock-adjustment.show', $adjustment->id_adjustment)
                     ->with('success', 'Stock adjustment berhasil dibuat dan disetujui.');
             }
@@ -211,7 +214,7 @@ class StockAdjustmentController extends Controller
                 ->with('success', 'Stock adjustment berhasil dibuat.');
         }
 
-        if ($validated['status'] === 'DIAJUKAN' && $user->hasRole('admin')) {
+        if ($validated['status'] === 'DIAJUKAN' && UserScope::canViewCrossUnitData($user)) {
             return redirect()->route('inventory.stock-adjustment.index')
                 ->with('success', 'Stock adjustment multi-row berhasil dibuat dan disetujui.');
         }
@@ -237,7 +240,7 @@ class StockAdjustmentController extends Controller
         $user = Auth::user();
         
         // Filter berdasarkan unit kerja untuk kepala_unit dan pegawai
-        if ($user->hasAnyRole(['kepala_unit', 'pegawai']) && !$user->hasRole('admin')) {
+        if (UserScope::mustScopeToUnitKerja($user)) {
             $pegawai = MasterPegawai::where('user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
                 if ($adjustment->gudang->id_unit_kerja != $pegawai->id_unit_kerja) {
@@ -261,7 +264,7 @@ class StockAdjustmentController extends Controller
         $user = Auth::user();
         
         // Hanya admin dan admin_gudang yang bisa edit
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         
@@ -284,7 +287,7 @@ class StockAdjustmentController extends Controller
         $user = Auth::user();
         
         // Hanya admin dan admin_gudang yang bisa update
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         
@@ -324,7 +327,7 @@ class StockAdjustmentController extends Controller
         ]);
         
         // Jika status DIAJUKAN dan user adalah admin, langsung approve
-        if ($validated['status'] == 'DIAJUKAN' && $user->hasRole('admin')) {
+        if ($validated['status'] == 'DIAJUKAN' && UserScope::canViewCrossUnitData($user)) {
             $this->approve($adjustment->id_adjustment);
             return redirect()->route('inventory.stock-adjustment.show', $adjustment->id_adjustment)
                 ->with('success', 'Stock adjustment berhasil diperbarui dan disetujui.');
@@ -343,7 +346,7 @@ class StockAdjustmentController extends Controller
         $user = Auth::user();
 
         // Hanya admin yang bisa delete
-        if (!$user->hasRole('admin')) {
+        if (!UserScope::canViewCrossUnitData($user)) {
             abort(403, 'Unauthorized');
         }
         
@@ -368,8 +371,7 @@ class StockAdjustmentController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        // Hanya admin dan kepala_pusat yang bisa approve
-        if (!$user->hasAnyRole(['admin', 'kepala_pusat'])) {
+        if (!PermissionHelper::canAccess($user, request()->route()->getName())) {
             abort(403, 'Unauthorized');
         }
         
@@ -423,8 +425,7 @@ class StockAdjustmentController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        // Hanya admin dan kepala_pusat yang bisa reject
-        if (!$user->hasAnyRole(['admin', 'kepala_pusat'])) {
+        if (!PermissionHelper::canAccess($user, request()->route()->getName())) {
             abort(403, 'Unauthorized');
         }
         
@@ -459,7 +460,7 @@ class StockAdjustmentController extends Controller
         $user = Auth::user();
 
         // Hanya admin dan admin_gudang yang bisa ajukan
-        if (!$user->hasAnyRole(['admin', 'admin_gudang'])) {
+        if (!(UserScope::canViewCrossUnitData($user) || RbacRoles::userHasWarehousePusatAccess($user))) {
             abort(403, 'Unauthorized');
         }
         

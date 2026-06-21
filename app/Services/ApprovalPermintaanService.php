@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\PermintaanBarangStatus;
+use App\Helpers\PermissionHelper;
 use App\Models\ApprovalFlowDefinition;
 use App\Models\ApprovalLog;
 use App\Models\DataStock;
@@ -177,7 +178,7 @@ class ApprovalPermintaanService
                     'ASET' => 'admin_gudang_aset',
                     'PERSEDIAAN' => 'admin_gudang_persediaan',
                     'FARMASI' => 'admin_gudang_farmasi',
-                    default => 'admin_gudang',
+                    default => 'admin_gudang_pusat',
                 };
 
                 $role = Role::where('name', $roleName)->first();
@@ -212,16 +213,28 @@ class ApprovalPermintaanService
 
     private function authorize(string $action, User $user): void
     {
-        $allowed = match ($action) {
-            'mengetahui' => ['kepala_unit', 'admin'],
-            'verifikasi', 'kembalikan' => ['kasubbag_tu', 'admin'],
-            'approve', 'reject' => ['kepala_pusat', 'admin'],
-            'disposisi' => ['admin_gudang', 'admin'],
-            default => [],
-        };
-
-        if (empty($allowed) || ! $user->hasAnyRole($allowed)) {
-            throw new AuthorizationException('Anda tidak memiliki hak untuk aksi ini.');
+        // Cek route name permission dulu (via CheckRole middleware)
+        $route = request()->route();
+        $routeName = $route ? $route->getName() : null;
+        if ($routeName && PermissionHelper::canAccess($user, $routeName)) {
+            return;
         }
+
+        // Fallback: canonical permission mapping untuk internal call
+        $permissionMap = [
+            'mengetahui' => 'transaction.approval.mengetahui',
+            'verifikasi' => 'transaction.approval.verifikasi',
+            'kembalikan' => 'transaction.approval.kembalikan',
+            'approve' => 'transaction.approval.approve',
+            'reject' => 'transaction.approval.reject',
+            'disposisi' => 'transaction.approval.disposisi',
+        ];
+
+        $permission = $permissionMap[$action] ?? null;
+        if ($permission && PermissionHelper::canAccess($user, $permission)) {
+            return;
+        }
+
+        throw new AuthorizationException('Anda tidak memiliki hak untuk aksi ini.');
     }
 }

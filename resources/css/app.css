@@ -8,6 +8,144 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* ==================== ENTERPRISE DESIGN TOKENS ==================== */
+
+    /* COLOR TOKENS */
+    --color-primary: #1E3A8A;
+    --color-primary-light: #2563EB;
+    --color-primary-dark: #1E40AF;
+    --color-success: #16A34A;
+    --color-success-light: #22C55E;
+    --color-success-bg: #F0FDF4;
+    --color-warning: #F59E0B;
+    --color-warning-light: #FBBF24;
+    --color-warning-bg: #FFFBEB;
+    --color-danger: #DC2626;
+    --color-danger-light: #EF4444;
+    --color-danger-bg: #FEF2F2;
+    --color-info: #2563EB;
+    --color-info-light: #3B82F6;
+    --color-info-bg: #EFF6FF;
+
+    /* BACKGROUND & SURFACE */
+    --color-bg-main: #F8FAFC;
+    --color-bg-card: #FFFFFF;
+    --color-bg-subtle: #F1F5F9;
+    --color-bg-hover: #F8FAFC;
+
+    /* BORDER */
+    --color-border: #E2E8F0;
+    --color-border-light: #F1F5F9;
+    --color-border-focus: #1E3A8A;
+
+    /* TEXT */
+    --color-text-primary: #0F172A;
+    --color-text-secondary: #64748B;
+    --color-text-tertiary: #94A3B8;
+    --color-text-inverse: #FFFFFF;
+
+    /* ROLE GROUP COLORS */
+    --color-role-system: #1E3A8A;
+    --color-role-struktural: #7C3AED;
+    --color-role-manajerial: #16A34A;
+    --color-role-operator: #EA580C;
+    --color-role-unit: #64748B;
+
+    /* SEVERITY COLORS */
+    --color-severity-info: #2563EB;
+    --color-severity-warning: #F59E0B;
+    --color-severity-critical: #DC2626;
+    --color-severity-security: #7C3AED;
+
+    /* ==================== TYPOGRAPHY TOKENS ==================== */
+    --font-size-display: 2.25rem;
+    --font-size-page-title: 1.875rem;
+    --font-size-section: 1.125rem;
+    --font-size-card-title: 1rem;
+    --font-size-body: 0.875rem;
+    --font-size-small: 0.75rem;
+    --font-size-xs: 0.6875rem;
+
+    /* ==================== SPACING TOKENS ==================== */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+
+    /* ==================== RADIUS TOKENS ==================== */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-full: 9999px;
+
+    /* ==================== SHADOW TOKENS ==================== */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+    /* ==================== TRANSITION TOKENS ==================== */
+    --transition-fast: 150ms ease;
+    --transition-normal: 200ms ease;
+    --transition-slow: 300ms ease;
+}
+
+/* ==================== ACCESSIBILITY STYLES ==================== */
+@layer utilities {
+    /* Focus visible for keyboard navigation */
+    .focus-ring:focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
+    }
+
+    /* Skip link for accessibility */
+    .skip-link {
+        position: absolute;
+        top: -40px;
+        left: 0;
+        background: var(--color-primary);
+        color: white;
+        padding: 8px 16px;
+        z-index: 100;
+        transition: top 0.2s;
+    }
+
+    .skip-link:focus {
+        top: 0;
+    }
+
+    /* Screen reader only */
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .enterprise-card {
+        border-width: 2px;
+        border-color: #000;
+    }
 }
 
 @layer base {
@@ -15,59 +153,64 @@
         --ui-field-height: 2.5rem;
         --ui-field-radius: 0.5rem;
     }
+}
 
-    /* Konsistensi elemen form utama */
-    form :is(
-        input[type='text'],
-        input[type='email'],
-        input[type='number'],
-        input[type='date'],
-        input[type='password'],
-        input[type='search'],
-        select,
-        textarea
-    ) {
-        border-color: rgb(209 213 219); /* gray-300 */
-        border-radius: var(--ui-field-radius);
-        font-size: 0.875rem;
-        line-height: 1.25rem;
-        transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
-        background-color: #fff;
-    }
+/*
+ * SCOPED ENTERPRISE FORM STYLING
+ * Berlaku di konten utama (main) dan wrapper .page-enterprise
+ * Tidak mempengaruhi halaman login (layout terpisah)
+ */
+main form :is(
+    input[type='text'],
+    input[type='email'],
+    input[type='number'],
+    input[type='date'],
+    input[type='password'],
+    input[type='search'],
+    select,
+    textarea
+) {
+    border-color: rgb(209 213 219) !important;
+    border-radius: var(--ui-field-radius) !important;
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+    background-color: #fff !important;
+}
 
-    form :is(
-        input[type='text'],
-        input[type='email'],
-        input[type='number'],
-        input[type='date'],
-        input[type='password'],
-        input[type='search'],
-        select
-    ) {
-        height: var(--ui-field-height);
-        line-height: 1.25rem;
-    }
+main form :is(
+    input[type='text'],
+    input[type='email'],
+    input[type='number'],
+    input[type='date'],
+    input[type='password'],
+    input[type='search'],
+    select
+) {
+    height: var(--ui-field-height) !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
 
-    form textarea {
-        min-height: 6rem;
-        padding-top: 0.625rem;
-        padding-bottom: 0.625rem;
-    }
+main form textarea {
+    min-height: 6rem;
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+}
 
-    form :is(
-        input[type='text'],
-        input[type='email'],
-        input[type='number'],
-        input[type='date'],
-        input[type='password'],
-        input[type='search'],
-        select,
-        textarea
-    ):focus {
-        border-color: rgb(37 99 235); /* blue-600 */
-        box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15);
-        outline: none;
-    }
+main form :is(
+    input[type='text'],
+    input[type='email'],
+    input[type='number'],
+    input[type='date'],
+    input[type='password'],
+    input[type='search'],
+    select,
+    textarea
+):focus {
+    border-color: rgb(37 99 235) !important;
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15) !important;
+    outline: none;
 }
 
 @layer components {
@@ -103,179 +246,17 @@
         @apply inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
     }
 
-    /* Choices.js: cegah field select melebar saat nilai panjang dipilih */
-    form .choices {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        display: block !important;
-        flex: 1 1 auto;
-        margin-bottom: 0 !important; /* override default Choices spacing */
-        font-size: 0.875rem !important;
-    }
-
-    form .choices[data-type*='select-one'],
-    form .choices[data-type*='select-multiple'] {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-    }
-
-    form .choices__inner {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        min-height: var(--ui-field-height) !important;
-        height: auto !important;
-        border-radius: var(--ui-field-radius);
-        border-color: rgb(209 213 219) !important; /* gray-300 */
-        background-color: #fff !important;
-        overflow: visible !important;
-        padding: 0 !important;
-        box-sizing: border-box !important;
-        box-shadow: none !important;
-    }
-
-    /* Samakan text-fill select searchable dengan field standar */
-    form .choices[data-type*='select-one'] .choices__inner {
-        min-height: var(--ui-field-height) !important;
-        height: var(--ui-field-height) !important;
-        padding: 0 0.75rem !important;
-        display: block !important;
-        line-height: normal !important;
-    }
-
-    form .choices__list--single {
-        width: 100% !important;
-        min-height: 100% !important;
-        height: 100% !important;
-        padding: 0 1.75rem 0 0 !important;
-        margin: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        overflow: hidden !important;
-        box-sizing: border-box !important;
-        line-height: normal !important;
-    }
-
-    form .choices__list--single .choices__item {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 100% !important;
-        line-height: 1.2rem !important;
-        margin: 0 !important;
-        padding: 1px 0 0 0 !important;
-        min-height: calc(var(--ui-field-height) - 2px) !important;
-        height: calc(var(--ui-field-height) - 2px) !important;
-        display: flex !important;
-        align-items: center !important;
-        transform: none !important;
-        position: static !important;
-        top: auto !important;
-        color: rgb(17 24 39) !important;
-    }
-
-    form .choices[data-type*='select-one'] .choices__input {
-        padding: 0 !important;
-        margin: 0 !important;
-        font-size: 0.875rem !important;
-        line-height: 1.25rem !important;
-    }
-
-    form .choices.is-focused .choices__inner,
-    form .choices.is-open .choices__inner {
-        border-color: rgb(37 99 235) !important;
-        box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15) !important;
-    }
-
-    form .choices__placeholder {
-        display: flex !important;
-        align-items: center !important;
-        line-height: 1.2rem !important;
-        min-height: calc(var(--ui-field-height) - 2px) !important;
-        padding: 1px 0 0 0 !important;
-        position: static !important;
-        top: auto !important;
-        opacity: 1 !important;
-        color: rgb(156 163 175) !important; /* gray-400 */
-    }
-
-    form .choices[data-type*='select-one']::after {
-        right: 0.75rem !important;
-        margin-top: -3px !important;
-    }
-
-    form .choices__list--dropdown,
-    form .choices__list[aria-expanded] {
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow-x: hidden;
-        max-height: 14rem !important;
-        border-radius: 0.25rem !important;
-        border: 1px solid rgb(156 163 175) !important; /* gray-400 */
-        box-shadow: none !important;
-        margin-top: 2px !important;
-        background: #fff !important;
-    }
-
-    /* Tampilan list searchable mengikuti style native listbox sederhana */
-    form .choices__list--dropdown .choices__list,
-    form .choices__list[aria-expanded] .choices__list {
-        max-height: 11.5rem !important;
-        overflow-y: auto !important;
-        border-top: 1px solid rgb(229 231 235) !important;
-    }
-
-    form .choices__list--dropdown .choices__item,
-    form .choices__list[aria-expanded] .choices__item {
-        padding: 0.2rem 0 !important;
-        min-height: 2.125rem !important;
-        line-height: 1.25rem !important;
-        font-size: 0.875rem !important;
-        white-space: nowrap;
-        overflow: visible;
-        text-overflow: ellipsis;
-        border-bottom: 1px solid rgb(243 244 246) !important;
-        display: flex !important;
-        align-items: center !important;
-    }
-
-    form .choices__list--dropdown .choices__item > span,
-    form .choices__list[aria-expanded] .choices__item > span,
-    form .choices__list--dropdown .choices__item,
-    form .choices__list[aria-expanded] .choices__item {
-        padding-left: 0.6rem !important;
-        padding-right: 0.6rem !important;
-    }
-
-    form .choices__list--dropdown .choices__item--selectable.is-highlighted,
-    form .choices__list[aria-expanded] .choices__item--selectable.is-highlighted {
-        background-color: rgb(59 130 246) !important; /* blue-500 */
-        color: #fff !important;
-    }
-
-    form .choices__list--dropdown .choices__item--selectable.is-selected,
-    form .choices__list[aria-expanded] .choices__item--selectable.is-selected {
-        background-color: rgb(239 246 255) !important; /* blue-50 */
-        color: rgb(30 64 175) !important;
-        font-weight: 600 !important;
-    }
-
-    form .choices__list--dropdown .choices__input,
-    form .choices__list[aria-expanded] .choices__input {
-        margin: 0 !important;
-        padding: 0.45rem 0.6rem !important;
-        border: 0 !important;
-        border-bottom: 1px solid rgb(209 213 219) !important; /* gray-300 */
-        font-size: 0.875rem !important;
-        line-height: 1.2rem !important;
-        border-radius: 0 !important;
-    }
+    /*
+     * Modal konfirmasi global (components/ui/confirm-modal.blade.php)
+     * PENTING: jangan pakai max-w-md / p-md — di @theme, --spacing-md = 1rem
+     * sehingga max-w-md ter-compile menjadi max-width: 1rem (modal menyempit).
+     */
 
     /* Grid/flex child tidak mendorong kolom melebar */
-    form .grid > *,
-    form .flex > * {
+    main form .grid > *,
+    main form .flex > *,
+    .page-enterprise form .grid > *,
+    .page-enterprise form .flex > * {
         min-width: 0 !important;
     }
 
@@ -316,46 +297,615 @@
     }
 
     /* samakan checkbox/radio alignment di form */
-    form input[type='checkbox'],
-    form input[type='radio'] {
+    main form input[type='checkbox'],
+    main form input[type='radio'],
+    .page-enterprise form input[type='checkbox'],
+    .page-enterprise form input[type='radio'] {
         width: 1rem;
         height: 1rem;
     }
 
-    /* Select2: placeholder mode style consistency */
-    form .select2-container {
+    /* Select2 container (widget menggantikan native select) */
+    main form .select2-container,
+    .page-enterprise form .select2-container,
+    td .select2-container {
         width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
-    form .select2-container .select2-selection--single {
+    main form .select2-container .select2-selection--single,
+    .page-enterprise form .select2-container .select2-selection--single {
         height: var(--ui-field-height) !important;
+        min-height: var(--ui-field-height) !important;
         border: 1px solid rgb(209 213 219) !important;
         border-radius: var(--ui-field-radius) !important;
         background-color: #fff !important;
-        display: flex !important;
-        align-items: center !important;
-        padding: 0 0.75rem !important;
         box-shadow: none !important;
     }
 
-    form .select2-container .select2-selection__rendered {
+    main form .select2-container .select2-selection--single .select2-selection__rendered,
+    .page-enterprise form .select2-container .select2-selection--single .select2-selection__rendered {
         color: rgb(17 24 39) !important;
-        line-height: 1.25rem !important;
-        padding-left: 0 !important;
-        padding-right: 1.5rem !important;
+        font-size: 0.875rem !important;
+        line-height: calc(var(--ui-field-height) - 2px) !important;
+        padding-left: 0.75rem !important;
+        padding-right: 2rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    form .select2-container .select2-selection__placeholder {
+    main form .select2-container .select2-selection__placeholder,
+    .page-enterprise form .select2-container .select2-selection__placeholder {
         color: rgb(156 163 175) !important;
     }
 
-    form .select2-container .select2-selection__clear {
-        margin-right: 0.5rem !important;
+    main form .select2-container .select2-selection__clear,
+    .page-enterprise form .select2-container .select2-selection__clear {
+        margin-right: 0.35rem !important;
         color: rgb(107 114 128) !important;
+        font-size: 1rem !important;
+        line-height: 1 !important;
     }
 
-    form .select2-container .select2-selection__arrow {
-        height: calc(var(--ui-field-height) - 2px) !important;
-        right: 0.5rem !important;
+    main form .select2-container .select2-selection__arrow,
+    .page-enterprise form .select2-container .select2-selection__arrow {
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        height: 1.25rem !important;
+        right: 0.625rem !important;
     }
+
+    main form .select2-container .select2-selection__arrow b,
+    .page-enterprise form .select2-container .select2-selection__arrow b {
+        border-color: rgb(107 114 128) transparent transparent transparent !important;
+        border-width: 5px 4px 0 4px !important;
+        margin-left: -4px !important;
+        margin-top: -2px !important;
+    }
+
+    main form .select2-container--default.select2-container--focus .select2-selection--single,
+    main form .select2-container--default.select2-container--open .select2-selection--single,
+    .page-enterprise form .select2-container--default.select2-container--focus .select2-selection--single,
+    .page-enterprise form .select2-container--default.select2-container--open .select2-selection--single {
+        border-color: rgb(37 99 235) !important;
+        box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15) !important;
+        outline: none !important;
+    }
+
+    main form .select2-container .select2-selection--single.is-invalid,
+    main form .select2-container--default.has-error .select2-selection--single,
+    .page-enterprise form .select2-container .select2-selection--single.is-invalid,
+    .page-enterprise form .select2-container--default.has-error .select2-selection--single {
+        border-color: rgb(220 38 38) !important;
+    }
+
+    /* Sembunyikan native select setelah Select2 init — hindari double border */
+    main form select.select2-hidden-accessible,
+    .page-enterprise form select.select2-hidden-accessible {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+    }
+}
+
+/*
+ * Select2 dropdown (di-render di body) — tema global
+ */
+.select2-dropdown,
+.select2-dropdown.sipeni-s2-dropdown {
+    z-index: 10050 !important;
+    border: 1px solid rgb(209 213 219) !important;
+    border-radius: var(--ui-field-radius) !important;
+    background-color: #fff !important;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+    overflow: hidden !important;
+    font-size: 0.875rem !important;
+}
+
+.select2-dropdown .select2-search--dropdown,
+.select2-dropdown.sipeni-s2-dropdown .select2-search--dropdown {
+    padding: 0.5rem !important;
+    background: #fff !important;
+}
+
+.select2-dropdown .select2-search__field,
+.select2-dropdown.sipeni-s2-dropdown .select2-search__field {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    height: var(--ui-field-height) !important;
+    min-height: var(--ui-field-height) !important;
+    padding: 0 0.75rem !important;
+    border: 1px solid rgb(209 213 219) !important;
+    border-radius: var(--ui-field-radius) !important;
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+    color: rgb(17 24 39) !important;
+    background-color: #fff !important;
+    outline: none !important;
+}
+
+.select2-dropdown .select2-search__field:focus,
+.select2-dropdown.sipeni-s2-dropdown .select2-search__field:focus {
+    border-color: rgb(37 99 235) !important;
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15) !important;
+}
+
+.select2-dropdown .select2-results > .select2-results__options,
+.select2-dropdown.sipeni-s2-dropdown .select2-results > .select2-results__options {
+    max-height: 14rem !important;
+}
+
+.select2-dropdown .select2-results__option,
+.select2-dropdown.sipeni-s2-dropdown .select2-results__option {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+    color: rgb(17 24 39) !important;
+}
+
+.select2-dropdown .select2-results__option--highlighted.select2-results__option--selectable,
+.select2-dropdown.sipeni-s2-dropdown .select2-results__option--highlighted.select2-results__option--selectable {
+    background-color: rgb(59 130 246) !important;
+    color: #fff !important;
+}
+
+.select2-dropdown .select2-results__option--selected,
+.select2-dropdown.sipeni-s2-dropdown .select2-results__option--selected {
+    background-color: rgb(239 246 255) !important;
+    color: rgb(30 64 175) !important;
+    font-weight: 600 !important;
+}
+
+.select2-dropdown .select2-results__message,
+.select2-dropdown.sipeni-s2-dropdown .select2-results__message {
+    padding: 0.625rem 0.75rem !important;
+    font-size: 0.875rem !important;
+    color: rgb(107 114 128) !important;
+}
+
+.select2-container--default.select2-container--disabled .select2-selection--single,
+.select2-container--default.sipeni-s2.select2-container--disabled .select2-selection--single {
+    background-color: rgb(249 250 251) !important;
+    border-color: rgb(229 231 235) !important;
+    cursor: not-allowed !important;
+    opacity: 0.85;
+}
+
+.select2-container--default.select2-container--disabled .select2-selection__rendered,
+.select2-container--default.sipeni-s2.select2-container--disabled .select2-selection__rendered {
+    color: rgb(107 114 128) !important;
+}
+
+/* ==================== RESPONSIVE / MOBILE-TABLET ==================== */
+body.sidebar-open {
+    overflow: hidden;
+}
+
+@media (max-width: 1023px) {
+    #app-sidebar {
+        box-shadow: 0 12px 40px rgb(0 0 0 / 0.35);
+    }
+
+    #app-sidebar nav a,
+    #app-sidebar nav [onclick*="toggleSubmenu"] {
+        min-height: 2.75rem;
+    }
+}
+
+main {
+    -webkit-overflow-scrolling: touch;
+}
+
+main .overflow-x-auto {
+    max-width: 100%;
+}
+
+@media (max-width: 767px) {
+    main table {
+        display: block;
+        overflow-x: auto;
+        max-width: 100%;
+        white-space: nowrap;
+    }
+
+    main form.grid .flex.gap-2 {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    main form.grid .flex.gap-2 > * {
+        width: 100%;
+    }
+
+    .sipeni-toast-stack {
+        padding: 0.75rem;
+    }
+
+    .sipeni-toast {
+        width: min(24rem, calc(100vw - 1.5rem));
+    }
+
+    .sipeni-confirm-modal__actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .sipeni-confirm-modal__btn {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+    main .grid.sm\:grid-cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+
+/* Overlay loading global */
+.sipeni-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: none;
+    box-sizing: border-box;
+    padding: 1rem;
+    background-color: rgb(17 24 39 / 0.45);
+    backdrop-filter: blur(2px);
+}
+
+.sipeni-loading-overlay.is-active {
+    display: grid;
+    place-items: center;
+}
+
+.sipeni-loading-overlay__card {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    min-width: min(20rem, calc(100vw - 2rem));
+    max-width: 24rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgb(229 231 235);
+    background-color: #fff;
+    box-shadow:
+        0 25px 50px -12px rgb(0 0 0 / 0.25),
+        0 0 0 1px rgb(0 0 0 / 0.04);
+}
+
+.sipeni-loading-overlay__spinner {
+    flex-shrink: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    color: rgb(37 99 235);
+    animation: spin 1s linear infinite;
+}
+
+.sipeni-loading-overlay__text {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    font-weight: 600;
+    color: rgb(31 41 55);
+}
+
+/* Modal konfirmasi global*/
+.sipeni-confirm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: none;
+    box-sizing: border-box;
+    padding: 1rem;
+}
+
+.sipeni-confirm-modal.is-open {
+    display: grid;
+    place-items: center;
+}
+
+.sipeni-confirm-modal__backdrop,
+.sipeni-confirm-modal__dialog {
+    grid-area: 1 / 1;
+}
+
+.sipeni-confirm-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: rgb(17 24 39 / 0.5);
+}
+
+.sipeni-confirm-modal__dialog {
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: min(28rem, calc(100vw - 2rem));
+    max-width: 28rem;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    background-color: #fff;
+    border: 1px solid rgb(229 231 235);
+    box-shadow:
+        0 25px 50px -12px rgb(0 0 0 / 0.25),
+        0 0 0 1px rgb(0 0 0 / 0.04);
+}
+
+.sipeni-confirm-modal__body {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    border-bottom: 1px solid rgb(243 244 246);
+    padding: 1rem 1.25rem;
+}
+
+.sipeni-confirm-modal__icon {
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+    border-radius: 9999px;
+    background-color: rgb(254 243 199);
+    padding: 0.5rem;
+    color: rgb(217 119 6);
+}
+
+.sipeni-confirm-modal__content {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.sipeni-confirm-modal__title {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-weight: 600;
+    color: rgb(17 24 39);
+}
+
+.sipeni-confirm-modal__message {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.375rem;
+    color: rgb(75 85 99);
+}
+
+.sipeni-confirm-modal__actions {
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+}
+
+.sipeni-confirm-modal__btn {
+    min-height: 2.5rem;
+    min-width: 7.5rem;
+}
+
+/* Halaman scan QR inventory */
+.sipeni-qr-scan {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sipeni-qr-scan__viewport {
+    position: relative;
+    width: 100%;
+    max-width: 28rem;
+    min-height: 18rem;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border: 2px solid rgb(229 231 235);
+    background-color: #111827;
+    box-shadow: 0 10px 25px -12px rgb(0 0 0 / 0.25);
+}
+
+.sipeni-qr-scan__reader {
+    width: 100%;
+    min-height: 18rem;
+}
+
+.sipeni-qr-scan__reader > div,
+.sipeni-qr-scan__reader video {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block;
+}
+
+.sipeni-qr-scan__reader video {
+    object-fit: cover;
+    min-height: 18rem;
+}
+
+.sipeni-qr-scan__placeholder {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    color: rgb(209 213 219);
+    background-color: #111827;
+}
+
+.sipeni-qr-scan__placeholder.hidden {
+    display: none;
+}
+
+.sipeni-qr-scan__placeholder svg {
+    width: 3rem;
+    height: 3rem;
+    opacity: 0.7;
+}
+
+.sipeni-qr-scan__status {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    text-align: center;
+    color: rgb(75 85 99);
+}
+
+.sipeni-qr-scan__status.is-error {
+    color: rgb(220 38 38);
+}
+
+.sipeni-qr-scan__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* Toast stack (programatik: window.Sipeni.toast) — tengah viewport */
+.sipeni-toast-stack {
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    pointer-events: none;
+}
+
+.sipeni-toast {
+    pointer-events: auto;
+    width: min(24rem, calc(100vw - 2rem));
+    max-width: 24rem;
+    border-radius: 0.75rem;
+    box-shadow:
+        0 25px 50px -12px rgb(0 0 0 / 0.18),
+        0 10px 15px -3px rgb(0 0 0 / 0.08);
+    border: 1px solid rgb(229 231 235);
+    background: #fff;
+    animation: sipeni-toast-in 0.28s ease-out;
+}
+
+.sipeni-toast--leave {
+    animation: sipeni-toast-out 0.26s ease-in forwards;
+}
+
+.sipeni-toast__inner {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem 0.75rem 0.65rem;
+    align-items: flex-start;
+}
+
+.sipeni-toast__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.sipeni-toast__message {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.35rem;
+    color: rgb(17 24 39);
+}
+
+.sipeni-toast__bar {
+    margin-top: 0.45rem;
+    height: 3px;
+    border-radius: 999px;
+    background: rgb(229 231 235);
+    overflow: hidden;
+}
+
+.sipeni-toast__bar span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    transform-origin: left;
+    animation: sipeni-toast-progress linear forwards;
+}
+
+.sipeni-toast--success .sipeni-toast__bar span {
+    background: rgb(22 163 74);
+}
+
+.sipeni-toast--error .sipeni-toast__bar span {
+    background: rgb(220 38 38);
+}
+
+.sipeni-toast--warning .sipeni-toast__bar span {
+    background: rgb(217 119 6);
+}
+
+.sipeni-toast--info .sipeni-toast__bar span {
+    background: rgb(37 99 235);
+}
+
+.sipeni-toast__close {
+    border: none;
+    background: transparent;
+    color: rgb(107 114 128);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.15rem;
+}
+
+.sipeni-toast__close:hover {
+    color: rgb(17 24 39);
+}
+
+@keyframes sipeni-toast-in {
+    from {
+        opacity: 0;
+        transform: scale(0.94);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes sipeni-toast-out {
+    to {
+        opacity: 0;
+        transform: scale(0.94);
+    }
+}
+
+@keyframes sipeni-toast-progress {
+    from {
+        transform: scaleX(1);
+    }
+    to {
+        transform: scaleX(0);
+    }
+}
+
+/* Admin permission matrix (User & Role management) */
+.permission-matrix-group summary {
+    list-style: none;
+}
+.permission-matrix-group summary::-webkit-details-marker {
+    display: none;
+}
+.permission-matrix-table tbody td {
+    vertical-align: middle;
 }

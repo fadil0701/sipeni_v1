@@ -547,11 +547,9 @@ window.initPermintaanSelectDataBarang = function (selectElement) {
     }
     const placeholderOption = selectElement.querySelector('option[value=""]');
     const placeholderText = ((placeholderOption && placeholderOption.textContent) || 'Pilih Data Barang').trim();
-    $(selectElement).select2({
+    $(selectElement).select2(Object.assign({}, (typeof window.sipeniSelect2BaseOptions === 'function' ? window.sipeniSelect2BaseOptions() : {}), {
         placeholder: placeholderText,
         allowClear: !!placeholderOption,
-        width: '100%',
-        minimumResultsForSearch: 0,
         matcher: function (params, data) {
             if (data == null) {
                 return null;
@@ -576,7 +574,7 @@ window.initPermintaanSelectDataBarang = function (selectElement) {
             const text = ((data.text || '') + '').toLowerCase();
             return text.indexOf(term) > -1 ? data : null;
         },
-    });
+    }));
     const inst = {
         destroy: function () {
             try {

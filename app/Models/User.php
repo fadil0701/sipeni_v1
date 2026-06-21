@@ -3,15 +3,25 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Support\Rbac\RbacRoles;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Role as SpatieRoleModel;
+use Spatie\Permission\Traits\HasRoles;
 
+/**
+ * @property int $id
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Role> $roles
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Module> $modules
+ */
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    /** @use HasFactory<UserFactory> */
+    use HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -19,52 +29,14 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'pegawai_id',
+        'username',
         'name',
         'email',
         'password',
+        'is_active',
+        'last_login',
     ];
-
-    /**
-     * The roles that belong to the user.
-     */
-    public function roles(): BelongsToMany
-    {
-        return $this->belongsToMany(Role::class, 'role_user');
-    }
-
-    /**
-     * Check if user has a specific role
-     */
-    public function hasRole($roleName): bool
-    {
-        // Load roles if not already loaded
-        if (!$this->relationLoaded('roles')) {
-            $this->load('roles');
-        }
-        
-        return $this->roles->contains('name', $roleName);
-    }
-
-    /**
-     * Check if user has any of the given roles
-     */
-    public function hasAnyRole(array $roleNames): bool
-    {
-        // Load roles if not already loaded
-        if (!$this->relationLoaded('roles')) {
-            $this->load('roles');
-        }
-        
-        return $this->roles->whereIn('name', $roleNames)->isNotEmpty();
-    }
-
-    /**
-     * Get the primary role (first role)
-     */
-    public function getPrimaryRoleAttribute()
-    {
-        return $this->roles()->first();
-    }
 
     /**
      * Get the pegawai associated with this user
@@ -72,6 +44,12 @@ class User extends Authenticatable
     public function pegawai()
     {
         return $this->hasOne(MasterPegawai::class, 'user_id', 'id');
+    }
+
+    public function userRoles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id')
+            ->withPivot('unit_kerja_id', 'created_at');
     }
 
     /**
@@ -88,60 +66,76 @@ class User extends Authenticatable
      */
     public function hasModule(string $moduleName): bool
     {
-        if (!$this->relationLoaded('modules')) {
+        if (! $this->relationLoaded('modules')) {
             $this->load('modules');
         }
-        
+
         return $this->modules->contains('name', $moduleName);
     }
 
     /**
-     * Check if user has a specific permission through their roles
+     * Cek permission via Spatie (database + wildcard native bila diaktifkan di config).
      */
     public function hasPermission(string $permissionName): bool
     {
-        // Admin always has all permissions
-        if ($this->hasRole('admin')) {
-            return true;
+        return $this->checkPermissionTo($permissionName);
+    }
+
+    /**
+     * Assign role memakai nama kanonik (legacy otomatis dinormalisasi).
+     *
+     * @param  list<string>  $roleNames
+     */
+    public function assignCanonicalRoles(array $roleNames): void
+    {
+        $names = RbacRoles::normalizeRoleNames($roleNames);
+        $ids = Role::query()->whereIn('name', $names)->where('guard_name', 'web')->pluck('id')->all();
+        if ($ids !== []) {
+            $this->syncRoles($ids);
         }
+    }
 
-        // Pastikan roles ter-load
-        if (!$this->relationLoaded('roles')) {
-            $this->load('roles');
+    /**
+     * @param  list<string>  $roleNames
+     */
+    public function syncCanonicalRoles(array $roleNames, ?int $unitKerjaId = null): void
+    {
+        $names = RbacRoles::normalizeRoleNames($roleNames);
+        $ids = Role::query()->whereIn('name', $names)->where('guard_name', 'web')->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if ($ids !== []) {
+            $this->syncUnifiedRoles($ids, $unitKerjaId);
         }
+    }
 
-        // Jika tidak ada role, return false
-        if ($this->roles->isEmpty()) {
-            return false;
-        }
+    /**
+     * Get the primary role (first role)
+     */
+    public function getPrimaryRoleAttribute()
+    {
+        return $this->roles()->first();
+    }
 
-        // Load permissions untuk semua roles sekaligus (lebih efisien)
-        $roleIds = $this->roles->pluck('id')->toArray();
-        
-        // Query langsung ke database untuk mendapatkan semua permission user
-        $userPermissions = \DB::table('permission_role')
-            ->whereIn('role_id', $roleIds)
-            ->join('permissions', 'permission_role.permission_id', '=', 'permissions.id')
-            ->pluck('permissions.name')
-            ->unique()
-            ->toArray();
+    /**
+     * Sinkronisasi role Spatie + tabel user_roles (enterprise scope map).
+     *
+     * @param  array<int, int>  $roleIds
+     */
+    public function syncUnifiedRoles(array $roleIds, ?int $unitKerjaId = null): void
+    {
+        $this->syncRoles($roleIds);
 
-        // Check exact permission
-        if (in_array($permissionName, $userPermissions)) {
-            return true;
-        }
-
-        // Check wildcard permissions (e.g., 'inventory.*' matches 'inventory.data-stock.index')
-        foreach ($userPermissions as $permission) {
-            if (str_ends_with($permission, '.*')) {
-                $prefix = str_replace('.*', '', $permission);
-                if (str_starts_with($permissionName, $prefix . '.')) {
-                    return true;
-                }
+        DB::table('user_roles')->where('user_id', $this->id)->delete();
+        foreach ($roleIds as $roleId) {
+            if (! SpatieRoleModel::query()->where('id', $roleId)->exists()) {
+                continue;
             }
+            DB::table('user_roles')->insert([
+                'user_id' => $this->id,
+                'role_id' => $roleId,
+                'unit_kerja_id' => $unitKerjaId,
+                'created_at' => now(),
+            ]);
         }
-
-        return false;
     }
 
     /**
@@ -152,6 +146,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -164,6 +160,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
+            'last_login' => 'datetime',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 }

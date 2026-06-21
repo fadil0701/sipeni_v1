@@ -8,6 +8,17 @@
         <p class="mt-1 text-sm text-gray-600">Daftar Rencana Kebutuhan Unit (RKU) dan status pengajuan</p>
     </div>
     <div class="flex items-center gap-2">
+        @can('create', \App\Models\RkuHeader::class)
+        <a 
+            href="{{ route('planning.rku.create') }}" 
+            class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+        >
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Buat RKU
+        </a>
+        @endcan
         <a 
             href="{{ route('planning.rekap-tahunan') }}" 
             class="inline-flex items-center px-4 py-2.5 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -19,17 +30,6 @@
         </a>
     </div>
 </div>
-
-@if(session('success'))
-    <div class="mb-4 bg-green-50 border-l-4 border-green-400 p-4 rounded">
-        <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
-    </div>
-@endif
-@if(session('info'))
-    <div class="mb-4 bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-        <p class="text-sm font-medium text-blue-800">{{ session('info') }}</p>
-    </div>
-@endif
 
 <!-- Filters -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">

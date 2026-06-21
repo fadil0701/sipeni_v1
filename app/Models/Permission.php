@@ -2,27 +2,23 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Spatie\Permission\Models\Permission as SpatiePermission;
 
-class Permission extends Model
+class Permission extends SpatiePermission
 {
     protected $fillable = [
         'name',
+        'guard_name',
         'display_name',
         'module',
+        'modul',
+        'aksi',
+        'kode_permission',
+        'nama_permission',
         'group',
         'description',
         'sort_order',
     ];
-
-    /**
-     * The roles that have this permission.
-     */
-    public function roles(): BelongsToMany
-    {
-        return $this->belongsToMany(Role::class, 'permission_role');
-    }
 
     /**
      * Get permissions grouped by module

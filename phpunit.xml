@@ -19,6 +19,9 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- Database terpisah dari .env dev — RefreshDatabase tidak boleh memakai MySQL simantik -->
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
@@ -29,5 +32,11 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="SIPENI_SUPER_ADMIN_EMAIL" value="pusdatinppkp@gmail.com"/>
+        <env name="SIPENI_SUPER_ADMIN_PASSWORD" value="Admin@12345678"/>
+        <env name="SIPENI_ADMIN_IT_EMAIL" value="admin-it@sipeni.local"/>
+        <env name="SIPENI_ADMIN_IT_PASSWORD" value="Admin@12345678"/>
+        <env name="SIPENI_SEED_DEMO_USERS" value="true"/>
+        <env name="SIPENI_DEMO_PEGAWAI_PASSWORD" value="Pegawai@123456"/>
     </php>
 </phpunit>

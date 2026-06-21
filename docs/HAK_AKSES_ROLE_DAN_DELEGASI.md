@@ -102,7 +102,7 @@ Modul yang sudah melekat pada user tetapi **di luar** hak editor ditampilkan seb
 
 ## 6. Mapping permission (create/store, edit/update)
 
-Ringkasan ada di [PERMISSION_SIMPLIFICATION.md](./PERMISSION_SIMPLIFICATION.md): `store` dipetakan ke permission `create`, `update` ke `edit`, sehingga daftar centang di role tidak perlu menggandakan baris.
+Permission aksi `store` dipetakan ke permission `create`, dan `update` ke `edit`, sehingga daftar centang di role tidak perlu menggandakan baris untuk pasangan create/store dan edit/update.
 
 ---
 
@@ -132,6 +132,6 @@ Manajemen Role/User memanggil helper ini setelah perubahan relevan.
 - `routes/web.php` — definisi route dan nama route.
 - `bootstrap/app.php` — alias middleware `role`, redirect guest ke login.
 - `resources/views/layouts/app.blade.php` — sidebar memakai `accessibleMenus` dari view composer (`AppServiceProvider`).
-- `docs/PERMISSION_SIMPLIFICATION.md` — penyederhanaan permission CRUD.
+- `docs/rbac-phase1/` — role kanonik, permission matrix, migration & rollback.
 
 Jika ada perubahan besar pada struktur route atau role, sesuaikan dokumentasi ini dan jalankan ulang sinkronisasi permission.
