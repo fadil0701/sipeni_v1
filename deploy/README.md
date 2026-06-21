@@ -58,6 +58,39 @@ Git di VM (sekali, jika `dubious ownership`):
 git config --global --add safe.directory /var/www/html/simantik
 ```
 
+## Snippet nginx VM (`/etc/nginx/snippets/`)
+
+Pola sama `sikerja.conf` / `ckg-ppkp.conf` di aaPanel:
+
+| File repo | Target di VM |
+|-----------|----------------|
+| `deploy/nginx-snippets/simantik.conf` | `/etc/nginx/snippets/simantik.conf` |
+
+Pasang otomatis:
+
+```bash
+chmod +x deploy/install-nginx-snippet.sh
+./deploy/install-nginx-snippet.sh
+```
+
+Atau manual:
+
+```bash
+sudo cp deploy/nginx-snippets/simantik.conf /etc/nginx/snippets/simantik.conf
+sudo chmod 644 /etc/nginx/snippets/simantik.conf
+```
+
+Di **server block** `puspelkes.jakarta.go.id` (sebelum `location /`):
+
+```nginx
+include /etc/nginx/snippets/simantik.conf;
+```
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+curl -I https://puspelkes.jakarta.go.id/demo-simantik/up
+```
+
 ## 1. Siapkan `.env`
 
 ```bash
@@ -141,4 +174,5 @@ docker compose exec app php artisan db:seed --force
 | 404 semua route | Cek proxy VM meneruskan `/demo-simantik/` ke port 7001 |
 | Migrate gagal | Cek `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`, service `mysql` healthy |
 | Seed gagal `guard_name` | Race: seed jalan sebelum migrate selesai — jalankan ulang `migrate` + `db:seed` (lihat §7) |
+| `key:generate` read-only | `.env` di-mount `:ro` — generate di **host**: `./deploy/vm-post-deploy.sh key` |
 | Session hilang | `SESSION_PATH=/demo-simantik/` |

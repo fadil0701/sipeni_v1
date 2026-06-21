@@ -54,11 +54,30 @@ run_cache() {
 }
 
 run_key() {
-  if ! grep -q '^APP_KEY=base64:' .env 2>/dev/null; then
-    echo "==> php artisan key:generate --force"
-    dc php artisan key:generate --force --no-interaction
-    dc php artisan config:cache --no-interaction
+  if grep -q '^APP_KEY=base64:' .env 2>/dev/null; then
+    echo "   APP_KEY sudah ada."
+    return 0
   fi
+
+  echo "==> Generate APP_KEY (tulis ke .env di host — mount container read-only)"
+  KEY="$(dc php artisan key:generate --show --no-interaction 2>/dev/null | tr -d '\r' | tail -1)"
+  if [[ -z "$KEY" || "$KEY" != base64:* ]]; then
+    KEY="$(php -r "echo 'base64:'.base64_encode(random_bytes(32));" 2>/dev/null || true)"
+  fi
+  if [[ -z "$KEY" || "$KEY" != base64:* ]]; then
+    echo "ERROR: gagal generate APP_KEY"
+    exit 1
+  fi
+
+  if grep -q '^APP_KEY=' .env; then
+    sed -i "s|^APP_KEY=.*|APP_KEY=${KEY}|" .env
+  else
+    echo "APP_KEY=${KEY}" >> .env
+  fi
+  echo "   APP_KEY diset di .env host"
+
+  dc php artisan config:clear --no-interaction
+  dc php artisan config:cache --no-interaction
 }
 
 case "$ACTION" in
