@@ -33,10 +33,12 @@ echo "==> Docker build & up"
 export DOCKER_BUILDKIT=1
 COMPOSE_PARALLEL_LIMIT=1 docker compose build app
 docker compose up -d
-docker compose restart app queue
+
+echo "==> Tunggu app stabil (entrypoint migrate)..."
+chmod +x deploy/post-deploy.sh
+./deploy/post-deploy.sh wait
 
 echo "==> Laravel migrate, permission, cache"
-chmod +x deploy/post-deploy.sh
 ./deploy/post-deploy.sh migrate
 ./deploy/post-deploy.sh sync-routes
 ./deploy/post-deploy.sh cache

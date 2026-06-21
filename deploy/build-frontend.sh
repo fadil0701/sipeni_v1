@@ -32,6 +32,12 @@ docker run --rm \
         ls -la public/build/manifest.json
     '
 
+if command -v sudo >/dev/null 2>&1; then
+  sudo chown -R "$(id -u)":"$(id -g)" public/build 2>/dev/null || true
+else
+  chown -R "$(id -u)":"$(id -g)" public/build 2>/dev/null || true
+fi
+
 echo ""
 echo "Restart container agar mount aset aktif:"
 echo "  docker compose up -d app web queue"

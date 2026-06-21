@@ -19,12 +19,29 @@ dc() {
 wait_for_app() {
   echo "==> Tunggu container app (php-fpm)..."
   for i in $(seq 1 90); do
-    if docker compose exec -T app sh -c 'pgrep -f "php-fpm: master" >/dev/null 2>&1'; then
+    status="$(docker compose ps app --format '{{.State}}' 2>/dev/null || echo unknown)"
+
+    if [ "$status" = "restarting" ]; then
+      if [ $((i % 5)) -eq 1 ]; then
+        echo "   App restarting — cek log entrypoint (biasanya migrate/DB)..."
+        docker compose logs app --tail 15 2>/dev/null || true
+      fi
+      sleep 3
+      continue
+    fi
+
+    if docker compose exec -T app sh -c 'pgrep -f "php-fpm: master" >/dev/null 2>&1' 2>/dev/null; then
       echo "   App siap."
       return 0
     fi
+
     if [ "$i" -eq 90 ]; then
-      echo "ERROR: timeout — cek: docker compose logs app --tail 80"
+      echo "ERROR: timeout — app tidak stabil."
+      docker compose ps
+      docker compose logs app --tail 40
+      echo ""
+      echo "Penyebab umum: DB_PASSWORD / MYSQL_ROOT_PASSWORD kosong di .env"
+      echo "  grep -E '^(APP_KEY|DB_PASSWORD|MYSQL_ROOT_PASSWORD)=' .env"
       exit 1
     fi
     sleep 2

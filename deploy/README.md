@@ -78,6 +78,7 @@ docker compose exec app php artisan db:seed --class=AdminUserSeeder --force
 | Build gagal tanpa internet | Isi `HTTP_PROXY`/`HTTPS_PROXY` di `.env`; konfigurasi daemon: `deploy/docker-http-proxy.conf.example` |
 | `key:generate` read-only | `./deploy/post-deploy.sh key` (tulis ke `.env` host) |
 | HTTP 500, artisan OK | `sudo chown -R 33:33 storage bootstrap/cache`; `./deploy/post-deploy.sh cache` |
+| App restart loop | `docker compose logs app` — biasanya migrate gagal; isi `DB_PASSWORD` + `MYSQL_ROOT_PASSWORD` di `.env`. Jika volume MySQL baru dibuat dengan password kosong: `docker compose down -v` lalu `./deploy/install.sh` |
 | 404 di `:8081` | Tambahkan `include` snippet di vhost nginx |
 | Git dubious ownership | `git config --global --add safe.directory /var/www/html/simantik` |
 
