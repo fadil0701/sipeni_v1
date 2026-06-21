@@ -42,7 +42,9 @@ return [
     'security' => [
         'csp_enabled' => env('SECURITY_CSP_ENABLED', false),
         'csp_report_only' => env('SECURITY_CSP_REPORT_ONLY', true),
-        'csp_policy' => env('SECURITY_CSP_POLICY', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"),
+        'csp_policy' => env('SECURITY_CSP_POLICY', "default-src 'self'; script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.bunny.net; font-src 'self' data: https://fonts.bunny.net; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"),
+        /** Izinkan kamera same-origin (scan QR, foto inventaris). microphone/geolocation tetap off. */
+        'permissions_policy' => env('SECURITY_PERMISSIONS_POLICY', 'camera=(self), microphone=(), geolocation=()'),
     ],
 
     /*
