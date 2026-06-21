@@ -54,13 +54,13 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    /*
-    |--------------------------------------------------------------------------
-    | Application subpath (deploy subdirectory, e.g. /demo-simantik)
-    |--------------------------------------------------------------------------
-    */
+    'asset_url' => env('ASSET_URL'),
 
     'subpath' => env('APP_SUBPATH', ''),
+
+    'use_request_url' => (bool) env('APP_USE_REQUEST_URL', false),
+
+    'port' => (int) env('APP_PORT', 7001),
 
     /*
     |--------------------------------------------------------------------------

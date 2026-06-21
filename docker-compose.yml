@@ -1,12 +1,11 @@
 x-build-proxy-args: &build-proxy-args
-  HTTP_PROXY: ${HTTP_PROXY:-http://10.15.3.20:80}
-  HTTPS_PROXY: ${HTTPS_PROXY:-http://10.15.3.20:80}
-  NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,mysql,simantik-mysql,.local}
+  HTTP_PROXY: ${HTTP_PROXY:-}
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
+  NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,mysql,.local}
 
 services:
   mysql:
     image: mysql:8.0
-    container_name: simantik-mysql
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
@@ -35,13 +34,13 @@ services:
         <<: *build-proxy-args
         APP_SUBPATH: ${APP_SUBPATH-/demo-simantik}
     image: simantik-app
-    container_name: simantik-app
     restart: unless-stopped
     env_file: .env
     environment:
       VIEW_CLEAR_ON_BOOT: ${VIEW_CLEAR_ON_BOOT:-1}
     volumes:
       - app_storage:/var/www/html/storage
+      - ./storage/backups:/var/www/html/storage/backups
       - ./storage/logs:/var/www/html/storage/logs
       - ./.env:/var/www/html/.env:ro
       - ./public/build:/var/www/html/public/build:ro
@@ -74,7 +73,6 @@ services:
         <<: *build-proxy-args
         APP_SUBPATH: ${APP_SUBPATH-/demo-simantik}
     image: simantik-web
-    container_name: simantik-web
     restart: unless-stopped
     ports:
       - '${APP_PORT:-7001}:80'
@@ -88,7 +86,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 20s
+      start_period: 10s
     networks:
       - simantik
 
@@ -96,10 +94,9 @@ services:
     security_opt:
       - no-new-privileges:true
     image: simantik-app
-    container_name: simantik-queue
     restart: unless-stopped
     env_file: .env
-    command: ['php', 'artisan', 'queue:work', '--sleep=3', '--tries=3', '--max-time=3600']
+    command: ['php', 'artisan', 'queue:work', '--sleep=3', '--tries=3', '--timeout=120']
     volumes:
       - app_storage:/var/www/html/storage
       - ./.env:/var/www/html/.env:ro

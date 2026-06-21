@@ -55,16 +55,18 @@ Global (`web` group): `LoadUserPermissions`, `AuditRequestActivity`.
 
 - Pola **dashboard-skrining**: `mysql` + `app` (PHP-FPM) + `web` (Nginx) + `queue`.
 - Port host: **7001** (`APP_PORT` → service `web`).
-- Subpath: `APP_SUBPATH=/demo-simantik` — Nginx container strip prefix sebelum ke Laravel.
-- Proxy korporat: `10.15.3.20:80` (build args + runtime env).
-- Panduan: `deploy/README.md`, template: `.env.production.example`.
-- Setelah deploy: `docker compose exec app php artisan db:seed --force`.
+- Subpath: `APP_SUBPATH=/demo-simantik` — host nginx strip prefix; container nginx juga rewrite untuk akses `:7001/demo-simantik/`.
+- Proxy: `HTTP_PROXY` / `HTTPS_PROXY` di `.env` (lihat `deploy/lib/env-proxy.sh`).
+- Instalasi VM: `./deploy/install.sh`; update: `./deploy/update-production.sh`.
+- Frontend build: `./deploy/build-frontend.sh` (Node container, mount host).
+- Panduan: `deploy/README.md`; template: `.env.production.example`, `.env.docker.local.example`.
 
 ## Key env vars
 
 - `FEATURE_PRINT_TEMPLATES` — enable print template admin module (default `false`).
 - `SUPERADMIN_BYPASS_SCOPE` — admin bypasses unit scope (default `true`).
-- `APP_ROUTE_PREFIX` — subpath deployment support.
+- `APP_SUBPATH` / `APP_USE_REQUEST_URL` / `APP_PORT` — subpath & URL mode (portal vs LAN).
+- `APP_ROUTE_PREFIX` — `false` di Docker (nginx strip subpath).
 - `SBBK_KOP_*` — letterhead for SBBK PDF output.
 - `OPENAI_API_KEY` — AI SDK.
 - `APP_URL` — used for route prefix auto-detection via `config/path.php`.

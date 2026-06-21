@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# SI-MANTIK — snippet post-deploy VM (migrate, permission, seed, cache)
-# Jalankan dari root proyek: ./deploy/vm-post-deploy.sh
+# SI-MANTIK — post-deploy (migrate, permission, seed, cache, key)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -51,6 +50,7 @@ run_cache() {
   echo "==> config:cache + view:clear"
   dc php artisan config:cache --no-interaction
   dc php artisan view:clear --no-interaction
+  docker compose exec -T app chown -R www-data:www-data bootstrap/cache storage 2>/dev/null || true
 }
 
 run_key() {
@@ -117,5 +117,6 @@ case "$ACTION" in
     ;;
 esac
 
+PORT="$(grep '^APP_PORT=' .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' || echo 7001)"
 echo ""
-echo "Selesai. Cek: curl -f http://127.0.0.1:\${APP_PORT:-7001}/demo-simantik/up"
+echo "Selesai. Cek: curl -f http://127.0.0.1:${PORT}/up"

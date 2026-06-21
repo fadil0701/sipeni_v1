@@ -13,12 +13,12 @@ bootstrap/cache/*
 .env.local
 .env.backup
 !.env.production.example
+!.env.docker.local.example
 tests
 phpunit.xml
 *.md
 !deploy/README.md
-sneat-1.0.0
-scripts
-storage/app/temp/*
 agent-transcripts
 terminals
+storage/app/temp/*
+sneat-1.0.0

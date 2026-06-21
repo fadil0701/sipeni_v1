@@ -1,0 +1,4 @@
+[Service]
+Environment="HTTP_PROXY=http://PROXY_HOST:PORT"
+Environment="HTTPS_PROXY=http://PROXY_HOST:PORT"
+Environment="NO_PROXY=localhost,127.0.0.1,mysql,.local,10.0.0.0/8"

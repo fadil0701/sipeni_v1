@@ -1,5 +1,4 @@
 # syntax=docker/dockerfile:1.4
-# SI-MANTIK — pola sama dashboard-skrining: vendor → frontend → app (php-fpm) → web (nginx)
 
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
@@ -40,7 +39,6 @@ RUN composer install \
     --optimize-autoloader
 
 COPY . .
-# Tanpa --no-scripts: post-autoload-dump menjalankan permission:sync-routes (butuh DB).
 RUN composer dump-autoload --optimize --no-scripts
 
 FROM node:22-bookworm-slim AS frontend
@@ -63,7 +61,6 @@ RUN --mount=type=cache,target=/root/.npm \
 
 COPY vite.config.js ./
 COPY resources ./resources
-COPY public ./public
 RUN npm run build
 
 FROM php:8.3-fpm-bookworm AS app
@@ -79,7 +76,7 @@ ENV HTTP_PROXY=${HTTP_PROXY} \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     default-mysql-client \
-    curl \
+    gnupg \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     libpng-dev \
