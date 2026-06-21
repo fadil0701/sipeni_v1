@@ -24,6 +24,8 @@ if ! php artisan migrate --force --no-interaction; then
     exit 1
 fi
 
+php artisan permission:sync-routes --force --no-interaction 2>/dev/null || true
+
 php artisan config:cache --no-interaction
 
 if [ "${VIEW_CLEAR_ON_BOOT:-1}" = "1" ]; then

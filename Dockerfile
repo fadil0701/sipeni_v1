@@ -40,7 +40,8 @@ RUN composer install \
     --optimize-autoloader
 
 COPY . .
-RUN composer dump-autoload --optimize
+# Tanpa --no-scripts: post-autoload-dump menjalankan permission:sync-routes (butuh DB).
+RUN composer dump-autoload --optimize --no-scripts
 
 FROM node:22-bookworm-slim AS frontend
 ARG HTTP_PROXY
