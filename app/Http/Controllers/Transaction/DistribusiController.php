@@ -184,7 +184,7 @@ class DistribusiController extends Controller
         if (! $template) {
             return redirect()
                 ->route('transaction.distribusi.show', $id)
-                ->with('info', 'Template cetak SBBK belum tersedia atau nonaktif. Buat template dengan key distribusi.sbbk di Admin → Template Cetak, atau jalankan php artisan db:seed --class=SbbkPrintTemplateSeeder.');
+                ->with('info', 'Template cetak SBBK belum tersedia atau nonaktif. Buat template dengan key distribusi.sbbk di Admin → Template Cetak, atau jalankan --class=SbbkPrintTemplateSeeder.');
         }
 
         $html = PrintTemplateRenderer::render($template, SbbkPrintTemplateData::payload($distribusi));

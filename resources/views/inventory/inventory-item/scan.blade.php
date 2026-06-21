@@ -24,6 +24,7 @@
 </head>
 <body>
     <div class="card">
+        <h1>Pusat Pelayanan Kesehatan Pegawai Provinsi DKI Jakarta</h1>
         <h1>Rincian Barangan</h1>
 
         @if($error)
