@@ -54,10 +54,10 @@
                             </div>
                             @endif
 
-                            @if($user->pegawai && $user->pegawai->jabatan)
+                            @if($user->pegawai?->nama_jabatan)
                             <div>
                                 <label for="jabatan" class="block text-sm font-medium text-slate-700 mb-1">Jabatan</label>
-                                <input type="text" value="{{ $user->pegawai->jabatan->nama_jabatan ?? '-' }}" disabled
+                                <input type="text" value="{{ $user->pegawai->nama_jabatan }}" disabled
                                     class="w-full rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 text-sm text-slate-500 cursor-not-allowed">
                             </div>
                             @endif

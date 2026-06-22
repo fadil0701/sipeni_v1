@@ -89,7 +89,7 @@ class VerifyDataAfterMigration extends Command
         // 4. Test query performance
         $this->info('4. Testing query performance...');
         $start = microtime(true);
-        $testPermintaans = PermintaanBarang::with(['unitKerja.gudang', 'pemohon.jabatan'])->limit(10)->get();
+        $testPermintaans = PermintaanBarang::with(['unitKerja.gudang', 'pemohon.masterJabatan'])->limit(10)->get();
         $end = microtime(true);
         $duration = round(($end - $start) * 1000, 2);
         

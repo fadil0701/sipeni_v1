@@ -248,7 +248,7 @@ class PermintaanBarangController extends Controller
 
     public function show($id)
     {
-        $permintaan = PermintaanBarang::with(['unitKerja', 'pemohon.jabatan', 'detailPermintaan.dataBarang', 'detailPermintaan.satuan', 'approval'])
+        $permintaan = PermintaanBarang::with(['unitKerja', 'pemohon.masterJabatan', 'detailPermintaan.dataBarang', 'detailPermintaan.satuan', 'approval'])
             ->findOrFail($id);
         UserScope::assertCanAccessPermintaan(Auth::user(), $permintaan);
         $approvalHistory = $this->approvalService->history('PERMINTAAN_BARANG', (int) $permintaan->id_permintaan);

@@ -43,7 +43,7 @@
                     </option>
                 @endforeach
             </select>
-        </div>
+        </div> 
         <div class="w-full shrink-0 sm:min-w-[11rem] sm:w-44">
             <label for="has_user" class="mb-1 block text-sm font-medium text-gray-700">Status User</label>
             <select id="has_user" name="has_user" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -87,7 +87,7 @@
                             <div class="text-sm text-gray-900">{{ $pegawai->unitKerja->nama_unit_kerja ?? '-' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ $pegawai->jabatan->nama_jabatan ?? '-' }}</div>
+                            <div class="text-sm text-gray-900">{{ $pegawai->nama_jabatan ?? '-' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ $pegawai->email_pegawai ?? '-' }}</div>

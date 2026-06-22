@@ -57,7 +57,7 @@ class ServiceReportController extends Controller
             : null;
 
         $teknisiPegawais = MasterPegawai::query()
-            ->whereHas('jabatan', function ($q) {
+            ->whereHas('masterJabatan', function ($q) {
                 $q->whereRaw('LOWER(nama_jabatan) LIKE ?', ['%teknisi%']);
             })
             ->orderBy('nama_pegawai')
@@ -164,7 +164,7 @@ class ServiceReportController extends Controller
             ->with(['registerAset.inventory.dataBarang'])
             ->get();
         $teknisiPegawais = MasterPegawai::query()
-            ->whereHas('jabatan', function ($q) {
+            ->whereHas('masterJabatan', function ($q) {
                 $q->whereRaw('LOWER(nama_jabatan) LIKE ?', ['%teknisi%']);
             })
             ->orderBy('nama_pegawai')

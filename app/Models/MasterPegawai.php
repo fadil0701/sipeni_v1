@@ -36,7 +36,31 @@ class MasterPegawai extends Model
 
     public function jabatan(): BelongsTo
     {
+        return $this->masterJabatan();
+    }
+
+    public function masterJabatan(): BelongsTo
+    {
         return $this->belongsTo(MasterJabatan::class, 'id_jabatan', 'id_jabatan');
+    }
+
+    public function getNamaJabatanAttribute(): ?string
+    {
+        if ($this->relationLoaded('masterJabatan')) {
+            $nama = $this->getRelation('masterJabatan')?->nama_jabatan;
+            if (filled($nama)) {
+                return $nama;
+            }
+        } elseif ($this->id_jabatan) {
+            $nama = $this->masterJabatan()->value('nama_jabatan');
+            if (filled($nama)) {
+                return $nama;
+            }
+        }
+
+        $legacy = $this->attributes['jabatan'] ?? null;
+
+        return is_string($legacy) && $legacy !== '' ? $legacy : null;
     }
 
     public function user(): BelongsTo

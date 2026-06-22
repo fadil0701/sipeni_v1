@@ -9,18 +9,20 @@ use App\Models\MasterJabatan;
 use App\Models\MasterPegawai;
 use App\Models\MasterUnitKerja;
 use App\Models\User;
+use App\Support\Http\SafeUserMessage;
 use App\Support\SipeniPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class MasterPegawaiController extends Controller
 {
     public function index(Request $request)
     {
-        $query = MasterPegawai::with(['unitKerja', 'jabatan', 'user.roles']);
+        $query = MasterPegawai::with(['unitKerja', 'masterJabatan', 'user.roles']);
 
         if ($request->filled('unit_kerja')) {
             $query->where('id_unit_kerja', $request->unit_kerja);
@@ -97,6 +99,8 @@ class MasterPegawaiController extends Controller
             ]);
         }
 
+        $emailPegawai = $this->resolveEmailPegawai($validated, $option);
+
         DB::beginTransaction();
         try {
             MasterJabatan::findOrFail($validated['id_jabatan']);
@@ -114,6 +118,10 @@ class MasterPegawaiController extends Controller
                 $userId = (int) $validated['user_id'];
             }
 
+            $jabatanNama = MasterJabatan::query()
+                ->whereKey($validated['id_jabatan'])
+                ->value('nama_jabatan');
+
             MasterPegawai::create([
                 'nip_pegawai' => $validated['nip_pegawai'],
                 'nip' => $validated['nip_pegawai'],
@@ -122,8 +130,9 @@ class MasterPegawaiController extends Controller
                 'id_unit_kerja' => $validated['id_unit_kerja'],
                 'unit_kerja_id' => $validated['id_unit_kerja'],
                 'id_jabatan' => $validated['id_jabatan'],
-                'email_pegawai' => $validated['email_pegawai'] ?? null,
-                'email' => $validated['email_pegawai'] ?? null,
+                'jabatan' => $jabatanNama,
+                'email_pegawai' => $emailPegawai,
+                'email' => $emailPegawai,
                 'no_telp' => $validated['no_telp'] ?? null,
                 'user_id' => $userId,
                 'is_user' => $userId !== null,
@@ -141,15 +150,15 @@ class MasterPegawaiController extends Controller
                 ->with('success', $message);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error creating master pegawai: '.$e->getMessage());
+            Log::error('Error creating master pegawai: '.$e->getMessage(), ['exception' => $e]);
 
-            return back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan data: '.$e->getMessage());
+            return back()->withInput()->with('error', SafeUserMessage::fromThrowable($e, 'menyimpan data'));
         }
     }
 
     public function show(int|string $id)
     {
-        $pegawai = MasterPegawai::with(['unitKerja', 'jabatan', 'user.roles'])->findOrFail($id);
+        $pegawai = MasterPegawai::with(['unitKerja', 'masterJabatan', 'user.roles'])->findOrFail($id);
 
         return view('master-manajemen.master-pegawai.show', compact('pegawai'));
     }
@@ -202,6 +211,8 @@ class MasterPegawaiController extends Controller
             ]);
         }
 
+        $emailPegawai = $this->resolveEmailPegawai($validated, $option, $pegawai->user_id);
+
         DB::beginTransaction();
         try {
             MasterJabatan::findOrFail($validated['id_jabatan']);
@@ -233,6 +244,10 @@ class MasterPegawaiController extends Controller
                 $userId = (int) $validated['user_id'];
             }
 
+            $jabatanNama = MasterJabatan::query()
+                ->whereKey($validated['id_jabatan'])
+                ->value('nama_jabatan');
+
             $pegawai->update([
                 'nip_pegawai' => $validated['nip_pegawai'],
                 'nip' => $validated['nip_pegawai'],
@@ -241,8 +256,9 @@ class MasterPegawaiController extends Controller
                 'id_unit_kerja' => $validated['id_unit_kerja'],
                 'unit_kerja_id' => $validated['id_unit_kerja'],
                 'id_jabatan' => $validated['id_jabatan'],
-                'email_pegawai' => $validated['email_pegawai'] ?? null,
-                'email' => $validated['email_pegawai'] ?? null,
+                'jabatan' => $jabatanNama,
+                'email_pegawai' => $emailPegawai,
+                'email' => $emailPegawai,
                 'no_telp' => $validated['no_telp'] ?? null,
                 'user_id' => $userId,
                 'is_user' => $userId !== null,
@@ -271,9 +287,9 @@ class MasterPegawaiController extends Controller
                 ->with('success', $message);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error updating master pegawai: '.$e->getMessage());
+            Log::error('Error updating master pegawai: '.$e->getMessage(), ['exception' => $e]);
 
-            return back()->withInput()->with('error', 'Terjadi kesalahan saat memperbarui data: '.$e->getMessage());
+            return back()->withInput()->with('error', SafeUserMessage::fromThrowable($e, 'memperbarui data'));
         }
     }
 
@@ -295,10 +311,37 @@ class MasterPegawaiController extends Controller
                 ->with('success', 'Master Pegawai berhasil dihapus.');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error deleting master pegawai: '.$e->getMessage());
+            Log::error('Error deleting master pegawai: '.$e->getMessage(), ['exception' => $e]);
 
             return redirect()->route('master-manajemen.master-pegawai.index')
-                ->with('error', 'Terjadi kesalahan saat menghapus data: '.$e->getMessage());
+                ->with('error', SafeUserMessage::fromThrowable($e, 'menghapus data'));
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveEmailPegawai(array $validated, string $userOption, ?int $linkedUserId = null): string
+    {
+        $email = trim((string) ($validated['email_pegawai'] ?? ''));
+
+        if ($email === '' && $userOption === 'new') {
+            $email = trim((string) ($validated['user_email'] ?? ''));
+        }
+
+        if ($email === '' && $userOption === 'existing') {
+            $userId = (int) ($validated['user_id'] ?? $linkedUserId ?? 0);
+            if ($userId > 0) {
+                $email = trim((string) (User::query()->whereKey($userId)->value('email') ?? ''));
+            }
+        }
+
+        if ($email === '') {
+            throw ValidationException::withMessages([
+                'email_pegawai' => 'Email pegawai wajib diisi. Jika membuat akun baru, isi Email Pegawai atau Email User.',
+            ]);
+        }
+
+        return $email;
     }
 }

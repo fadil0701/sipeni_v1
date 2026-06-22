@@ -171,7 +171,7 @@ class KartuInventarisRuanganController extends Controller
 
     private function resolveKirSignatories(int $idUnitKerja): array
     {
-        $pegawaiQuery = MasterPegawai::query()->with(['user.roles', 'jabatan']);
+        $pegawaiQuery = MasterPegawai::query()->with(['user.roles', 'masterJabatan']);
 
         $kepalaPusat = (clone $pegawaiQuery)
             ->whereNotNull('user_id')
@@ -185,7 +185,7 @@ class KartuInventarisRuanganController extends Controller
 
         if (! $kepalaPusat) {
             $kepalaPusat = (clone $pegawaiQuery)
-                ->whereHas('jabatan', function ($q) {
+                ->whereHas('masterJabatan', function ($q) {
                     $q->where('nama_jabatan', 'like', '%kepala pusat%');
                 })
                 ->orderBy('nama_pegawai')
@@ -204,7 +204,7 @@ class KartuInventarisRuanganController extends Controller
 
         if (! $pengurusBarang) {
             $pengurusBarang = (clone $pegawaiQuery)
-                ->whereHas('jabatan', function ($q) {
+                ->whereHas('masterJabatan', function ($q) {
                     $q->where('nama_jabatan', 'like', '%pengurus barang%')
                         ->orWhere('nama_jabatan', 'like', '%admin gudang%');
                 })
@@ -226,7 +226,7 @@ class KartuInventarisRuanganController extends Controller
         if (! $kepalaUnit) {
             $kepalaUnit = (clone $pegawaiQuery)
                 ->where('id_unit_kerja', $idUnitKerja)
-                ->whereHas('jabatan', function ($q) {
+                ->whereHas('masterJabatan', function ($q) {
                     $q->where('nama_jabatan', 'like', '%kepala unit%');
                 })
                 ->orderBy('nama_pegawai')

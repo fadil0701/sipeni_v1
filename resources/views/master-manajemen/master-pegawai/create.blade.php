@@ -104,7 +104,9 @@
                     </div>
 
                     <div>
-                        <label for="email_pegawai" class="block text-sm font-medium text-gray-700 mb-2">Email Pegawai</label>
+                        <label for="email_pegawai" class="block text-sm font-medium text-gray-700 mb-2">
+                            Email Pegawai <span class="text-red-500">*</span>
+                        </label>
                         <input 
                             type="email" 
                             id="email_pegawai" 
@@ -113,6 +115,7 @@
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('email_pegawai') border-red-500 @enderror"
                             placeholder="email@example.com"
                         >
+                        <p class="mt-1 text-xs text-gray-500">Wajib diisi. Jika membuat akun baru, boleh sama dengan Email User.</p>
                         @error('email_pegawai')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -316,6 +319,28 @@ function toggleUserOptions() {
 document.querySelectorAll('input[name="user_option"]').forEach(el => {
     el.addEventListener('change', toggleUserOptions);
 });
+
+const emailPegawaiInput = document.getElementById('email_pegawai');
+const userEmailInput = document.getElementById('user_email');
+
+function syncEmailPegawaiFromUser() {
+    if (!emailPegawaiInput || !userEmailInput) {
+        return;
+    }
+
+    const userOption = document.querySelector('input[name="user_option"]:checked')?.value || 'none';
+    if (userOption !== 'new') {
+        return;
+    }
+
+    if (emailPegawaiInput.value.trim() === '' && userEmailInput.value.trim() !== '') {
+        emailPegawaiInput.value = userEmailInput.value.trim();
+    }
+}
+
+if (userEmailInput) {
+    userEmailInput.addEventListener('blur', syncEmailPegawaiFromUser);
+}
 
 toggleUserOptions();
 </script>

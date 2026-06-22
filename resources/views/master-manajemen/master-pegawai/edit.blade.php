@@ -105,7 +105,9 @@
                     </div>
 
                     <div>
-                        <label for="email_pegawai" class="block text-sm font-medium text-gray-700 mb-2">Email Pegawai</label>
+                        <label for="email_pegawai" class="block text-sm font-medium text-gray-700 mb-2">
+                            Email Pegawai <span class="text-red-500">*</span>
+                        </label>
                         <input 
                             type="email" 
                             id="email_pegawai" 

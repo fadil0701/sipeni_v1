@@ -24,11 +24,11 @@
 
     @if (session('error'))
         <div class="alert-box alert-error flex items-start justify-between gap-3" role="alert">
-            <div class="flex items-start gap-2">
+            <div class="flex min-w-0 flex-1 items-start gap-2">
                 <svg class="mt-0.5 h-5 w-5 shrink-0 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p class="text-sm font-medium">{{ session('error') }}</p>
+                <p class="min-w-0 flex-1 break-words text-sm font-medium leading-relaxed">{{ session('error') }}</p>
             </div>
             @if ($dismissible)
                 <button type="button" class="text-red-800/70 hover:text-red-900" data-dismiss-flash aria-label="Tutup">&times;</button>

@@ -71,14 +71,14 @@ class MasterLookupController extends Controller
         UserScope::assertCanAccessUnitKerjaData(request()->user(), $id_unit_kerja);
 
         $rows = MasterPegawai::query()
-            ->with(['unitKerja', 'jabatan'])
+            ->with(['unitKerja', 'masterJabatan'])
             ->where('id_unit_kerja', $id_unit_kerja)
             ->orderBy('nama_pegawai')
             ->get();
 
         return response()->json([
             'data' => $rows->map(static function ($p) {
-                $jabatan = $p->jabatan->nama_jabatan ?? '';
+                $jabatan = $p->nama_jabatan ?? '';
 
                 return [
                     'id' => (int) $p->id,

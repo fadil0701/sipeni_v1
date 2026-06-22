@@ -47,7 +47,7 @@
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500 mb-1">Jabatan</dt>
-                        <dd class="text-sm font-semibold text-gray-900">{{ $pegawai->jabatan->nama_jabatan ?? '-' }}</dd>
+                        <dd class="text-sm font-semibold text-gray-900">{{ $pegawai->nama_jabatan ?? '-' }}</dd>
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500 mb-1">Email Pegawai</dt>

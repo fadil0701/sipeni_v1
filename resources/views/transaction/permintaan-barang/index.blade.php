@@ -182,9 +182,9 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ $permintaan->pemohon->nama_pegawai ?? '-' }}</div>
-                            @if($permintaan->pemohon && $permintaan->pemohon->jabatan)
+                            @if($permintaan->pemohon?->nama_jabatan)
                                 <div class="text-xs text-gray-500">
-                                    ({{ $permintaan->pemohon->jabatan->nama_jabatan ?? '' }})
+                                    ({{ $permintaan->pemohon->nama_jabatan }})
                                 </div>
                             @endif
                         </td>

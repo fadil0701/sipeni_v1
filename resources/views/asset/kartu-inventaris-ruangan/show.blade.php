@@ -87,7 +87,7 @@
                         <dt class="text-sm font-medium text-gray-500">Penanggung Jawab</dt>
                         <dd class="mt-1 text-sm text-gray-900">
                             {{ $penanggungJawabKir?->nama_pegawai ?? '-' }}
-                            <span class="text-gray-500 text-xs block">{{ $penanggungJawabKir?->jabatan?->nama_jabatan ?? '-' }}</span>
+                            <span class="text-gray-500 text-xs block">{{ $penanggungJawabKir?->nama_jabatan ?? '-' }}</span>
                         </dd>
                     </div>
                     <div>

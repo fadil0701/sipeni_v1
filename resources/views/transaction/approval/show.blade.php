@@ -74,8 +74,8 @@
                             <dt class="text-sm font-medium text-gray-500 mb-1">Pemohon</dt>
                             <dd class="text-sm font-semibold text-gray-900">
                                 {{ $permintaan->pemohon->nama_pegawai ?? '-' }}
-                                @if($permintaan->pemohon && $permintaan->pemohon->jabatan)
-                                    <span class="text-gray-500">({{ $permintaan->pemohon->jabatan->nama_jabatan }})</span>
+                                @if($permintaan->pemohon?->nama_jabatan)
+                                    <span class="text-gray-500">({{ $permintaan->pemohon->nama_jabatan }})</span>
                                 @endif
                             </dd>
                         </div>
