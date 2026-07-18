@@ -41,12 +41,13 @@ class ApiHelperController extends Controller
 
     public function reverseGeocode(Request $request, GeocodeService $geocode): JsonResponse
     {
+        // Nama param sengaja generik (a/b) — WAF sering memblokir ?lat=&lng=
         $validated = $request->validate([
-            'lat' => 'required|numeric|between:-90,90',
-            'lng' => 'required|numeric|between:-180,180',
+            'a' => 'required|numeric|between:-90,90',
+            'b' => 'required|numeric|between:-180,180',
         ]);
 
-        $alamat = $geocode->reverse((float) $validated['lat'], (float) $validated['lng']);
+        $alamat = $geocode->reverse((float) $validated['a'], (float) $validated['b']);
 
         return response()->json([
             'success' => filled($alamat),

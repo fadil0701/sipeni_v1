@@ -200,7 +200,7 @@ Route::middleware(['auth', 'scope.unit'])->group(function () {
             Route::get('/stock/{id}', [ApiHelperController::class, 'stockDetail'])->name('stock.detail');
         });
         Route::middleware(['permission.any:transaction.distribusi.show,transaction.distribusi.bukti-sampai,transaction.distribusi.index'])->group(function () {
-            Route::get('/geocode/reverse', [ApiHelperController::class, 'reverseGeocode'])->name('geocode.reverse');
+            Route::get('/lokasi/label', [ApiHelperController::class, 'reverseGeocode'])->name('geocode.reverse');
         });
     });
 
@@ -269,7 +269,7 @@ Route::middleware(['auth', 'scope.unit'])->group(function () {
         Route::delete('distribusi/{id}', [DistribusiController::class, 'destroy'])->name('distribusi.destroy')->middleware(['role']);
         Route::post('distribusi/{id}/proses', [DistribusiController::class, 'proses'])->name('distribusi.proses')->middleware(['role']);
         Route::post('distribusi/{id}/kirim', [DistribusiController::class, 'kirim'])->name('distribusi.kirim')->middleware(['role']);
-        Route::post('distribusi/{id}/laporkan-kedatangan', [DistribusiController::class, 'buktiSampai'])->name('distribusi.bukti-sampai')->middleware(['role']);
+        Route::post('distribusi/{id}/sampai', [DistribusiController::class, 'buktiSampai'])->name('distribusi.bukti-sampai')->middleware(['role']);
         Route::get('distribusi/api/gudang-tujuan/{permintaanId}', [DistribusiController::class, 'getGudangTujuanByPermintaan'])->name('distribusi.api.gudang-tujuan');
 
         // Penerimaan

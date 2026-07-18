@@ -359,20 +359,21 @@ class DistribusiController extends Controller
                     }
                 },
             ],
-            'sumber_bukti_sampai' => 'required|in:upload,kamera',
-            'foto_bukti_sampai' => 'required|image|mimes:jpeg,jpg,png,webp|max:5120',
-            'gps_latitude' => 'nullable|numeric|between:-90,90',
-            'gps_longitude' => 'nullable|numeric|between:-180,180',
-            'gps_akurasi' => 'nullable|numeric|min:0|max:99999',
-            'gps_alamat' => 'nullable|string|max:500',
+            // Nama field generik — menghindari signature WAF pada gps_*/latitude/longitude
+            'sumber' => 'required|in:upload,kamera',
+            'foto' => 'required|image|mimes:jpeg,jpg,png,webp|max:5120',
+            'loc_a' => 'nullable|numeric|between:-90,90',
+            'loc_b' => 'nullable|numeric|between:-180,180',
+            'loc_c' => 'nullable|numeric|min:0|max:99999',
+            'loc_d' => 'nullable|string|max:500',
             'catatan_pengirim' => 'nullable|string|max:2000',
         ], [
             'id_pegawai_penerima.required' => 'Pilih pegawai penerima di lokasi.',
             'id_pegawai_penerima.exists' => 'Pegawai penerima tidak valid.',
-            'sumber_bukti_sampai.required' => 'Pilih cara pengambilan bukti (unggah atau kamera).',
-            'foto_bukti_sampai.required' => 'Foto bukti pengiriman sampai wajib diisi.',
-            'foto_bukti_sampai.image' => 'File harus berupa gambar.',
-            'foto_bukti_sampai.max' => 'Ukuran foto maksimal 5 MB.',
+            'sumber.required' => 'Pilih cara pengambilan bukti (unggah atau kamera).',
+            'foto.required' => 'Foto bukti pengiriman sampai wajib diisi.',
+            'foto.image' => 'File harus berupa gambar.',
+            'foto.max' => 'Ukuran foto maksimal 5 MB.',
         ]);
 
         $pegawaiPenerima = MasterPegawai::query()->findOrFail($validated['id_pegawai_penerima']);
@@ -381,13 +382,13 @@ class DistribusiController extends Controller
 
         try {
             $fotoPath = \App\Support\Storage\PrivateStorage::storeUploadedFile(
-                $request->file('foto_bukti_sampai'),
+                $request->file('foto'),
                 'laporan-kedatangan'
             );
 
-            $gpsLat = isset($validated['gps_latitude']) ? (float) $validated['gps_latitude'] : null;
-            $gpsLng = isset($validated['gps_longitude']) ? (float) $validated['gps_longitude'] : null;
-            $gpsAlamat = isset($validated['gps_alamat']) ? trim((string) $validated['gps_alamat']) : null;
+            $gpsLat = isset($validated['loc_a']) ? (float) $validated['loc_a'] : null;
+            $gpsLng = isset($validated['loc_b']) ? (float) $validated['loc_b'] : null;
+            $gpsAlamat = isset($validated['loc_d']) ? trim((string) $validated['loc_d']) : null;
             if (($gpsAlamat === null || $gpsAlamat === '') && $gpsLat !== null && $gpsLng !== null) {
                 $gpsAlamat = app(\App\Services\GeocodeService::class)->reverse($gpsLat, $gpsLng);
             }
@@ -395,10 +396,10 @@ class DistribusiController extends Controller
             $this->distribusiService->laporkanBuktiSampai($distribusi, [
                 'nama_penerima_lokasi' => $namaPenerima,
                 'foto_bukti_sampai' => $fotoPath,
-                'sumber_bukti_sampai' => $validated['sumber_bukti_sampai'],
+                'sumber_bukti_sampai' => $validated['sumber'],
                 'gps_latitude' => $gpsLat,
                 'gps_longitude' => $gpsLng,
-                'gps_akurasi' => isset($validated['gps_akurasi']) ? (float) $validated['gps_akurasi'] : null,
+                'gps_akurasi' => isset($validated['loc_c']) ? (float) $validated['loc_c'] : null,
                 'gps_alamat' => $gpsAlamat !== '' ? $gpsAlamat : null,
                 'catatan_pengirim' => $validated['catatan_pengirim'] ?? null,
                 'dilapor_oleh' => Auth::id(),

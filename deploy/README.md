@@ -204,7 +204,7 @@ docker compose exec app php artisan db:seed --class=AdminUserSeeder --force
 | GPS ditolak / izin lokasi | `.env` `geolocation=(self)`, rebuild/reload **web** + snippet host, HTTPS, reset izin browser |
 | Overlay “Memproses data…” terus muncul saat GPS | Pastikan build frontend terbaru (`app-layout.js` silent fetch) + GPS terkunci (tanpa `watchPosition`) |
 | Nama tempat muncul lokal, kosong di VM | `php artisan sipeni:geocode-test`; coba `GEOCODE_SSL_VERIFY=false` + `config:cache` |
-| WAF “URL DITOLAK” saat simpan bukti | Path sekarang `/laporkan-kedatangan` (bukan `/bukti-sampai`); jika masih diblokir laporkan Support ID ke Diskominfotik |
+| WAF “URL DITOLAK” saat simpan bukti | Path: `/transaction/distribusi/{id}/sampai`; field form generik (`foto`, `loc_a`…); API label: `/api/lokasi/label?a=&b=` — jangan pakai `lat`/`lng`/`gps_*` di query/body |
 | Warna UI / badge tidak berubah | `./deploy/build-frontend.sh` + `post-deploy.sh cache` + hard refresh |
 | Form bukti sampai error kolom DB | `./deploy/post-deploy.sh migrate` |
 

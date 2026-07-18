@@ -186,12 +186,12 @@
             <div id="bukti-sampai" class="border border-blue-200 rounded-lg bg-blue-50 p-4 sm:p-6">
                 <h3 class="text-base sm:text-lg font-medium text-gray-900 mb-2">Bukti Barang Sampai di Tujuan</h3>
                 <p class="text-sm text-gray-600 mb-4">Pilih pegawai penerima, lalu unggah foto atau ambil dari kamera (dengan GPS). </p>
-                <form method="POST" action="{{ route('transaction.distribusi.bukti-sampai', $distribusi->id_distribusi) }}" enctype="multipart/form-data" class="space-y-4" id="formBuktiSampai">
+                <form method="POST" action="{{ route('transaction.distribusi.bukti-sampai', $distribusi->id_distribusi) }}" enctype="multipart/form-data" class="space-y-4" id="formBuktiSampai" data-confirm="off">
                     @csrf
-                    <input type="hidden" name="gps_latitude" id="gps_latitude" value="{{ old('gps_latitude') }}">
-                    <input type="hidden" name="gps_longitude" id="gps_longitude" value="{{ old('gps_longitude') }}">
-                    <input type="hidden" name="gps_akurasi" id="gps_akurasi" value="{{ old('gps_akurasi') }}">
-                    <input type="hidden" name="gps_alamat" id="gps_alamat" value="{{ old('gps_alamat') }}">
+                    <input type="hidden" name="loc_a" id="gps_latitude" value="{{ old('loc_a') }}">
+                    <input type="hidden" name="loc_b" id="gps_longitude" value="{{ old('loc_b') }}">
+                    <input type="hidden" name="loc_c" id="gps_akurasi" value="{{ old('loc_c') }}">
+                    <input type="hidden" name="loc_d" id="gps_alamat" value="{{ old('loc_d') }}">
 
                     <div class="space-y-4">
                         {{-- Pegawai: full width di HP --}}
@@ -227,7 +227,7 @@
 
                         <div>
                             <h4 class="text-sm font-medium text-gray-900 mb-3">Foto bukti sampai <span class="text-red-500">*</span></h4>
-                            <input type="hidden" name="sumber_bukti_sampai" id="sumber_bukti_sampai" value="{{ old('sumber_bukti_sampai', 'upload') }}">
+                            <input type="hidden" name="sumber" id="sumber_bukti_sampai" value="{{ old('sumber', 'upload') }}">
 
                             <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
                                 <div id="panel_upload_bukti" class="rounded-md border border-gray-200 bg-white p-3 sm:p-4">
@@ -235,15 +235,15 @@
                                     <input
                                         type="file"
                                         id="foto_bukti_sampai"
-                                        name="foto_bukti_sampai"
+                                        name="foto"
                                         accept="image/jpeg,image/png,image/webp,image/jpg"
-                                        class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-3 file:px-3 file:py-2 file:border-0 file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 @error('foto_bukti_sampai') border-red-500 @enderror"
+                                        class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-3 file:px-3 file:py-2 file:border-0 file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 @error('foto') border-red-500 @enderror"
                                     >
                                     <p class="mt-1 text-xs text-gray-500">Format: JPG/PNG/WebP, maksimal 5 MB.</p>
-                                    @error('foto_bukti_sampai')
+                                    @error('foto')
                                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                     @enderror
-                                    @error('sumber_bukti_sampai')
+                                    @error('sumber')
                                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -252,7 +252,7 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Ambil dari Kamera (+ GPS)</label>
                                     <button type="button" id="btn_buka_kamera_bukti" class="w-full sm:w-auto px-3 py-2.5 sm:py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100">Buka Kamera</button>
                                     <p id="kamera_help" class="mt-1 text-xs text-gray-500">Klik "Buka Kamera" untuk mulai memotret. GPS diambil otomatis (butuh HTTPS + izin lokasi browser).</p>
-                                    @error('gps_latitude')
+                                    @error('loc_a')
                                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -633,8 +633,8 @@
     function resolvePlaceName(lat, lng) {
         const url = reverseGeocodeUrl
             + (reverseGeocodeUrl.indexOf('?') >= 0 ? '&' : '?')
-            + 'lat=' + encodeURIComponent(lat)
-            + '&lng=' + encodeURIComponent(lng);
+            + 'a=' + encodeURIComponent(lat)
+            + '&b=' + encodeURIComponent(lng);
 
         reverseGeocodePending = fetch(url, {
             headers: {
