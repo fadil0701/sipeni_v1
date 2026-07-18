@@ -709,10 +709,7 @@
         });
     }
 
-    /**
-     * Ambil GPS sekali lalu kunci.
-     * @param {{force?: boolean}} opts force=true untuk tombol "Ambil ulang lokasi"
-     */
+    // Ambil GPS sekali lalu kunci. opts.force=true hanya dari tombol "Ambil ulang lokasi".
     async function startGps(opts) {
         const force = !!(opts && opts.force);
 
