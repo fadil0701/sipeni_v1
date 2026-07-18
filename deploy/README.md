@@ -118,27 +118,27 @@ Kolom DB terkait (`penerimaan_barang`):
 
 ### Proxy untuk reverse geocode
 
-Container app harus bisa akses `https://nominatim.openstreetmap.org` lewat proxy korporat:
+Container app harus bisa akses internet outbound (Nominatim / Photon / BigDataCloud):
 
 ```env
 HTTP_PROXY=http://10.15.3.20:80
 HTTPS_PROXY=http://10.15.3.20:80
-NO_PROXY=localhost,127.0.0.1,mysql,.local,10.0.0.0/8
+NO_PROXY=localhost,127.0.0.1,mysql,.local
+# Jika proxy MITM memutus SSL:
+GEOCODE_SSL_VERIFY=false
 ```
 
-`GeocodeService` membaca proxy dari `config('sipeni.http.*')` (bukan hanya getenv PHP-FPM). Setelah ubah proxy: `config:cache`.
-
-Uji dari container:
+Uji:
 
 ```bash
-docker compose exec app php -r "
-require 'vendor/autoload.php';
-\$app = require 'bootstrap/app.php';
-\$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-echo (new App\Services\GeocodeService)->reverse(-6.175392, 106.827153) ?: 'GAGAL';
-echo PHP_EOL;
-"
+docker compose exec app php artisan config:cache
+docker compose exec app php artisan sipeni:geocode-test
 ```
+
+### WAF Diskominfotik
+
+POST ke path lama `/bukti-sampai` bisa ditolak WAF (“URL YANG DIMINTA DI TOLAK”).  
+Path form sekarang: `/transaction/distribusi/{id}/laporkan-kedatangan` (nama route permission tetap `transaction.distribusi.bukti-sampai`).
 
 ## Subpath & fetch AJAX
 

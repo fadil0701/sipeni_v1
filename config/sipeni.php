@@ -57,6 +57,8 @@ return [
         'http_proxy' => env('HTTP_PROXY'),
         'https_proxy' => env('HTTPS_PROXY'),
         'no_proxy' => env('NO_PROXY', 'localhost,127.0.0.1,mysql,.local'),
+        /** false jika proxy MITM memutus SSL ke Nominatim/Photon */
+        'geocode_ssl_verify' => filter_var(env('GEOCODE_SSL_VERIFY', true), FILTER_VALIDATE_BOOLEAN),
     ],
 
     /*

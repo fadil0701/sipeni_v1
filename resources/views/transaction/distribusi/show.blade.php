@@ -988,7 +988,7 @@
                 alert('Gagal mengambil foto dari kamera.');
                 return;
             }
-            const file = new File([blob], 'bukti-sampai-kamera-' + Date.now() + '.jpg', { type: 'image/jpeg' });
+            const file = new File([blob], 'foto-kedatangan-' + Date.now() + '.jpg', { type: 'image/jpeg' });
             assignFileToInput(file);
             setSumber('kamera');
             stopKamera();

@@ -65,13 +65,18 @@ class GeocodeServiceTest extends TestCase
     }
 
     #[Test]
-    public function proxy_options_empty_when_unset(): void
+    public function proxy_options_skip_cidr_entries(): void
     {
         config([
-            'sipeni.http.http_proxy' => null,
-            'sipeni.http.https_proxy' => null,
+            'sipeni.http.http_proxy' => 'http://10.15.3.20:80',
+            'sipeni.http.https_proxy' => 'http://10.15.3.20:80',
+            'sipeni.http.no_proxy' => 'localhost,127.0.0.1,10.0.0.0/8,mysql',
         ]);
 
-        $this->assertSame([], (new GeocodeService)->proxyOptions());
+        $options = (new GeocodeService)->proxyOptions();
+
+        $this->assertContains('localhost', $options['proxy']['no']);
+        $this->assertContains('mysql', $options['proxy']['no']);
+        $this->assertNotContains('10.0.0.0/8', $options['proxy']['no']);
     }
 }

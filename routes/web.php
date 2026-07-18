@@ -269,7 +269,7 @@ Route::middleware(['auth', 'scope.unit'])->group(function () {
         Route::delete('distribusi/{id}', [DistribusiController::class, 'destroy'])->name('distribusi.destroy')->middleware(['role']);
         Route::post('distribusi/{id}/proses', [DistribusiController::class, 'proses'])->name('distribusi.proses')->middleware(['role']);
         Route::post('distribusi/{id}/kirim', [DistribusiController::class, 'kirim'])->name('distribusi.kirim')->middleware(['role']);
-        Route::post('distribusi/{id}/bukti-sampai', [DistribusiController::class, 'buktiSampai'])->name('distribusi.bukti-sampai')->middleware(['role']);
+        Route::post('distribusi/{id}/laporkan-kedatangan', [DistribusiController::class, 'buktiSampai'])->name('distribusi.bukti-sampai')->middleware(['role']);
         Route::get('distribusi/api/gudang-tujuan/{permintaanId}', [DistribusiController::class, 'getGudangTujuanByPermintaan'])->name('distribusi.api.gudang-tujuan');
 
         // Penerimaan

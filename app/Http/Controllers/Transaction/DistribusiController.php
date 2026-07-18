@@ -382,7 +382,7 @@ class DistribusiController extends Controller
         try {
             $fotoPath = \App\Support\Storage\PrivateStorage::storeUploadedFile(
                 $request->file('foto_bukti_sampai'),
-                'bukti-sampai'
+                'laporan-kedatangan'
             );
 
             $gpsLat = isset($validated['gps_latitude']) ? (float) $validated['gps_latitude'] : null;
