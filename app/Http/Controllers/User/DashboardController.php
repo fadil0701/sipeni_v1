@@ -65,10 +65,11 @@ class DashboardController extends Controller
         ])
             ->count();
 
-        // Get latest requests - sesuai ERD: permintaan_barang dengan id_pemohon
-        $latestRequests = PermintaanBarang::latest('tanggal_permintaan')
-            ->limit(5)
+        $latestRequests = PermintaanBarang::query()
             ->with('pemohon')
+            ->orderByDesc('tanggal_permintaan')
+            ->orderByDesc('id_permintaan')
+            ->limit(10)
             ->get();
 
         // Tracking permintaan -> approval (tahap saat ini)
@@ -111,27 +112,25 @@ class DashboardController extends Controller
 
                 if ($isApprovalCompleted || $isRejected) {
                     $currentStep = max(1, $trackingStepMax);
-                    $progressPercent = 100;
                     $displayStatus = $isRejected ? 'DITOLAK' : 'DISETUJUI';
                     $displayStepName = $isRejected ? 'Ditolak' : 'Selesai Approval';
                 } else {
                     $currentStep = (int) ($current?->approvalFlow?->step_order ?? 1);
-                    $progressPercent = (int) round(($currentStep / max(1, $trackingStepMax)) * 100);
                     $displayStatus = $current?->status
                         ?? strtoupper((string) ($requestStatus->value ?? '-'));
                     $displayStepName = $current?->approvalFlow?->nama_step ?? 'Pengajuan';
                 }
 
                 return [
+                    'id' => $req->id_permintaan,
                     'no_permintaan' => $req->no_permintaan,
                     'pemohon' => $req->pemohon->nama_pegawai ?? '-',
                     'tanggal' => $req->tanggal_permintaan,
                     'status' => $displayStatus,
                     'step_name' => $displayStepName,
                     'step_order' => $currentStep,
-                    'progress_percent' => max(8, min(100, $progressPercent)),
                 ];
-            });
+            })->values();
         }
 
         // Get latest assets - sesuai ERD: inventory_item -> data_inventory -> master_data_barang
@@ -179,24 +178,19 @@ class DashboardController extends Controller
 
         $latestDistribusiTracking = TransaksiDistribusi::query()
             ->with(['gudangTujuan'])
-            ->latest('tanggal_distribusi')
-            ->limit(5)
+            ->orderByDesc('tanggal_distribusi')
+            ->orderByDesc('id_distribusi')
+            ->limit(10)
             ->get()
             ->map(function ($distribusi) {
                 $status = strtolower((string) ($distribusi->status_distribusi?->value ?? $distribusi->status_distribusi ?? 'draft'));
-                $progressPercent = match ($status) {
-                    'selesai' => 100,
-                    'dikirim' => 75,
-                    'diproses' => 50,
-                    default => 25,
-                };
 
                 return [
+                    'id' => $distribusi->id_distribusi,
                     'no_sbbk' => $distribusi->no_sbbk,
                     'tujuan' => $distribusi->gudangTujuan->nama_gudang ?? '-',
                     'tanggal' => $distribusi->tanggal_distribusi,
                     'status' => strtoupper($status),
-                    'progress_percent' => $progressPercent,
                 ];
             });
 

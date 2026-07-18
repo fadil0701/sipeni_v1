@@ -173,28 +173,30 @@
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
             <h2 class="text-lg font-semibold text-teal-900">Reminder tanggal kedaluwarsa</h2>
-            <p class="mt-1 text-sm text-teal-800">Farmasi &amp; persediaan ber-ED, cakupan gudang sama seperti <strong>Data Stok</strong> (termasuk gudang unit kerja).</p>
+            <!-- <p class="mt-1 text-sm text-teal-800">Farmasi &amp; persediaan ber-ED, cakupan gudang sama seperti <strong>Data Stok</strong> (termasuk gudang unit kerja).</p> -->
         </div>
         <a href="{{ route('inventory.farmasi-kedaluwarsa.index') }}" class="inline-flex items-center rounded-md bg-teal-700 px-3 py-2 text-xs font-medium text-white hover:bg-teal-800">
             Buka halaman lengkap
         </a>
     </div>
     <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div class="rounded-lg border border-red-200 bg-white p-3 shadow-sm">
-            <p class="text-[11px] font-medium text-red-800">Kritis + tinggi (≤30 hari)</p>
-            <p class="mt-1 text-xl font-semibold text-red-900">{{ number_format($farmasiExpiryKpi['kritis_tinggi'] ?? 0, 0, ',', '.') }}</p>
-        </div>
-        <div class="rounded-lg border border-amber-200 bg-white p-3 shadow-sm">
-            <p class="text-[11px] font-medium text-amber-900">≤90 hari (dari hari ini)</p>
-            <p class="mt-1 text-xl font-semibold text-amber-950">{{ number_format($farmasiExpiryKpi['le_90'] ?? 0, 0, ',', '.') }}</p>
-        </div>
-        <div class="rounded-lg border border-yellow-200 bg-white p-3 shadow-sm">
+        <div class="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
             <p class="text-[11px] font-medium text-yellow-900">91–180 hari</p>
             <p class="mt-1 text-xl font-semibold text-yellow-950">{{ number_format($farmasiExpiryKpi['range_91_180'] ?? 0, 0, ',', '.') }}</p>
         </div>
-        <div class="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-            <p class="text-[11px] font-medium text-gray-800">Sudah kedaluwarsa</p>
-            <p class="mt-1 text-xl font-semibold text-gray-900">{{ number_format($farmasiExpiryKpi['expired'] ?? 0, 0, ',', '.') }}</p>
+        <div class="rounded-lg border border-amber-200 bg-yellow-600 p-3 text-white">
+            <p class="text-[11px] font-medium text-white">Masa simpan ≤90 hari</p>
+            <p class="mt-1 text-xl font-semibold text-white">{{ number_format($farmasiExpiryKpi['le_90'] ?? 0, 0, ',', '.') }}</p>
+            <p class="mt-1 text-[10px] text-white/90">Dari hari ini hingga 90 hari ke depan</p>
+        </div>
+        <div class="rounded-lg border border-red-200 bg-red-600 p-3 text-white">
+            <p class="text-[11px] font-medium text-white">Kritis + tinggi (≤30 hari)</p>
+            <p class="mt-1 text-xl font-semibold text-white">{{ number_format($farmasiExpiryKpi['kritis_tinggi'] ?? 0, 0, ',', '.') }}</p>
+            <p class="mt-1 text-[10px] text-white/90">Termasuk sudah lewat tanggal</p>
+        </div>
+        <div class="rounded-lg border border-red-200 bg-black p-3 text-white">
+            <p class="text-[11px] font-medium text-white">Sudah kedaluwarsa (qty &gt; 0)</p>
+            <p class="mt-1 text-xl font-semibold text-white">{{ number_format($farmasiExpiryKpi['expired'] ?? 0, 0, ',', '.') }}</p>
         </div>
     </div>
     @if(($farmasiExpiryPreview ?? null) && $farmasiExpiryPreview->isNotEmpty())
@@ -242,7 +244,7 @@
             </div>
         </div>
     @else
-        <p class="mt-4 text-sm text-teal-800">Tidak ada batch dalam jendela pratinjau (hingga 180 hari) atau stok farmasi tidak memenuhi filter.</p>
+        <!-- <p class="mt-4 text-sm text-teal-800">Tidak ada batch dalam jendela pratinjau (hingga 180 hari) atau stok farmasi tidak memenuhi filter.</p> -->
     @endif
 </div>
 @endif
@@ -352,36 +354,30 @@
         </div>
     </div>
 
-    <div class="rounded-xl border border-gray-100 bg-white shadow-sm">
-        <div class="border-b border-gray-100 px-6 py-4">
+    <div class="rounded-xl border border-gray-100 bg-white shadow-sm flex flex-col min-h-0">
+        <div class="border-b border-gray-100 px-5 py-3">
             <h3 class="text-base font-semibold text-gray-900">Tracking Distribusi</h3>
-            <p class="text-sm text-gray-500">Pantau status distribusi barang terbaru</p>
+            <p class="text-xs text-gray-500">Status SBBK terbaru · geser untuk melihat lainnya</p>
         </div>
-        <div class="divide-y divide-gray-100">
+        <div class="max-h-72 overflow-y-auto overscroll-contain divide-y divide-gray-100">
             @forelse($latestDistribusiTracking as $item)
                 @php
                     $badgeColor = \App\Support\UiColor::badgeForStatus($item['status']);
                 @endphp
-                <div class="px-6 py-4">
-                    <div class="mb-2 flex items-start justify-between gap-3">
-                        <div>
-                            <p class="text-sm font-semibold text-gray-900">{{ $item['no_sbbk'] }}</p>
-                            <p class="text-xs text-gray-500">{{ $item['tujuan'] }} · {{ \Carbon\Carbon::parse($item['tanggal'])->format('d/m/Y') }}</p>
-                        </div>
-                        <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $badgeColor }}">
-                            {{ $item['status'] }}
-                        </span>
+                <a
+                    href="{{ route('transaction.distribusi.show', $item['id']) }}"
+                    class="flex items-center justify-between gap-3 px-5 py-2.5 hover:bg-gray-50 transition-colors"
+                >
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ $item['no_sbbk'] }}</p>
+                        <p class="text-xs text-gray-500 truncate">{{ $item['tujuan'] }} · {{ \Carbon\Carbon::parse($item['tanggal'])->format('d/m/Y') }}</p>
                     </div>
-                    <div class="mb-1 flex items-center justify-between text-xs">
-                        <span class="font-medium text-gray-600">Progress Distribusi</span>
-                        <span class="font-semibold text-gray-700">{{ $item['progress_percent'] }}%</span>
-                    </div>
-                    <div class="h-2 rounded-full bg-gray-100">
-                        <div class="h-2 rounded-full bg-blue-600 transition-all" style="width: {{ $item['progress_percent'] }}%"></div>
-                    </div>
-                </div>
+                    <span class="inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $badgeColor }}">
+                        {{ $item['status'] }}
+                    </span>
+                </a>
             @empty
-                <div class="px-6 py-8 text-center text-sm text-gray-500">
+                <div class="px-5 py-8 text-center text-sm text-gray-500">
                     Belum ada data tracking distribusi.
                 </div>
             @endforelse
@@ -402,38 +398,33 @@
 </div>
 
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-    <div class="xl:col-span-2 rounded-xl border border-gray-100 bg-white shadow-sm">
-        <div class="border-b border-gray-100 px-6 py-4">
-            <div>
-                <h3 class="text-base font-semibold text-gray-900">Tracking Permintaan - Approval</h3>
-                <p class="text-sm text-gray-500">Pantau posisi proses approval permintaan terbaru</p>
-            </div>
+    <div class="xl:col-span-2 rounded-xl border border-gray-100 bg-white shadow-sm flex flex-col min-h-0">
+        <div class="border-b border-gray-100 px-5 py-3">
+            <h3 class="text-base font-semibold text-gray-900">Tracking Permintaan — Approval</h3>
+            <p class="text-xs text-gray-500">Posisi approval terbaru · geser untuk melihat lainnya</p>
         </div>
-        <div class="divide-y divide-gray-100">
+        <div class="max-h-72 overflow-y-auto overscroll-contain divide-y divide-gray-100">
             @forelse($trackingItems as $item)
                 @php
                     $badgeColor = \App\Support\UiColor::badgeForStatus($item['status']);
                 @endphp
-                <div class="px-6 py-4">
-                    <div class="mb-2 flex items-start justify-between gap-3">
-                        <div>
-                            <p class="text-sm font-semibold text-gray-900">{{ $item['no_permintaan'] }}</p>
-                            <p class="text-xs text-gray-500">{{ $item['pemohon'] }} · {{ \Carbon\Carbon::parse($item['tanggal'])->format('d/m/Y') }}</p>
-                        </div>
-                        <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $badgeColor }}">
-                            {{ $item['status'] }}
-                        </span>
+                <a
+                    href="{{ route('transaction.permintaan-barang.show', $item['id']) }}"
+                    class="flex items-center justify-between gap-3 px-5 py-2.5 hover:bg-gray-50 transition-colors"
+                >
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ $item['no_permintaan'] }}</p>
+                        <p class="text-xs text-gray-500 truncate">
+                            {{ $item['pemohon'] }} · {{ \Carbon\Carbon::parse($item['tanggal'])->format('d/m/Y') }}
+                            · Step {{ $item['step_order'] }}/{{ $trackingStepMax }} — {{ $item['step_name'] }}
+                        </p>
                     </div>
-                    <div class="mb-1 flex items-center justify-between text-xs">
-                        <span class="font-medium text-gray-600">Step {{ $item['step_order'] }} / {{ $trackingStepMax }} - {{ $item['step_name'] }}</span>
-                        <span class="font-semibold text-gray-700">{{ $item['progress_percent'] }}%</span>
-                    </div>
-                    <div class="h-2 rounded-full bg-gray-100">
-                        <div class="h-2 rounded-full bg-blue-600 transition-all" style="width: {{ $item['progress_percent'] }}%"></div>
-                    </div>
-                </div>
+                    <span class="inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $badgeColor }}">
+                        {{ $item['status'] }}
+                    </span>
+                </a>
             @empty
-                <div class="px-6 py-8 text-center text-sm text-gray-500">
+                <div class="px-5 py-8 text-center text-sm text-gray-500">
                     Belum ada data tracking permintaan.
                 </div>
             @endforelse
@@ -455,7 +446,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                    @forelse($latestRequests as $request)
+                    @forelse($latestRequests->take(5) as $request)
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ $request->no_permintaan }}</td>
                         <td class="px-4 py-3 text-sm text-gray-700">{{ $request->pemohon->nama_pegawai ?? '-' }}</td>
