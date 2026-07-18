@@ -47,11 +47,12 @@ class InventoryItemController extends Controller
             PrivateStorage::delete($inventoryItem->foto_barang);
             $validated['foto_barang'] = PrivateStorage::storeUploadedFile($request->file('foto_barang_file'), 'foto-inventory-item');
         } elseif ($request->filled('foto_barang_capture')) {
-            $capture = (string) $request->input('foto_barang_capture');
-            if (preg_match('/^data:image\/(png|jpe?g);base64,(.+)$/i', $capture, $matches)) {
+            $capture = trim((string) $request->input('foto_barang_capture'));
+            if (preg_match('/^data:image\/(png|jpe?g);base64,/i', $capture, $matches)) {
                 $ext = strtolower($matches[1]) === 'jpeg' ? 'jpg' : strtolower($matches[1]);
-                $binary = base64_decode($matches[2], true);
-                if ($binary !== false) {
+                $commaPos = strpos($capture, ',');
+                $binary = $commaPos !== false ? base64_decode(substr($capture, $commaPos + 1), true) : false;
+                if ($binary !== false && $binary !== '') {
                     PrivateStorage::delete($inventoryItem->foto_barang);
                     $path = 'foto-inventory-item/'.uniqid('item_'.$inventoryItem->id_item.'_', true).'.'.$ext;
                     PrivateStorage::put($path, $binary);

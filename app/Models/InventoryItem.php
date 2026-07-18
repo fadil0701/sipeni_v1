@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
-use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
@@ -167,11 +166,17 @@ class InventoryItem extends Model
         }
 
         $rel = str_replace('\\', '/', ltrim($this->foto_barang, '/'));
-        if (! Storage::disk('public')->exists($rel)) {
-            return null;
+
+        // Upload baru ke disk private — dilayani lewat media.show
+        if (Storage::disk('local')->exists($rel)) {
+            return route('media.show', ['path' => $rel]);
         }
 
-        $base = rtrim(Request::getBaseUrl(), '/');
-        return ($base !== '' ? $base : '').'/storage/'.$rel;
+        // Legacy: file lama di public/storage
+        if (Storage::disk('public')->exists($rel)) {
+            return asset('storage/'.$rel);
+        }
+
+        return null;
     }
 }

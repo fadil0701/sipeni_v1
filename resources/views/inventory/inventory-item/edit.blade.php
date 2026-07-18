@@ -263,12 +263,16 @@
 
     capturePhotoBtn?.addEventListener('click', function () {
         if (!cameraStream) return;
+        const maxWidth = 1280;
+        const srcW = cameraPreview.videoWidth || 1280;
+        const srcH = cameraPreview.videoHeight || 720;
+        const scale = srcW > maxWidth ? (maxWidth / srcW) : 1;
         const canvas = document.createElement('canvas');
-        canvas.width = cameraPreview.videoWidth || 1280;
-        canvas.height = cameraPreview.videoHeight || 720;
+        canvas.width = Math.round(srcW * scale);
+        canvas.height = Math.round(srcH * scale);
         const ctx = canvas.getContext('2d');
         ctx.drawImage(cameraPreview, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         fotoCaptureInput.value = dataUrl;
         fotoPreview.src = dataUrl;
         fotoPreview.classList.remove('hidden');
