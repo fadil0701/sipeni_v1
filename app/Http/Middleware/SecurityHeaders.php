@@ -20,7 +20,7 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set(
             'Permissions-Policy',
-            (string) config('sipeni.security.permissions_policy', 'camera=(self), microphone=(), geolocation=()')
+            (string) config('sipeni.security.permissions_policy', 'camera=(self), microphone=(), geolocation=(self)')
         );
         $response->headers->set('X-XSS-Protection', '0');
 

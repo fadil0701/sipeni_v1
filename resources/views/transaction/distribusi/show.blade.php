@@ -250,7 +250,7 @@
                                 <div id="panel_kamera_bukti" class="rounded-md border border-gray-200 bg-white p-3 sm:p-4">
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Ambil dari Kamera (+ GPS)</label>
                                     <button type="button" id="btn_buka_kamera_bukti" class="w-full sm:w-auto px-3 py-2.5 sm:py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100">Buka Kamera</button>
-                                    <p id="kamera_help" class="mt-1 text-xs text-gray-500">Klik "Buka Kamera" untuk mulai memotret. GPS akan diambil otomatis.</p>
+                                    <p id="kamera_help" class="mt-1 text-xs text-gray-500">Klik "Buka Kamera" untuk mulai memotret. GPS diambil otomatis (butuh HTTPS + izin lokasi browser).</p>
                                     @error('gps_latitude')
                                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                     @enderror
