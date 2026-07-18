@@ -3,6 +3,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+# Pastikan skrip deploy bisa dijalankan (bit +x sering hilang setelah clone/pull Windows).
+chmod +x deploy/*.sh deploy/lib/*.sh 2>/dev/null || true
+
 # shellcheck source=lib/env-proxy.sh
 source "$ROOT/deploy/lib/env-proxy.sh"
 

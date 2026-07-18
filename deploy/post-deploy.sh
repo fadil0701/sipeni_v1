@@ -20,6 +20,7 @@ wait_for_app() {
   echo "==> Tunggu container app (php-fpm)..."
   for i in $(seq 1 90); do
     status="$(docker compose ps app --format '{{.State}}' 2>/dev/null || echo unknown)"
+    health="$(docker compose ps app --format '{{.Health}}' 2>/dev/null || echo '')"
 
     if [ "$status" = "restarting" ]; then
       if [ $((i % 5)) -eq 1 ]; then
@@ -30,7 +31,13 @@ wait_for_app() {
       continue
     fi
 
-    if docker compose exec -T app sh -c 'pgrep -f "php-fpm: master" >/dev/null 2>&1' 2>/dev/null; then
+    # Healthcheck Docker (healthy) sudah cukup — pgrep sering gagal di image minimal.
+    if [ "$health" = "healthy" ] && [ "$status" = "running" ]; then
+      echo "   App siap (healthy)."
+      return 0
+    fi
+
+    if docker compose exec -T app sh -c 'pgrep -f "php-fpm: master" >/dev/null 2>&1 || pgrep php-fpm >/dev/null 2>&1' 2>/dev/null; then
       echo "   App siap."
       return 0
     fi
