@@ -294,7 +294,7 @@ function loadDistribusiDetail(distribusiId) {
         return;
     }
 
-    fetch(`/api/distribusi/${distribusiId}/detail`)
+    fetch(`{{ route('api.distribusi.detail', ['id' => '__ID__']) }}`.replace('__ID__', encodeURIComponent(distribusiId)))
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');

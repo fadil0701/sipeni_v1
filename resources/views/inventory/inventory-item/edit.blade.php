@@ -313,7 +313,7 @@
         
         // Load ruangans based on selected gudang via AJAX
         if (gudangId) {
-            fetch(`/api/gudang/${gudangId}/ruangans`)
+            fetch(`{{ route('api.gudang.ruangans', ['id' => '__ID__']) }}`.replace('__ID__', encodeURIComponent(gudangId)))
                 .then(response => response.json())
                 .then(data => {
                     ruanganSelect.innerHTML = '<option value="">Pilih Ruangan (Opsional)</option>';

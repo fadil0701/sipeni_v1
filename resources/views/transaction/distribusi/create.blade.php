@@ -389,9 +389,14 @@ function loadPermintaanDetail(permintaanId) {
             console.error('Error loading gudang tujuan:', error);
         });
 
-    // Load detail permintaan
-    fetch(`/api/permintaan/${permintaanId}/detail`)
-        .then(response => response.json())
+    // Load detail permintaan (pakai route() agar subpath /demo-simantik ikut)
+    fetch(`{{ route('api.permintaan.detail', ['id' => '__ID__']) }}`.replace('__ID__', encodeURIComponent(permintaanId)))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Gagal memuat detail permintaan');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 let html = '<table class="min-w-full divide-y divide-gray-200">';
@@ -428,8 +433,13 @@ function loadInventoryFromGudang(gudangId) {
         return;
     }
 
-    fetch(`/api/gudang/${gudangId}/inventory`)
-        .then(response => response.json())
+    fetch(`{{ route('api.gudang.inventory', ['id' => '__ID__']) }}`.replace('__ID__', encodeURIComponent(gudangId)))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Gagal memuat inventory gudang');
+            }
+            return response.json();
+        })
         .then(data => {
             inventoryData = {};
             data.inventory.forEach(inv => {
@@ -543,8 +553,13 @@ function loadInventoryToSelect(selectElement, gudangId) {
         return;
     }
     
-    fetch(`/api/gudang/${gudangId}/inventory`)
-        .then(response => response.json())
+    fetch(`{{ route('api.gudang.inventory', ['id' => '__ID__']) }}`.replace('__ID__', encodeURIComponent(gudangId)))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Gagal memuat inventory gudang');
+            }
+            return response.json();
+        })
         .then(data => {
             selectElement.innerHTML = '<option value="">Pilih Inventory</option>';
             data.inventory.forEach(inv => {

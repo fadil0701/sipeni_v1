@@ -430,8 +430,13 @@ function loadInventoryFromGudang(gudangId) {
     const includeIds = getSelectedInventoryIds();
     const query = includeIds.length ? `?${new URLSearchParams(includeIds.map((id) => ['include_ids[]', String(id)])).toString()}` : '';
 
-    fetch(`/api/gudang/${gudangId}/inventory${query}`)
-        .then(response => response.json())
+    fetch(`{{ route('api.gudang.inventory', ['id' => '__ID__']) }}`.replace('__ID__', encodeURIComponent(gudangId)) + query)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Gagal memuat inventory gudang');
+            }
+            return response.json();
+        })
         .then(data => {
             inventoryData = {};
             data.inventory.forEach(inv => {
