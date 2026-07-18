@@ -304,8 +304,15 @@
                             </div>
 
                             <div id="gps_status_box" class="mt-3 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
-                                <span class="font-medium text-gray-800">Lokasi GPS:</span>
-                                <span id="gps_status_text" style="word-break: break-word; white-space: normal;">Belum diambil — akan diminta saat buka kamera / upload</span>
+                                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                                    <div>
+                                        <span class="font-medium text-gray-800">Lokasi GPS:</span>
+                                        <span id="gps_status_text" style="word-break: break-word; white-space: normal;">Belum diambil — akan diminta saat buka kamera / upload</span>
+                                    </div>
+                                    <button type="button" id="btn_ambil_gps" class="shrink-0 px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100">
+                                        Ambil lokasi
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -536,6 +543,7 @@
     const gpsLng = document.getElementById('gps_longitude');
     const gpsAcc = document.getElementById('gps_akurasi');
     const gpsStatusText = document.getElementById('gps_status_text');
+    const btnAmbilGps = document.getElementById('btn_ambil_gps');
     const panelPreviewKamera = document.getElementById('panel_preview_kamera');
     const panelHasil = document.getElementById('panel_hasil_bukti');
     const kameraVideo = document.getElementById('kameraVideo');
@@ -595,16 +603,50 @@
 
     function gpsErrorMessage(err) {
         if (!err) return 'lokasi gagal diambil';
-        if (err.code === 1) return 'izin lokasi ditolak — aktifkan lokasi di browser/Windows';
-        if (err.code === 2) return 'posisi tidak tersedia (laptop sering butuh Location Services Windows)';
-        if (err.code === 3) return 'waktu tunggu GPS habis';
+        if (err.code === 1) {
+            return 'izin lokasi ditolak — reset izin situs di browser, pastikan HTTPS, '
+                + 'dan SECURITY_PERMISSIONS_POLICY memakai geolocation=(self)';
+        }
+        if (err.code === 2) return 'posisi tidak tersedia (aktifkan Location Services OS)';
+        if (err.code === 3) return 'waktu tunggu GPS habis — coba lagi di tempat terbuka';
         return err.message || 'gagal mengambil lokasi';
+    }
+
+    function isGpsPolicyBlocked() {
+        try {
+            // Feature disabled by Permissions-Policy returns false in Chromium
+            if (typeof document.featurePolicy !== 'undefined'
+                && typeof document.featurePolicy.allowsFeature === 'function') {
+                return !document.featurePolicy.allowsFeature('geolocation');
+            }
+            if (typeof document.permissionsPolicy !== 'undefined'
+                && typeof document.permissionsPolicy.allowsFeature === 'function') {
+                return !document.permissionsPolicy.allowsFeature('geolocation');
+            }
+        } catch (e) {}
+        return false;
     }
 
     function requestPosition(options) {
         return new Promise(function (resolve, reject) {
             if (!navigator.geolocation) {
                 reject(new Error('Geolocation tidak didukung'));
+                return;
+            }
+            if (isGpsPolicyBlocked()) {
+                reject({
+                    code: 1,
+                    message: 'Permissions-Policy memblokir geolocation di header HTTP'
+                });
+                return;
+            }
+            if (!window.isSecureContext
+                && location.hostname !== 'localhost'
+                && location.hostname !== '127.0.0.1') {
+                reject({
+                    code: 1,
+                    message: 'Butuh HTTPS (secure context) untuk GPS'
+                });
                 return;
             }
             navigator.geolocation.getCurrentPosition(resolve, reject, options);
@@ -620,7 +662,7 @@
 
         if (gpsPending) return gpsPending;
 
-        if (gpsStatusText) gpsStatusText.textContent = 'Mengambil lokasi…';
+        if (gpsStatusText) gpsStatusText.textContent = 'Mengambil lokasi… izinkan jika browser meminta';
         if (kameraGpsLive) kameraGpsLive.textContent = 'GPS: mengambil lokasi…';
 
         gpsPending = (async function () {
@@ -628,18 +670,18 @@
                 // 1) Coba akurasi tinggi (HP)
                 const hi = await requestPosition({
                     enableHighAccuracy: true,
-                    timeout: 8000,
-                    maximumAge: 60000
+                    timeout: 12000,
+                    maximumAge: 30000
                 });
                 updateGpsUi(hi);
                 return lastGps;
             } catch (e1) {
                 try {
-                    // 2) Fallback akurasi rendah (laptop/Wi‑Fi/IP)
+                    // 2) Fallback akurasi rendah (laptop/Wi‑Fi)
                     const lo = await requestPosition({
                         enableHighAccuracy: false,
-                        timeout: 20000,
-                        maximumAge: 300000
+                        timeout: 25000,
+                        maximumAge: 120000
                     });
                     updateGpsUi(lo);
                     return lastGps;
@@ -658,11 +700,13 @@
         if (watchId !== null) {
             navigator.geolocation.clearWatch(watchId);
         }
-        watchId = navigator.geolocation.watchPosition(updateGpsUi, function () {}, {
-            enableHighAccuracy: false,
-            maximumAge: 15000,
-            timeout: 20000
-        });
+        if (!isGpsPolicyBlocked()) {
+            watchId = navigator.geolocation.watchPosition(updateGpsUi, function () {}, {
+                enableHighAccuracy: false,
+                maximumAge: 15000,
+                timeout: 20000
+            });
+        }
 
         return gpsPending;
     }
@@ -943,6 +987,10 @@
     btnAmbilFoto?.addEventListener('click', function (e) {
         e.preventDefault();
         ambilFotoDariKamera();
+    });
+    btnAmbilGps?.addEventListener('click', function (e) {
+        e.preventDefault();
+        startGps();
     });
 
     form?.addEventListener('submit', function (e) {

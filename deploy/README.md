@@ -46,11 +46,14 @@ git pull origin main
 
 1. `git pull` branch `main` (default `DEPLOY_BRANCH`)
 2. **Build frontend Vite** (`deploy/build-frontend.sh`) — wajib setelah perubahan CSS/Blade token warna
-3. `docker compose build app` + `up -d`
+3. `docker compose build app web` + `up -d` (nginx ikut di-rebuild — penting untuk header GPS)
 4. `migrate --force` (termasuk kolom bukti sampai / GPS / `hasil_verifikasi`)
 5. `permission:sync-routes` + `config:cache` + `view:clear`
 6. `verify-path.sh`
 
+**GPS bukti sampai:** pastikan di `.env` ada  
+`SECURITY_PERMISSIONS_POLICY="camera=(self), microphone=(), geolocation=(self)"`  
+(bukan `geolocation=()`), lalu `config:cache`, dan rebuild **web**. Akses lewat HTTPS.
 ### Catatan rilis (alur distribusi → penerimaan)
 
 Setelah pull, pastikan migrate sukses agar fitur baru aktif:

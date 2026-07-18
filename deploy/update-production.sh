@@ -35,7 +35,8 @@ chmod +x deploy/build-frontend.sh
 
 echo "==> Docker build & up"
 export DOCKER_BUILDKIT=1
-COMPOSE_PARALLEL_LIMIT=1 docker compose build app
+# Build app + web: nginx (Permissions-Policy / rewrite) ikut terbarui
+COMPOSE_PARALLEL_LIMIT=1 docker compose build app web
 docker compose up -d
 
 echo "==> Tunggu app stabil (entrypoint migrate)..."
