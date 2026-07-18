@@ -199,6 +199,9 @@ Route::middleware(['auth', 'scope.unit'])->group(function () {
         Route::middleware(['permission.any:inventory.data-stock.index,inventory.stock-adjustment.create,inventory.stock-adjustment.edit,inventory.data-inventory.index'])->group(function () {
             Route::get('/stock/{id}', [ApiHelperController::class, 'stockDetail'])->name('stock.detail');
         });
+        Route::middleware(['permission.any:transaction.distribusi.show,transaction.distribusi.bukti-sampai,transaction.distribusi.index'])->group(function () {
+            Route::get('/geocode/reverse', [ApiHelperController::class, 'reverseGeocode'])->name('geocode.reverse');
+        });
     });
 
     // Transaction

@@ -245,7 +245,7 @@ class DistribusiService
      * Pengirim melaporkan barang sudah sampai di tujuan (foto + nama penerima).
      * Setelah ini: distribusi → selesai, penerimaan → menunggu verifikasi klinik.
      *
-     * @param  array{nama_penerima_lokasi: string, foto_bukti_sampai: string, catatan_pengirim?: ?string, dilapor_oleh?: ?int, sumber_bukti_sampai?: ?string, gps_latitude?: ?float, gps_longitude?: ?float, gps_akurasi?: ?float}  $payload
+     * @param  array{nama_penerima_lokasi: string, foto_bukti_sampai: string, catatan_pengirim?: ?string, dilapor_oleh?: ?int, sumber_bukti_sampai?: ?string, gps_latitude?: ?float, gps_longitude?: ?float, gps_akurasi?: ?float, gps_alamat?: ?string}  $payload
      */
     public function laporkanBuktiSampai(TransaksiDistribusi $distribusi, array $payload): PenerimaanBarang
     {
@@ -276,6 +276,7 @@ class DistribusiService
                 'gps_latitude' => $payload['gps_latitude'] ?? null,
                 'gps_longitude' => $payload['gps_longitude'] ?? null,
                 'gps_akurasi' => $payload['gps_akurasi'] ?? null,
+                'gps_alamat' => $payload['gps_alamat'] ?? null,
                 'waktu_sampai' => now(),
                 'dilapor_oleh' => $payload['dilapor_oleh'] ?? null,
                 'catatan_pengirim' => $payload['catatan_pengirim'] ?? null,

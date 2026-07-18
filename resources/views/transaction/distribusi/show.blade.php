@@ -191,6 +191,7 @@
                     <input type="hidden" name="gps_latitude" id="gps_latitude" value="{{ old('gps_latitude') }}">
                     <input type="hidden" name="gps_longitude" id="gps_longitude" value="{{ old('gps_longitude') }}">
                     <input type="hidden" name="gps_akurasi" id="gps_akurasi" value="{{ old('gps_akurasi') }}">
+                    <input type="hidden" name="gps_alamat" id="gps_alamat" value="{{ old('gps_alamat') }}">
 
                     <div class="space-y-4">
                         {{-- Pegawai: full width di HP --}}
@@ -356,17 +357,22 @@
                         <dt class="text-sm font-medium text-gray-500 mb-1">Lokasi GPS</dt>
                         <dd class="text-sm font-semibold text-gray-900">
                             @if($penerimaanAktif->gps_latitude && $penerimaanAktif->gps_longitude)
-                                {{ number_format((float) $penerimaanAktif->gps_latitude, 6, '.', '') }},
-                                {{ number_format((float) $penerimaanAktif->gps_longitude, 6, '.', '') }}
-                                @if($penerimaanAktif->gps_akurasi)
-                                    <span class="text-xs font-normal text-gray-500">(±{{ number_format((float) $penerimaanAktif->gps_akurasi, 0) }} m)</span>
+                                @if(filled($penerimaanAktif->gps_alamat))
+                                    <div class="mb-1">{{ $penerimaanAktif->gps_alamat }}</div>
                                 @endif
-                                <a
-                                    href="https://www.google.com/maps?q={{ $penerimaanAktif->gps_latitude }},{{ $penerimaanAktif->gps_longitude }}"
-                                    target="_blank"
-                                    rel="noopener"
-                                    class="ml-2 text-sm font-medium text-blue-700 hover:text-blue-900"
-                                >Buka peta</a>
+                                <div class="text-xs font-normal text-gray-600">
+                                    {{ number_format((float) $penerimaanAktif->gps_latitude, 6, '.', '') }},
+                                    {{ number_format((float) $penerimaanAktif->gps_longitude, 6, '.', '') }}
+                                    @if($penerimaanAktif->gps_akurasi)
+                                        <span class="text-gray-500">(±{{ number_format((float) $penerimaanAktif->gps_akurasi, 0) }} m)</span>
+                                    @endif
+                                    <a
+                                        href="https://www.google.com/maps?q={{ $penerimaanAktif->gps_latitude }},{{ $penerimaanAktif->gps_longitude }}"
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="ml-2 text-sm font-medium text-blue-700 hover:text-blue-900"
+                                    >Buka peta</a>
+                                </div>
                             @else
                                 -
                             @endif
@@ -542,8 +548,11 @@
     const gpsLat = document.getElementById('gps_latitude');
     const gpsLng = document.getElementById('gps_longitude');
     const gpsAcc = document.getElementById('gps_akurasi');
+    const gpsAlamatInput = document.getElementById('gps_alamat');
     const gpsStatusText = document.getElementById('gps_status_text');
     const btnAmbilGps = document.getElementById('btn_ambil_gps');
+    const reverseGeocodeUrl = @json(route('api.geocode.reverse'));
+    let reverseGeocodePending = null;
     const panelPreviewKamera = document.getElementById('panel_preview_kamera');
     const panelHasil = document.getElementById('panel_hasil_bukti');
     const kameraVideo = document.getElementById('kameraVideo');
@@ -590,15 +599,56 @@
         lastGps = {
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
-            acc: pos.coords.accuracy || 0
+            acc: pos.coords.accuracy || 0,
+            alamat: lastGps && lastGps.alamat ? lastGps.alamat : null
         };
         if (gpsLat) gpsLat.value = String(lastGps.lat);
         if (gpsLng) gpsLng.value = String(lastGps.lng);
         if (gpsAcc) gpsAcc.value = String(lastGps.acc);
-        const text = lastGps.lat.toFixed(6) + ', ' + lastGps.lng.toFixed(6)
+        renderGpsStatus();
+        resolvePlaceName(lastGps.lat, lastGps.lng);
+    }
+
+    function renderGpsStatus() {
+        if (!lastGps) return;
+        const coord = lastGps.lat.toFixed(6) + ', ' + lastGps.lng.toFixed(6)
             + ' (±' + Math.round(lastGps.acc) + ' m)';
+        const text = lastGps.alamat
+            ? (lastGps.alamat + ' — ' + coord)
+            : coord;
         if (gpsStatusText) gpsStatusText.textContent = text;
-        if (kameraGpsLive) kameraGpsLive.textContent = 'GPS: ' + text;
+        if (kameraGpsLive) {
+            kameraGpsLive.textContent = lastGps.alamat
+                ? ('Lokasi: ' + lastGps.alamat)
+                : ('GPS: ' + coord);
+        }
+    }
+
+    function resolvePlaceName(lat, lng) {
+        if (reverseGeocodePending) {
+            // batalkan logika sederhana: biarkan request terbaru menang
+        }
+        const url = reverseGeocodeUrl
+            + (reverseGeocodeUrl.indexOf('?') >= 0 ? '&' : '?')
+            + 'lat=' + encodeURIComponent(lat)
+            + '&lng=' + encodeURIComponent(lng);
+
+        reverseGeocodePending = fetch(url, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        })
+            .then(function (res) { return res.ok ? res.json() : null; })
+            .then(function (data) {
+                if (!data || !data.success || !data.alamat) return;
+                if (!lastGps) return;
+                // Abaikan jika koordinat sudah berubah
+                if (Math.abs(lastGps.lat - lat) > 0.00001 || Math.abs(lastGps.lng - lng) > 0.00001) return;
+                lastGps.alamat = data.alamat;
+                if (gpsAlamatInput) gpsAlamatInput.value = data.alamat;
+                renderGpsStatus();
+            })
+            .catch(function () { /* nama tempat opsional */ })
+            .finally(function () { reverseGeocodePending = null; });
     }
 
     function gpsErrorMessage(err) {
@@ -857,6 +907,9 @@
             if (kameraHelp) kameraHelp.textContent = 'Menunggu lokasi GPS…';
             await startGps();
         }
+        if (reverseGeocodePending) {
+            try { await reverseGeocodePending; } catch (e) {}
+        }
 
         const srcW = kameraVideo.videoWidth || 720;
         const srcH = kameraVideo.videoHeight || 1280;
@@ -898,8 +951,14 @@
         let line1;
         let line2;
         if (lastGps) {
-            line1 = 'GPS: ' + lastGps.lat.toFixed(6) + ', ' + lastGps.lng.toFixed(6);
-            line2 = 'Akurasi ±' + Math.round(lastGps.acc) + ' m | ' + new Date().toLocaleString('id-ID');
+            if (lastGps.alamat) {
+                line1 = lastGps.alamat.length > 48 ? lastGps.alamat.slice(0, 45) + '…' : lastGps.alamat;
+                line2 = lastGps.lat.toFixed(5) + ', ' + lastGps.lng.toFixed(5)
+                    + ' (±' + Math.round(lastGps.acc) + ' m) | ' + new Date().toLocaleString('id-ID');
+            } else {
+                line1 = 'GPS: ' + lastGps.lat.toFixed(6) + ', ' + lastGps.lng.toFixed(6);
+                line2 = 'Akurasi ±' + Math.round(lastGps.acc) + ' m | ' + new Date().toLocaleString('id-ID');
+            }
         } else {
             line1 = 'GPS: tidak tersedia';
             line2 = 'Izinkan lokasi browser / Location Services | ' + new Date().toLocaleString('id-ID');

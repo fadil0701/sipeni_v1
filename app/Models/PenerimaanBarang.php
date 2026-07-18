@@ -28,6 +28,7 @@ class PenerimaanBarang extends Model
         'gps_latitude',
         'gps_longitude',
         'gps_akurasi',
+        'gps_alamat',
         'waktu_sampai',
         'dilapor_oleh',
         'catatan_pengirim',

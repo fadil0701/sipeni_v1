@@ -49,6 +49,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Outbound HTTP (proxy korporat) — dipakai GeocodeService dll.
+    | PHP-FPM sering tidak meneruskan getenv HTTP_PROXY, jadi baca via config.
+    |--------------------------------------------------------------------------
+    */
+    'http' => [
+        'http_proxy' => env('HTTP_PROXY'),
+        'https_proxy' => env('HTTPS_PROXY'),
+        'no_proxy' => env('NO_PROXY', 'localhost,127.0.0.1,mysql,.local'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Two-factor authentication (TOTP)
     |--------------------------------------------------------------------------
     */

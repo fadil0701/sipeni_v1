@@ -364,6 +364,7 @@ class DistribusiController extends Controller
             'gps_latitude' => 'nullable|numeric|between:-90,90',
             'gps_longitude' => 'nullable|numeric|between:-180,180',
             'gps_akurasi' => 'nullable|numeric|min:0|max:99999',
+            'gps_alamat' => 'nullable|string|max:500',
             'catatan_pengirim' => 'nullable|string|max:2000',
         ], [
             'id_pegawai_penerima.required' => 'Pilih pegawai penerima di lokasi.',
@@ -384,13 +385,21 @@ class DistribusiController extends Controller
                 'bukti-sampai'
             );
 
+            $gpsLat = isset($validated['gps_latitude']) ? (float) $validated['gps_latitude'] : null;
+            $gpsLng = isset($validated['gps_longitude']) ? (float) $validated['gps_longitude'] : null;
+            $gpsAlamat = isset($validated['gps_alamat']) ? trim((string) $validated['gps_alamat']) : null;
+            if (($gpsAlamat === null || $gpsAlamat === '') && $gpsLat !== null && $gpsLng !== null) {
+                $gpsAlamat = app(\App\Services\GeocodeService::class)->reverse($gpsLat, $gpsLng);
+            }
+
             $this->distribusiService->laporkanBuktiSampai($distribusi, [
                 'nama_penerima_lokasi' => $namaPenerima,
                 'foto_bukti_sampai' => $fotoPath,
                 'sumber_bukti_sampai' => $validated['sumber_bukti_sampai'],
-                'gps_latitude' => isset($validated['gps_latitude']) ? (float) $validated['gps_latitude'] : null,
-                'gps_longitude' => isset($validated['gps_longitude']) ? (float) $validated['gps_longitude'] : null,
+                'gps_latitude' => $gpsLat,
+                'gps_longitude' => $gpsLng,
                 'gps_akurasi' => isset($validated['gps_akurasi']) ? (float) $validated['gps_akurasi'] : null,
+                'gps_alamat' => $gpsAlamat !== '' ? $gpsAlamat : null,
                 'catatan_pengirim' => $validated['catatan_pengirim'] ?? null,
                 'dilapor_oleh' => Auth::id(),
             ]);

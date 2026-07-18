@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\DataStock;
 use App\Models\MasterGudang;
 use App\Models\MasterRuangan;
+use App\Services\GeocodeService;
 use App\Support\Rbac\UserScope;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ApiHelperController extends Controller
 {
@@ -34,6 +36,21 @@ class ApiHelperController extends Controller
             'qty_masuk' => $stock->qty_masuk,
             'qty_keluar' => $stock->qty_keluar,
             'qty_akhir' => $stock->qty_akhir,
+        ]);
+    }
+
+    public function reverseGeocode(Request $request, GeocodeService $geocode): JsonResponse
+    {
+        $validated = $request->validate([
+            'lat' => 'required|numeric|between:-90,90',
+            'lng' => 'required|numeric|between:-180,180',
+        ]);
+
+        $alamat = $geocode->reverse((float) $validated['lat'], (float) $validated['lng']);
+
+        return response()->json([
+            'success' => filled($alamat),
+            'alamat' => $alamat,
         ]);
     }
 }
