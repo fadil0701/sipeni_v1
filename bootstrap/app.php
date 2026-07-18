@@ -47,10 +47,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'feature.print-templates' => EnsurePrintTemplatesFeatureEnabled::class,
         ]);
 
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
         $middleware->web(append: [
             LoadUserPermissions::class,
             AuditRequestActivity::class,
-            \App\Http\Middleware\SecurityHeaders::class,
         ]);
     })
     ->withProviders([
