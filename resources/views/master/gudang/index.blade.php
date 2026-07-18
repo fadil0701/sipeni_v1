@@ -48,7 +48,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
-                                $jenisColor = $gudang->jenis_gudang == 'PUSAT' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800';
+                                $jenisColor = $gudang->jenis_gudang == 'PUSAT' ? 'bg-blue-100 text-blue-900' : 'bg-green-100 text-green-900';
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $jenisColor }}">
                                 {{ $gudang->jenis_gudang }}
@@ -56,7 +56,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @if($gudang->jenis_gudang == 'PUSAT' && $gudang->kategori_gudang)
-                                <span class="px-2 py-1 text-xs font-medium rounded-full {{ $gudang->kategori_gudang == 'ASET' ? 'bg-blue-100 text-blue-800' : ($gudang->kategori_gudang == 'PERSEDIAAN' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800') }}">
+                                <span class="px-2 py-1 text-xs font-medium rounded-full {{ $gudang->kategori_gudang == 'ASET' ? 'bg-blue-100 text-blue-900' : ($gudang->kategori_gudang == 'PERSEDIAAN' ? 'bg-green-100 text-green-900' : 'bg-blue-100 text-blue-900') }}">
                                     {{ $gudang->kategori_gudang }}
                                 </span>
                             @else
@@ -66,7 +66,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex items-center justify-end space-x-3">
                                 <a href="{{ route('master.gudang.show', $gudang->id_gudang) }}" class="text-blue-600 hover:text-blue-900 transition-colors">Detail</a>
-                                <a href="{{ route('master.gudang.edit', $gudang->id_gudang) }}" class="text-indigo-600 hover:text-indigo-900 transition-colors">Edit</a>
+                                <a href="{{ route('master.gudang.edit', $gudang->id_gudang) }}" class="text-blue-700 hover:text-blue-900 transition-colors">Edit</a>
                                 <form action="{{ route('master.gudang.destroy', $gudang->id_gudang) }}" method="POST" class="inline">
                                     @csrf
                                     @method('DELETE')

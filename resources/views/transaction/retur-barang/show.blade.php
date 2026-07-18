@@ -98,13 +98,7 @@
                         <dt class="text-sm font-medium text-gray-500 mb-1">Status</dt>
                         <dd class="text-sm font-semibold text-gray-900">
                             @php
-                                $statusColor = match($retur->status_retur) {
-                                    'DRAFT' => 'bg-gray-100 text-gray-800',
-                                    'DIAJUKAN' => 'bg-yellow-100 text-yellow-800',
-                                    'DITERIMA' => 'bg-green-100 text-green-800',
-                                    'DITOLAK' => 'bg-red-100 text-red-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $statusColor = \App\Support\UiColor::badgeForStatus($retur->status_retur);
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">
                                 {{ $retur->status_retur }}

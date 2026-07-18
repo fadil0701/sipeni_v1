@@ -198,7 +198,7 @@
                     @endif
                     <div>
                         <p class="text-sm text-gray-600">Kode Register: <span class="font-semibold">{{ $inventoryItem->kode_register }}</span></p>
-                        <a href="{{ route('inventory.inventory-item.template-qr', $inventoryItem->id_item) }}" target="_blank" class="mt-2 inline-flex items-center px-3 py-2 border border-indigo-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+                        <a href="{{ route('inventory.inventory-item.template-qr', $inventoryItem->id_item) }}" target="_blank" class="mt-2 inline-flex items-center px-3 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-800 bg-blue-50 hover:bg-blue-100">
                             Lihat Template QR
                         </a>
                         @if($qrUrl)

@@ -191,15 +191,15 @@
         </div>
     </div>
 
-    <div class="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 shadow-sm">
+    <div class="rounded-xl border border-indigo-100 bg-blue-50/40 p-4 shadow-sm">
         <div class="flex flex-wrap items-center gap-3">
-            <input type="checkbox" name="use_block_builder" id="use_block_builder" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ $__useBuilderChecked ? 'checked' : '' }}>
+            <input type="checkbox" name="use_block_builder" id="use_block_builder" value="1" class="h-4 w-4 rounded border-gray-300 text-blue-700 focus:ring-blue-500" {{ $__useBuilderChecked ? 'checked' : '' }}>
             <label for="use_block_builder" class="text-sm font-semibold text-gray-900">Mode builder blok (drag &amp; drop urutan)</label>
         </div>
         <p class="mt-2 text-xs text-gray-600">Tiap blok berisi HTML; urutan diseret dengan ikon ⋮⋮. Saat disimpan, blok digabung menjadi <strong>Isi</strong> dan disimpan sebagai JSON untuk diedit lagi.</p>
         <div id="print-block-builder-panel" class="mt-4 space-y-3 {{ $__useBuilderChecked ? '' : 'hidden' }}">
             <ul id="print-builder-sortable" class="space-y-2"></ul>
-            <button type="button" id="print-builder-add" class="inline-flex items-center rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-indigo-800 hover:bg-indigo-50">+ Tambah blok</button>
+            <button type="button" id="print-builder-add" class="inline-flex items-center rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-medium text-blue-800 hover:bg-blue-50">+ Tambah blok</button>
             <input type="hidden" name="builder_blocks_json" id="builder_blocks_json" value="{{ old('builder_blocks_json', json_encode($printTemplate->builder_blocks ?? [], JSON_UNESCAPED_UNICODE)) }}">
             @error('builder_blocks_json')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
         </div>

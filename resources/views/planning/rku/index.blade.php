@@ -5,20 +5,28 @@
 <div class="mb-6 flex justify-between items-center">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Status Perencanaan (RKU)</h1>
-        <p class="mt-1 text-sm text-gray-600">Daftar Rencana Kebutuhan Unit (RKU) dan status pengajuan</p>
+        <p class="mt-1 text-sm text-gray-600">
+            @if(($viewType ?? 'aktif') === 'riwayat')
+                Riwayat RKU yang sudah disetujui atau ditolak
+            @else
+                Daftar Rencana Kebutuhan Unit (RKU) yang masih berjalan
+            @endif
+        </p>
     </div>
     <div class="flex items-center gap-2">
-        @can('create', \App\Models\RkuHeader::class)
-        <a 
-            href="{{ route('planning.rku.create') }}" 
-            class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-        >
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Buat RKU
-        </a>
-        @endcan
+        @if(($viewType ?? 'aktif') !== 'riwayat')
+            @can('create', \App\Models\RkuHeader::class)
+            <a 
+                href="{{ route('planning.rku.create') }}" 
+                class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Buat RKU
+            </a>
+            @endcan
+        @endif
         <a 
             href="{{ route('planning.rekap-tahunan') }}" 
             class="inline-flex items-center px-4 py-2.5 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -31,9 +39,31 @@
     </div>
 </div>
 
+<!-- Tab Navigation -->
+<div class="mb-6 bg-white shadow-sm rounded-lg border border-gray-200">
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex" aria-label="Tabs">
+            @php $currentViewType = $viewType ?? 'aktif'; @endphp
+            <a
+                href="{{ route('planning.rku.index', ['view_type' => 'aktif']) }}"
+                class="px-6 py-3 text-sm font-medium {{ $currentViewType === 'aktif' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+            >
+                Aktif
+            </a>
+            <a
+                href="{{ route('planning.rku.index', ['view_type' => 'riwayat']) }}"
+                class="px-6 py-3 text-sm font-medium {{ $currentViewType === 'riwayat' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+            >
+                Riwayat
+            </a>
+        </nav>
+    </div>
+</div>
+
 <!-- Filters -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
     <form method="GET" action="{{ route('planning.rku.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <input type="hidden" name="view_type" value="{{ $viewType ?? 'aktif' }}">
         <div>
             <label for="status_rku" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select 
@@ -42,11 +72,17 @@
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             >
                 <option value="">Semua Status</option>
-                <option value="DRAFT" {{ request('status_rku') == 'DRAFT' ? 'selected' : '' }}>Draft</option>
-                <option value="DIAJUKAN" {{ request('status_rku') == 'DIAJUKAN' ? 'selected' : '' }}>Diajukan</option>
-                <option value="DISETUJUI" {{ request('status_rku') == 'DISETUJUI' ? 'selected' : '' }}>Disetujui</option>
-                <option value="DITOLAK" {{ request('status_rku') == 'DITOLAK' ? 'selected' : '' }}>Ditolak</option>
-                <option value="DIPROSES" {{ request('status_rku') == 'DIPROSES' ? 'selected' : '' }}>Diproses</option>
+                @if(($viewType ?? 'aktif') === 'riwayat')
+                    <option value="DISETUJUI" {{ request('status_rku') == 'DISETUJUI' ? 'selected' : '' }}>Disetujui</option>
+                    <option value="DITOLAK" {{ request('status_rku') == 'DITOLAK' ? 'selected' : '' }}>Ditolak</option>
+                @else
+                    <option value="DRAFT" {{ request('status_rku') == 'DRAFT' ? 'selected' : '' }}>Draft</option>
+                    <option value="DIAJUKAN" {{ request('status_rku') == 'DIAJUKAN' ? 'selected' : '' }}>Diajukan</option>
+                    <option value="DIPROSES" {{ request('status_rku') == 'DIPROSES' ? 'selected' : '' }}>Diproses</option>
+                    <option value="REVIEW_KASUBAG_TU" {{ request('status_rku') == 'REVIEW_KASUBAG_TU' ? 'selected' : '' }}>Review Kasubbag TU</option>
+                    <option value="REVIEW_KEPALA_PUSAT" {{ request('status_rku') == 'REVIEW_KEPALA_PUSAT' ? 'selected' : '' }}>Review Kepala Pusat</option>
+                    <option value="REVISION_REQUIRED" {{ request('status_rku') == 'REVISION_REQUIRED' ? 'selected' : '' }}>Perlu Revisi</option>
+                @endif
             </select>
         </div>
         <div>
@@ -83,7 +119,7 @@
                 Filter
             </button>
             <a 
-                href="{{ route('planning.rku.index') }}" 
+                href="{{ route('planning.rku.index', ['view_type' => $viewType ?? 'aktif']) }}" 
                 class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
                 Reset
@@ -140,14 +176,7 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                         @php
-                            $statusColors = [
-                                'DRAFT' => 'bg-gray-100 text-gray-800',
-                                'DIAJUKAN' => 'bg-yellow-100 text-yellow-800',
-                                'DISETUJUI' => 'bg-green-100 text-green-800',
-                                'DITOLAK' => 'bg-red-100 text-red-800',
-                                'DIPROSES' => 'bg-blue-100 text-blue-800',
-                            ];
-                            $color = $statusColors[$rku->status_rku] ?? 'bg-gray-100 text-gray-800';
+                            $color = \App\Support\UiColor::badgeForStatus($rku->status_rku);
                         @endphp
                         <span class="px-2 py-1 text-xs font-medium rounded-full {{ $color }}">{{ $rku->status_rku }}</span>
                     </td>
@@ -162,7 +191,13 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data RKU</h3>
-                        <p class="mt-1 text-sm text-gray-500">Belum ada Rencana Kebutuhan Unit (RKU) yang terdaftar.</p>
+                        <p class="mt-1 text-sm text-gray-500">
+                            @if(($viewType ?? 'aktif') === 'riwayat')
+                                Belum ada RKU yang disetujui atau ditolak.
+                            @else
+                                Belum ada RKU aktif yang terdaftar.
+                            @endif
+                        </p>
                     </td>
                 </tr>
                 @endforelse

@@ -11,6 +11,7 @@ use App\Models\MasterPegawai;
 use App\Models\PenerimaanBarang;
 use App\Models\PermintaanBarang;
 use App\Models\TransaksiDistribusi;
+use App\Services\AppNotificationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -26,7 +27,7 @@ class DistribusiService
         return DB::transaction(function () use ($validated): TransaksiDistribusi {
             $distribusi = TransaksiDistribusi::create([
                 'no_sbbk' => $this->generateNoSbbk($validated['tanggal_distribusi']),
-                'id_permintaan' => $validated['id_permintaan'],
+                'id_permintaan' => $validated['id_permintaan'] ?? null,
                 'tanggal_distribusi' => $validated['tanggal_distribusi'],
                 'id_gudang_asal' => $validated['id_gudang_asal'],
                 'id_gudang_tujuan' => $validated['id_gudang_tujuan'],
@@ -37,9 +38,11 @@ class DistribusiService
 
             $this->syncDetails($distribusi, $validated['detail']);
 
-            $permintaan = PermintaanBarang::find($validated['id_permintaan']);
-            if ($permintaan) {
-                $this->permintaanBarangStatus->setStatus($permintaan, PermintaanBarangStatus::ProsesDistribusi);
+            if (! empty($validated['id_permintaan'])) {
+                $permintaan = PermintaanBarang::find($validated['id_permintaan']);
+                if ($permintaan) {
+                    $this->permintaanBarangStatus->setStatus($permintaan, PermintaanBarangStatus::ProsesDistribusi);
+                }
             }
 
             return $distribusi;
@@ -119,7 +122,7 @@ class DistribusiService
             }
 
             $this->createAutoPenerimaan($distribusi);
-            $distribusi->update(['status_distribusi' => DistribusiStatus::Selesai]);
+            // Status tetap dikirim sampai pengirim laporkan bukti sampai (foto + nama penerima).
 
             if ($distribusi->id_permintaan) {
                 $permintaan = PermintaanBarang::find($distribusi->id_permintaan);
@@ -223,8 +226,8 @@ class DistribusiService
             'id_unit_kerja' => $unitKerjaId,
             'id_pegawai_penerima' => $pegawaiPenerimaId,
             'tanggal_penerimaan' => $tanggal,
-            'status_penerimaan' => 'MENUNGGU_VERIFIKASI',
-            'keterangan' => 'Dibuat otomatis setelah pengiriman distribusi. Menunggu verifikasi barang di unit penerima.',
+            'status_penerimaan' => 'MENUNGGU_BUKTI_SAMPAI',
+            'keterangan' => 'Dibuat otomatis setelah pengiriman. Menunggu bukti sampai dari pengirim (foto + nama penerima).',
         ]);
 
         foreach ($distribusi->detailDistribusi as $detail) {
@@ -236,8 +239,56 @@ class DistribusiService
                 'keterangan' => null,
             ]);
         }
+    }
 
-        AppNotificationService::notifyPenerimaanAwaitingVerification($penerimaan->fresh());
+    /**
+     * Pengirim melaporkan barang sudah sampai di tujuan (foto + nama penerima).
+     * Setelah ini: distribusi → selesai, penerimaan → menunggu verifikasi klinik.
+     *
+     * @param  array{nama_penerima_lokasi: string, foto_bukti_sampai: string, catatan_pengirim?: ?string, dilapor_oleh?: ?int, sumber_bukti_sampai?: ?string, gps_latitude?: ?float, gps_longitude?: ?float, gps_akurasi?: ?float}  $payload
+     */
+    public function laporkanBuktiSampai(TransaksiDistribusi $distribusi, array $payload): PenerimaanBarang
+    {
+        return DB::transaction(function () use ($distribusi, $payload): PenerimaanBarang {
+            $distribusi->loadMissing('penerimaanBarang');
+
+            if ($distribusi->status_distribusi !== DistribusiStatus::Dikirim) {
+                throw new \RuntimeException('Bukti sampai hanya dapat diisi untuk distribusi berstatus dikirim.');
+            }
+
+            $penerimaan = $distribusi->penerimaanBarang()
+                ->whereIn('status_penerimaan', ['MENUNGGU_BUKTI_SAMPAI', 'MENUNGGU_VERIFIKASI'])
+                ->latest('id_penerimaan')
+                ->first();
+
+            if (! $penerimaan) {
+                throw new \RuntimeException('Data penerimaan untuk distribusi ini belum tersedia.');
+            }
+
+            if ($penerimaan->status_penerimaan !== 'MENUNGGU_BUKTI_SAMPAI' && filled($penerimaan->foto_bukti_sampai)) {
+                throw new \RuntimeException('Bukti sampai sudah dilaporkan sebelumnya.');
+            }
+
+            $penerimaan->update([
+                'nama_penerima_lokasi' => $payload['nama_penerima_lokasi'],
+                'foto_bukti_sampai' => $payload['foto_bukti_sampai'],
+                'sumber_bukti_sampai' => $payload['sumber_bukti_sampai'] ?? 'upload',
+                'gps_latitude' => $payload['gps_latitude'] ?? null,
+                'gps_longitude' => $payload['gps_longitude'] ?? null,
+                'gps_akurasi' => $payload['gps_akurasi'] ?? null,
+                'waktu_sampai' => now(),
+                'dilapor_oleh' => $payload['dilapor_oleh'] ?? null,
+                'catatan_pengirim' => $payload['catatan_pengirim'] ?? null,
+                'status_penerimaan' => 'MENUNGGU_VERIFIKASI',
+                'keterangan' => 'Bukti sampai telah dilaporkan pengirim. Menunggu verifikasi barang di unit penerima.',
+            ]);
+
+            $distribusi->update(['status_distribusi' => DistribusiStatus::Selesai]);
+
+            AppNotificationService::notifyPenerimaanAwaitingVerification($penerimaan->fresh());
+
+            return $penerimaan->fresh();
+        });
     }
 
     private function generateNoPenerimaan(string $tanggalPenerimaan): string

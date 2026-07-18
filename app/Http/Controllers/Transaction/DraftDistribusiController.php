@@ -7,6 +7,7 @@ use App\Support\Rbac\UserScope;
 
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalLog;
+use App\Models\TransaksiDistribusi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -69,8 +70,9 @@ class DraftDistribusiController extends Controller
             $query->whereHas('approvalFlow.role', fn ($q) => $q->where('name', $roleName));
         }
 
+        // Perlu Diproses = belum ditindaklanjuti; Riwayat = hanya yang sudah selesai.
         if ($viewType === 'riwayat') {
-            $query->whereIn('status', ['DIPROSES', 'DIDISPOSISIKAN', 'DISETUJUI', 'DITOLAK']);
+            $query->where('status', 'SELESAI');
         } else {
             $query->where('status', 'MENUNGGU');
         }
@@ -148,8 +150,42 @@ class DraftDistribusiController extends Controller
             ->with('error', 'Gunakan modul Distribusi untuk membuat SPPB.');
     }
 
+    /**
+     * Riwayat "Lihat Detail" memakai id approval_log, bukan id_distribusi.
+     * Resolve SBBK terkait (permintaan + kategori gudang) lalu arahkan ke detail distribusi.
+     */
     public function show($id)
     {
-        return redirect()->route('transaction.distribusi.show', $id);
+        $approvalLog = ApprovalLog::with(['approvalFlow.role', 'permintaan'])
+            ->where('modul_approval', 'PERMINTAAN_BARANG')
+            ->findOrFail($id);
+
+        $permintaanId = (int) $approvalLog->id_referensi;
+        if ($permintaanId <= 0) {
+            abort(404, 'Permintaan terkait tidak ditemukan.');
+        }
+
+        $roleKategoriMap = [
+            'admin_gudang_aset' => 'ASET',
+            'admin_gudang_persediaan' => 'PERSEDIAAN',
+            'admin_gudang_farmasi' => 'FARMASI',
+        ];
+        $kategori = $roleKategoriMap[$approvalLog->approvalFlow?->role?->name] ?? null;
+
+        $distribusiQuery = TransaksiDistribusi::query()
+            ->where('id_permintaan', $permintaanId);
+
+        if ($kategori) {
+            $distribusiQuery->whereHas('gudangAsal', fn ($q) => $q->where('kategori_gudang', $kategori));
+        }
+
+        $distribusi = $distribusiQuery->latest('id_distribusi')->first();
+
+        if ($distribusi) {
+            return redirect()->route('transaction.distribusi.show', $distribusi->id_distribusi);
+        }
+
+        return redirect()->route('transaction.permintaan-barang.show', $permintaanId)
+            ->with('info', 'SBBK untuk disposisi ini belum ditemukan. Menampilkan detail permintaan.');
     }
 }

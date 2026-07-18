@@ -36,6 +36,7 @@
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             >
                 <option value="">Semua Status</option>
+                <option value="MENUNGGU_BUKTI_SAMPAI" {{ request('status') == 'MENUNGGU_BUKTI_SAMPAI' ? 'selected' : '' }}>Menunggu bukti sampai</option>
                 <option value="MENUNGGU_VERIFIKASI" {{ request('status') == 'MENUNGGU_VERIFIKASI' ? 'selected' : '' }}>Menunggu verifikasi</option>
                 <option value="DITERIMA" {{ request('status') == 'DITERIMA' ? 'selected' : '' }}>Diterima (sesuai)</option>
                 <option value="DITOLAK" {{ request('status') == 'DITOLAK' ? 'selected' : '' }}>Ditolak (tidak sesuai)</option>
@@ -101,18 +102,18 @@
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table
-            class="w-full min-w-[920px] table-fixed divide-y divide-gray-200"
+            class="w-full min-w-[980px] table-fixed divide-y divide-gray-200"
             @if($penerimaans instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $penerimaans->firstItem() }}" @endif
         >
             <colgroup>
                 <col style="width:3rem">
-                <col style="width:12%">
-                <col style="width:11%">
-                <col style="width:20%">
-                <col style="width:17%">
-                <col style="width:9%">
                 <col style="width:13%">
-                <col style="width:15%">
+                <col style="width:12%">
+                <col style="width:18%">
+                <col style="width:16%">
+                <col style="width:8%">
+                <col style="width:14%">
+                <col style="width:7.5rem">
             </colgroup>
             <thead class="bg-gray-50">
                 <tr>
@@ -151,13 +152,9 @@
                         </td>
                         <td class="px-3 py-3 align-top">
                             @php
-                                $statusColor = match($penerimaan->status_penerimaan) {
-                                    'MENUNGGU_VERIFIKASI' => 'bg-amber-100 text-amber-900',
-                                    'DITERIMA' => 'bg-green-100 text-green-800',
-                                    'DITOLAK' => 'bg-red-100 text-red-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $statusColor = \App\Support\UiColor::badgeForStatus($penerimaan->status_penerimaan);
                                 $statusLabel = match($penerimaan->status_penerimaan) {
+                                    'MENUNGGU_BUKTI_SAMPAI' => 'Menunggu bukti sampai',
                                     'MENUNGGU_VERIFIKASI' => 'Menunggu verifikasi',
                                     default => $penerimaan->status_penerimaan,
                                 };
@@ -166,57 +163,76 @@
                                 {{ $statusLabel }}
                             </span>
                         </td>
-                        <td class="px-3 py-3 text-right text-sm font-medium align-top">
+                        <td class="px-2 py-3 text-right align-middle whitespace-nowrap" style="width:7.5rem;max-width:7.5rem">
                             @php
                                 $user = auth()->user();
+                                $btnBase = 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1';
                             @endphp
-                            <div class="flex items-center justify-end space-x-2 flex-wrap gap-1">
-                                @if($penerimaan->status_penerimaan === 'MENUNGGU_VERIFIKASI' && (\App\Helpers\PermissionHelper::canAccess($user, 'transaction.penerimaan-barang.update') || \App\Helpers\PermissionHelper::canAccess($user, 'transaction.penerimaan-barang.store')))
+                            <div class="inline-flex items-center justify-end gap-1">
+                                @if($penerimaan->status_penerimaan === 'MENUNGGU_VERIFIKASI' && $penerimaan->hasBuktiSampai() && (\App\Helpers\PermissionHelper::canAccess($user, 'transaction.penerimaan-barang.update') || \App\Helpers\PermissionHelper::canAccess($user, 'transaction.penerimaan-barang.store')))
                                 <a
                                     href="{{ route('transaction.penerimaan-barang.show', $penerimaan->id_penerimaan) }}#verifikasi"
-                                    class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-amber-900 bg-amber-100 rounded-md hover:bg-amber-200 transition-colors"
+                                    class="{{ $btnBase }} text-amber-900 bg-amber-100 hover:bg-amber-200 focus:ring-amber-500"
                                     title="Verifikasi barang"
+                                    aria-label="Verifikasi barang"
                                 >
-                                    Verifikasi
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
                                 </a>
                                 @endif
-                                <a 
-                                    href="{{ route('transaction.penerimaan-barang.show', $penerimaan->id_penerimaan) }}" 
-                                    class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
-                                    title="Detail"
+                                @if($penerimaan->status_penerimaan === 'MENUNGGU_BUKTI_SAMPAI')
+                                <a
+                                    href="{{ route('transaction.distribusi.show', $penerimaan->id_distribusi) }}#bukti-sampai"
+                                    class="{{ $btnBase }} text-blue-800 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500"
+                                    title="Isi bukti sampai"
+                                    aria-label="Isi bukti sampai"
                                 >
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </a>
+                                @endif
+                                <a
+                                    href="{{ route('transaction.penerimaan-barang.show', $penerimaan->id_penerimaan) }}"
+                                    class="{{ $btnBase }} text-blue-800 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500"
+                                    title="Detail"
+                                    aria-label="Detail"
+                                >
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
-
                                 </a>
                                 @if($penerimaan->status_penerimaan === 'DITOLAK' && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.penerimaan-barang.edit'))
-                                <a 
-                                    href="{{ route('transaction.penerimaan-barang.edit', $penerimaan->id_penerimaan) }}" 
-                                    class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200 transition-colors"
+                                <a
+                                    href="{{ route('transaction.penerimaan-barang.edit', $penerimaan->id_penerimaan) }}"
+                                    class="{{ $btnBase }} text-blue-800 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500"
                                     title="Koreksi (penerimaan tidak sesuai)"
+                                    aria-label="Koreksi"
                                 >
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                 </a>
                                 @endif
                                 @if($penerimaan->status_penerimaan !== 'DITERIMA' && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.penerimaan-barang.destroy'))
-                                <form 
-                                    action="{{ route('transaction.penerimaan-barang.destroy', $penerimaan->id_penerimaan) }}" 
-                                    method="POST" 
-                                    class="inline" 
+                                <form
+                                    action="{{ route('transaction.penerimaan-barang.destroy', $penerimaan->id_penerimaan) }}"
+                                    method="POST"
+                                    class="inline-flex"
                                     data-confirm="Apakah Anda yakin ingin menghapus penerimaan ini?"
                                 >
                                     @csrf
                                     @method('DELETE')
-                                    <button 
-                                        type="submit" 
-                                        class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200 transition-colors"
+                                    <button
+                                        type="submit"
+                                        class="{{ $btnBase }} text-red-800 bg-red-100 hover:bg-red-200 focus:ring-red-500"
                                         title="Hapus"
+                                        aria-label="Hapus"
                                     >
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
                                     </button>

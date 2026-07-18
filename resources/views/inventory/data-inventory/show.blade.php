@@ -37,7 +37,7 @@
                     <div>
                         <dt class="text-sm font-medium text-gray-500 mb-1">Jenis Inventory</dt>
                         <dd class="text-sm font-semibold text-gray-900">
-                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $inventory->jenis_inventory == 'ASET' ? 'bg-blue-100 text-blue-800' : ($inventory->jenis_inventory == 'PERSEDIAAN' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800') }}">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $inventory->jenis_inventory == 'ASET' ? 'bg-blue-100 text-blue-900' : ($inventory->jenis_inventory == 'PERSEDIAAN' ? 'bg-green-100 text-green-900' : 'bg-blue-100 text-blue-900') }}">
                                 {{ $inventory->jenis_inventory }}
                             </span>
                         </dd>
@@ -82,7 +82,7 @@
                     <div>
                         <dt class="text-sm font-medium text-gray-500 mb-1">Status</dt>
                         <dd class="text-sm font-semibold text-gray-900">
-                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $inventory->status_inventory == 'AKTIF' ? 'bg-green-100 text-green-800' : ($inventory->status_inventory == 'DISTRIBUSI' ? 'bg-yellow-100 text-yellow-800' : ($inventory->status_inventory == 'HABIS' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800')) }}">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $inventory->status_inventory == 'AKTIF' ? 'bg-green-100 text-green-900' : ($inventory->status_inventory == 'DISTRIBUSI' ? 'bg-amber-100 text-amber-950' : ($inventory->status_inventory == 'HABIS' ? 'bg-red-100 text-red-900' : 'bg-gray-100 text-gray-800')) }}">
                                 {{ $inventory->status_inventory }}
                             </span>
                         </dd>
@@ -202,12 +202,12 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-900">
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $item->kondisi_item == 'BAIK' ? 'bg-green-100 text-green-800' : ($item->kondisi_item == 'RUSAK_RINGAN' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $item->kondisi_item == 'BAIK' ? 'bg-green-100 text-green-900' : ($item->kondisi_item == 'RUSAK_RINGAN' ? 'bg-amber-100 text-amber-950' : 'bg-red-100 text-red-900') }}">
                                         {{ $item->kondisi_item }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-900">
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $item->status_item == 'AKTIF' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800' }}">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $item->status_item == 'AKTIF' ? 'bg-blue-100 text-blue-900' : 'bg-gray-100 text-gray-800' }}">
                                         {{ $item->status_item }}
                                     </span>
                                 </td>

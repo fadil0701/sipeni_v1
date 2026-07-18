@@ -91,7 +91,7 @@
                                 @endphp
                                 @if(is_array($jenisPermintaan) && count($jenisPermintaan) > 0)
                                     @foreach($jenisPermintaan as $jenis)
-                                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $jenis == 'ASET' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }} mr-1">
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $jenis == 'ASET' ? 'bg-blue-100 text-blue-900' : 'bg-green-100 text-green-900' }} mr-1">
                                             {{ $jenis }}
                                         </span>
                                     @endforeach
@@ -216,14 +216,7 @@
                                 <div class="relative flex space-x-3">
                                     <div>
                                         @php
-                                            $statusIcon = match($hist->status) {
-                                                'MENUNGGU' => 'bg-yellow-100 text-yellow-800',
-                                                'DIKETAHUI' => 'bg-blue-100 text-blue-800',
-                                                'DIVERIFIKASI' => 'bg-purple-100 text-purple-800',
-                                                'DISETUJUI' => 'bg-green-100 text-green-800',
-                                                'DITOLAK' => 'bg-red-100 text-red-800',
-                                                default => 'bg-gray-100 text-gray-800',
-                                            };
+                                            $statusIcon = \App\Support\UiColor::badgeForStatus($hist->status);
                                         @endphp
                                         <span class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white {{ $statusIcon }}">
                                             @if($hist->status === 'DISETUJUI')
@@ -280,16 +273,7 @@
             Status: 
             @php
                 $statusToShow = $displayStatus ?? $approval->status;
-                $statusColor = match($statusToShow) {
-                    'MENUNGGU' => 'bg-yellow-100 text-yellow-800',
-                    'DIKETAHUI' => 'bg-blue-100 text-blue-800',
-                    'DIVERIFIKASI' => 'bg-purple-100 text-purple-800',
-                    'DISETUJUI' => 'bg-green-100 text-green-800',
-                    'DITOLAK' => 'bg-red-100 text-red-800',
-                    'DIDISPOSISIKAN' => 'bg-indigo-100 text-indigo-800',
-                    'DIPROSES' => 'bg-blue-100 text-blue-800',
-                    default => 'bg-gray-100 text-gray-800',
-                };
+                $statusColor = \App\Support\UiColor::badgeForStatus($statusToShow);
             @endphp
             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">
                 {{ $statusToShow }}

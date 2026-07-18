@@ -26,7 +26,7 @@
     @if(PermissionHelper::canAccess($user, 'inventory.data-inventory.import.index'))
     <a
         href="{{ route('inventory.data-inventory.import.index') }}"
-        class="inline-flex items-center px-4 py-2.5 border border-emerald-600 text-sm font-medium rounded-md text-emerald-700 bg-white hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
+        class="inline-flex items-center px-4 py-2.5 border border-emerald-600 text-sm font-medium rounded-md text-green-800 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
     >
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -167,9 +167,9 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
                                 $jenisColor = match($inventory->jenis_inventory) {
-                                    'ASET' => 'bg-blue-100 text-blue-800',
-                                    'PERSEDIAAN' => 'bg-green-100 text-green-800',
-                                    'FARMASI' => 'bg-purple-100 text-purple-800',
+                                    'ASET' => 'bg-blue-100 text-blue-900',
+                                    'PERSEDIAAN' => 'bg-green-100 text-green-900',
+                                    'FARMASI' => 'bg-blue-100 text-blue-900',
                                     default => 'bg-gray-100 text-gray-800',
                                 };
                             @endphp
@@ -197,12 +197,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
-                                $statusColor = match($inventory->status_inventory) {
-                                    'AKTIF' => 'bg-green-100 text-green-800',
-                                    'DISTRIBUSI' => 'bg-yellow-100 text-yellow-800',
-                                    'HABIS' => 'bg-red-100 text-red-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $statusColor = \App\Support\UiColor::badgeForStatus($inventory->status_inventory);
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">
                                 {{ $inventory->status_inventory }}
@@ -218,7 +213,7 @@
                                 </a>
                                 <a 
                                     href="{{ route('inventory.data-inventory.edit', $inventory->id_inventory) }}" 
-                                    class="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                    class="text-blue-700 hover:text-blue-900 transition-colors"
                                 >
                                     Edit
                                 </a>

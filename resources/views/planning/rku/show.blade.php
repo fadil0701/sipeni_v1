@@ -81,7 +81,7 @@ $statusLabel = \App\Models\RkuHeader::STATUSES[$rku->status_rku] ?? $rku->status
         @if($canReview)
         <form method="POST" action="{{ route('planning.rku.startReview', $rku->id_rku) }}" class="inline" data-confirm="Mulai review RKU?">
             @csrf
-            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                 {{ $availableTransitions['review']['label'] ?? 'Review' }}
             </button>
         </form>
@@ -259,17 +259,7 @@ $statusLabel = \App\Models\RkuHeader::STATUSES[$rku->status_rku] ?? $rku->status
                 <dt class="text-sm font-medium text-gray-500">Status</dt>
                 <dd class="mt-1">
                     @php
-                        $statusColors = [
-                            'DRAFT' => 'bg-gray-100 text-gray-800',
-                            'DIAJUKAN' => 'bg-yellow-100 text-yellow-800',
-                            'REVIEW_KASUBAG_TU' => 'bg-indigo-100 text-indigo-800',
-                            'REVIEW_KEPALA_PUSAT' => 'bg-purple-100 text-purple-800',
-                            'DISETUJUI' => 'bg-green-100 text-green-800',
-                            'DITOLAK' => 'bg-red-100 text-red-800',
-                            'REVISION_REQUIRED' => 'bg-amber-100 text-amber-800',
-                            'DIPROSES' => 'bg-blue-100 text-blue-800',
-                        ];
-                        $color = $statusColors[$rku->status_rku] ?? 'bg-gray-100 text-gray-800';
+                        $color = \App\Support\UiColor::badgeForStatus($rku->status_rku);
                     @endphp
                     <span class="px-2 py-1 text-xs font-medium rounded-full {{ $color }}">{{ $statusLabel }}</span>
                 </dd>

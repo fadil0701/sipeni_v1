@@ -24,8 +24,24 @@ class PeminjamanBarangController extends Controller
 {
     public function index(Request $request)
     {
+        $viewType = $request->query('view_type', 'aktif');
+        if (! in_array($viewType, ['aktif', 'riwayat'], true)) {
+            $viewType = 'aktif';
+        }
+
         $query = PeminjamanBarang::with(['unitPeminjam', 'unitPemilik', 'gudangPusat', 'pemohon'])
             ->latest('id_peminjaman');
+
+        $riwayatStatuses = [
+            PeminjamanBarang::STATUS_SELESAI,
+            PeminjamanBarang::STATUS_DITOLAK_KEPALA_UNIT_PEMILIK,
+            PeminjamanBarang::STATUS_DITOLAK_PENGURUS,
+        ];
+        if ($viewType === 'riwayat') {
+            $query->whereIn('status', $riwayatStatuses);
+        } else {
+            $query->whereNotIn('status', $riwayatStatuses);
+        }
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
@@ -59,7 +75,15 @@ class PeminjamanBarangController extends Controller
             ->all();
         $statusOptions = array_values(array_filter(
             $statusOrder,
-            static fn (string $status): bool => in_array($status, $existingStatuses, true)
+            static function (string $status) use ($existingStatuses, $viewType, $riwayatStatuses): bool {
+                if (! in_array($status, $existingStatuses, true)) {
+                    return false;
+                }
+
+                $isRiwayat = in_array($status, $riwayatStatuses, true);
+
+                return $viewType === 'riwayat' ? $isRiwayat : ! $isRiwayat;
+            }
         ));
 
         if ($request->filled('status') && !in_array((string) $request->string('status'), $statusOptions, true)) {
@@ -90,7 +114,7 @@ class PeminjamanBarangController extends Controller
                 ->count(),
         ];
 
-        return view('transaction.peminjaman-barang.index', compact('peminjamanList', 'statusOptions', 'statusLabels', 'tujuanLabels', 'summary'));
+        return view('transaction.peminjaman-barang.index', compact('peminjamanList', 'statusOptions', 'statusLabels', 'tujuanLabels', 'summary', 'viewType'));
     }
 
     public function create()

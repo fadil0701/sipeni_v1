@@ -8,6 +8,17 @@
         <h1 class="text-2xl font-bold text-gray-900">Data Distribusi Barang (SBBK)</h1>
         <p class="mt-1 text-sm text-gray-600">Monitoring transaksi distribusi barang antar gudang</p>
     </div>
+    @if(\App\Helpers\PermissionHelper::canAccess(auth()->user(), 'transaction.distribusi.create'))
+        <a
+            href="{{ route('transaction.distribusi.create') }}"
+            class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+        >
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Buat SBBK / Distribusi
+        </a>
+    @endif
 </div>
 
 <!-- Filters -->
@@ -140,13 +151,7 @@
                                     ? $distribusi->status_distribusi->value
                                     : $distribusi->status_distribusi;
 
-                                $statusColor = match($statusValue) {
-                                    'dikirim' => 'bg-blue-100 text-blue-800',
-                                    'selesai' => 'bg-green-100 text-green-800',
-                                    'diproses' => 'bg-indigo-100 text-indigo-800',
-                                    'draft' => 'bg-yellow-100 text-yellow-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $statusColor = \App\Support\UiColor::badgeForStatus($statusValue);
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">
                                 {{ $statusValue }}
@@ -166,6 +171,20 @@
                                     </svg>
                                 </a>
 
+                                @if($statusValue === 'draft')
+                                    <a
+                                        href="{{ route('transaction.distribusi.edit', ['id' => $distribusi->id_distribusi, 'intent' => 'proses']) }}"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-blue-800 bg-blue-100 hover:bg-blue-200 transition-colors"
+                                        title="Proses — isi pegawai pengirim"
+                                        aria-label="Proses"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                        Proses
+                                    </a>
+                                @endif
+
                                 @if(in_array($statusValue, ['draft', 'diproses'], true))
                                     <a 
                                         href="{{ route('transaction.distribusi.edit', $distribusi->id_distribusi) }}" 
@@ -180,7 +199,19 @@
                                 @endif
 
                                 @if($statusValue === 'diproses')
-                                    <form method="POST" action="{{ route('transaction.distribusi.kirim', $distribusi->id_distribusi) }}" class="inline" data-confirm="Kirim distribusi ini sekarang?" onsubmit="if (!{{ $distribusi->id_pegawai_pengirim ? 'true' : 'false' }}) { alert('Pilih pegawai pengirim terlebih dahulu pada menu Edit, lalu simpan.'); return false; } return true;">
+                                    @if(!$distribusi->id_pegawai_pengirim)
+                                        <a
+                                            href="{{ route('transaction.distribusi.edit', ['id' => $distribusi->id_distribusi, 'intent' => 'proses']) }}"
+                                            class="inline-flex items-center justify-center p-2 rounded-md text-blue-800 bg-blue-100 hover:bg-blue-200 transition-colors"
+                                            title="Isi pegawai pengirim"
+                                            aria-label="Isi pegawai pengirim"
+                                        >
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                        </a>
+                                    @else
+                                    <form method="POST" action="{{ route('transaction.distribusi.kirim', $distribusi->id_distribusi) }}" class="inline" data-confirm="Kirim distribusi ini sekarang?">
                                         @csrf
                                         <input type="hidden" name="kirim_from" value="index">
                                         <button 
@@ -194,6 +225,7 @@
                                             </svg>
                                         </button>
                                     </form>
+                                    @endif
                                 @endif
                             </div>
                         </td>

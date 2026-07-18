@@ -22,11 +22,24 @@ class PenerimaanBarang extends Model
         'tanggal_penerimaan',
         'status_penerimaan',
         'keterangan',
+        'nama_penerima_lokasi',
+        'foto_bukti_sampai',
+        'sumber_bukti_sampai',
+        'gps_latitude',
+        'gps_longitude',
+        'gps_akurasi',
+        'waktu_sampai',
+        'dilapor_oleh',
+        'catatan_pengirim',
     ];
 
     protected $casts = [
         'tanggal_penerimaan' => 'date',
+        'waktu_sampai' => 'datetime',
         'status_penerimaan' => 'string',
+        'gps_latitude' => 'float',
+        'gps_longitude' => 'float',
+        'gps_akurasi' => 'float',
     ];
 
     public function getRouteKeyName(): string
@@ -50,9 +63,24 @@ class PenerimaanBarang extends Model
         return $this->belongsTo(MasterPegawai::class, 'id_pegawai_penerima', 'id');
     }
 
+    public function dilaporOleh(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'dilapor_oleh');
+    }
+
     public function detailPenerimaan(): HasMany
     {
         return $this->hasMany(DetailPenerimaanBarang::class, 'id_penerimaan', 'id_penerimaan');
+    }
+
+    public function hasBuktiSampai(): bool
+    {
+        return filled($this->foto_bukti_sampai) && filled($this->nama_penerima_lokasi);
+    }
+
+    public function menungguBuktiSampai(): bool
+    {
+        return $this->status_penerimaan === 'MENUNGGU_BUKTI_SAMPAI';
     }
 
     public function returBarang(): HasMany

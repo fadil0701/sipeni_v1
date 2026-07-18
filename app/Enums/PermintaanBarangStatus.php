@@ -36,22 +36,15 @@ enum PermintaanBarangStatus: string
         };
     }
 
-    /** Tailwind badge classes for list/show views */
+    /** Tailwind badge classes for list/show views (semantic: App\Support\UiColor). */
     public function badgeClasses(): string
     {
-        return match ($this) {
-            self::Draft => 'bg-gray-100 text-gray-800',
-            self::Diajukan => 'bg-yellow-100 text-yellow-800',
-            self::Diverifikasi => 'bg-green-100 text-green-800',
-            self::Ditolak => 'bg-red-100 text-red-800',
-            self::MenungguPengadaan => 'bg-amber-100 text-amber-800',
-            self::ProsesPengadaan => 'bg-orange-100 text-orange-800',
-            self::BarangTersedia => 'bg-lime-100 text-lime-800',
-            self::ProsesDistribusi => 'bg-blue-100 text-blue-800',
-            self::Dikirim => 'bg-indigo-100 text-indigo-800',
-            self::Diterima => 'bg-teal-100 text-teal-800',
-            self::Selesai => 'bg-emerald-100 text-emerald-800',
-        };
+        return \App\Support\UiColor::badgeForStatus($this->value);
+    }
+
+    public function tone(): string
+    {
+        return \App\Support\UiColor::toneForStatus($this->value);
     }
 
     /**

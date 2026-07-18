@@ -42,7 +42,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex items-center justify-end space-x-3">
                                 <a href="{{ route('master-data.sumber-anggaran.show', $sumberAnggaran->id_anggaran) }}" class="text-blue-600 hover:text-blue-900 transition-colors">Detail</a>
-                                <a href="{{ route('master-data.sumber-anggaran.edit', $sumberAnggaran->id_anggaran) }}" class="text-indigo-600 hover:text-indigo-900 transition-colors">Edit</a>
+                                <a href="{{ route('master-data.sumber-anggaran.edit', $sumberAnggaran->id_anggaran) }}" class="text-blue-700 hover:text-blue-900 transition-colors">Edit</a>
                                 <form action="{{ route('master-data.sumber-anggaran.destroy', $sumberAnggaran->id_anggaran) }}" method="POST" class="inline" data-confirm="Apakah Anda yakin ingin menghapus data ini?">
                                     @csrf
                                     @method('DELETE')

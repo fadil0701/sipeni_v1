@@ -195,7 +195,7 @@
                                     $kategori = $stock->dataBarang->subjenisBarang->jenisBarang->kategoriBarang->nama_kategori_barang;
                                 }
                             @endphp
-                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-900">
                                 {{ $kategori }}
                             </span>
                         </td>

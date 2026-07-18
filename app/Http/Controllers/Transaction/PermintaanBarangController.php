@@ -34,6 +34,11 @@ class PermintaanBarangController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+        $viewType = $request->query('view_type', 'aktif');
+        if (! in_array($viewType, ['aktif', 'riwayat'], true)) {
+            $viewType = 'aktif';
+        }
+
         $query = PermintaanBarang::with([
             'unitKerja.gudang', // Load gudang unit melalui unit kerja
             'pemohon.jabatan', // Load jabatan pemohon
@@ -55,6 +60,19 @@ class PermintaanBarangController extends Controller
         } else {
             // Admin dan Admin Gudang melihat semua
             $unitKerjas = MasterUnitKerja::all();
+        }
+
+        // Tab Aktif: proses berjalan. Tab Riwayat: selesai / ditolak.
+        $riwayatStatuses = [
+            PermintaanBarangStatus::Selesai->value,
+            PermintaanBarangStatus::Ditolak->value,
+            'SELESAI',
+            'DITOLAK',
+        ];
+        if ($viewType === 'riwayat') {
+            $query->whereIn('status', $riwayatStatuses);
+        } else {
+            $query->whereNotIn('status', $riwayatStatuses);
         }
 
         // Filters
@@ -94,10 +112,21 @@ class PermintaanBarangController extends Controller
         $perPage = PaginationHelper::getPerPage($request, 10);
         $permintaans = $query->latest('tanggal_permintaan')->paginate($perPage)->appends($request->query());
 
+        $permintaanStatuses = $viewType === 'riwayat'
+            ? array_values(array_filter(
+                PermintaanBarangStatus::cases(),
+                fn (PermintaanBarangStatus $st) => in_array($st, [PermintaanBarangStatus::Selesai, PermintaanBarangStatus::Ditolak], true)
+            ))
+            : array_values(array_filter(
+                PermintaanBarangStatus::cases(),
+                fn (PermintaanBarangStatus $st) => ! in_array($st, [PermintaanBarangStatus::Selesai, PermintaanBarangStatus::Ditolak], true)
+            ));
+
         return view('transaction.permintaan-barang.index', [
             'permintaans' => $permintaans,
             'unitKerjas' => $unitKerjas,
-            'permintaanStatuses' => PermintaanBarangStatus::cases(),
+            'permintaanStatuses' => $permintaanStatuses,
+            'viewType' => $viewType,
         ]);
     }
 

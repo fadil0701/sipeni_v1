@@ -42,6 +42,27 @@ git pull origin main
 ./deploy/update-production.sh
 ```
 
+`update-production.sh` otomatis:
+
+1. `git pull` branch `main` (default `DEPLOY_BRANCH`)
+2. **Build frontend Vite** (`deploy/build-frontend.sh`) — wajib setelah perubahan CSS/Blade token warna
+3. `docker compose build app` + `up -d`
+4. `migrate --force` (termasuk kolom bukti sampai / GPS / `hasil_verifikasi`)
+5. `permission:sync-routes` + `config:cache` + `view:clear`
+6. `verify-path.sh`
+
+### Catatan rilis (alur distribusi → penerimaan)
+
+Setelah pull, pastikan migrate sukses agar fitur baru aktif:
+
+| Migrasi / area | Efek |
+|----------------|------|
+| Bukti sampai + GPS di `penerimaan_barang` | Setelah **Kirim**, status menunggu foto & nama penerima |
+| `hasil_verifikasi` di `detail_penerimaan_barang` | Verifikasi per-item (Sesuai / Tidak sesuai) di klinik |
+| Frontend build | Semantic color (`UiColor`) + utilitas `.ui-btn-*` / `.ui-badge-*` |
+
+Jika CSS lama masih tampil: hard refresh browser, atau jalankan ulang `./deploy/build-frontend.sh` lalu `./deploy/post-deploy.sh cache`.
+
 ## Script deploy
 
 | Script | Fungsi |
@@ -81,6 +102,8 @@ docker compose exec app php artisan db:seed --class=AdminUserSeeder --force
 | App restart loop | `docker compose logs app` — biasanya migrate gagal; isi `DB_PASSWORD` + `MYSQL_ROOT_PASSWORD` di `.env`. Jika volume MySQL baru dibuat dengan password kosong: `docker compose down -v` lalu `./deploy/install.sh` |
 | 404 di `:8081` | Tambahkan `include` snippet di vhost nginx |
 | Git dubious ownership | `git config --global --add safe.directory /var/www/html/simantik` |
+| Warna UI / badge tidak berubah setelah update | `./deploy/build-frontend.sh` lalu `./deploy/post-deploy.sh cache`; hard refresh browser |
+| Form bukti sampai / verifikasi error kolom DB | `./deploy/post-deploy.sh migrate` — cek log migrate jika gagal |
 
 ## Reset container (hapus database)
 

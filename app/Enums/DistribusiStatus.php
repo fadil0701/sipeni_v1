@@ -9,6 +9,26 @@ enum DistribusiStatus: string
     case Dikirim = 'dikirim';
     case Selesai = 'selesai';
 
+    public function label(): string
+    {
+        return match ($this) {
+            self::Draft => 'Draft',
+            self::Diproses => 'Diproses',
+            self::Dikirim => 'Dikirim',
+            self::Selesai => 'Selesai',
+        };
+    }
+
+    public function badgeClasses(): string
+    {
+        return \App\Support\UiColor::badgeForStatus($this->value);
+    }
+
+    public function tone(): string
+    {
+        return \App\Support\UiColor::toneForStatus($this->value);
+    }
+
     public static function fromLegacy(?string $value): self
     {
         $v = strtoupper(trim((string) $value));

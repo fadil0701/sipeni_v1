@@ -34,7 +34,7 @@
             <div>
                 <dt class="text-sm font-medium text-gray-500 mb-1">Jenis Gudang</dt>
                 <dd class="text-sm font-semibold text-gray-900">
-                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $gudang->jenis_gudang == 'PUSAT' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $gudang->jenis_gudang == 'PUSAT' ? 'bg-blue-100 text-blue-900' : 'bg-green-100 text-green-900' }}">
                         {{ $gudang->jenis_gudang }}
                     </span>
                 </dd>
@@ -43,7 +43,7 @@
             <div>
                 <dt class="text-sm font-medium text-gray-500 mb-1">Kategori Gudang</dt>
                 <dd class="text-sm font-semibold text-gray-900">
-                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $gudang->kategori_gudang == 'ASET' ? 'bg-blue-100 text-blue-800' : ($gudang->kategori_gudang == 'PERSEDIAAN' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800') }}">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $gudang->kategori_gudang == 'ASET' ? 'bg-blue-100 text-blue-900' : ($gudang->kategori_gudang == 'PERSEDIAAN' ? 'bg-green-100 text-green-900' : 'bg-blue-100 text-blue-900') }}">
                         {{ $gudang->kategori_gudang ?? '-' }}
                     </span>
                 </dd>

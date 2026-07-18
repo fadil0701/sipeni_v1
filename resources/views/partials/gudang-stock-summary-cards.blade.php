@@ -26,7 +26,7 @@
                             @endif
                         </div>
                         @if(!empty($g->jenis_gudang))
-                            <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ $g->jenis_gudang === 'PUSAT' ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-100 text-amber-800' }}">
+                            <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ $g->jenis_gudang === 'PUSAT' ? 'bg-blue-100 text-blue-900' : 'bg-amber-100 text-amber-950' }}">
                                 {{ $g->jenis_gudang === 'PUSAT' ? 'Pusat' : 'Unit' }}
                             </span>
                         @endif

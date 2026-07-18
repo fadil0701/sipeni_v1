@@ -5,22 +5,52 @@
 <div class="mb-6 flex justify-between items-center">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Permintaan Barang</h1>
-        <p class="mt-1 text-sm text-gray-600">Daftar semua permintaan barang dan aset</p>
+        <p class="mt-1 text-sm text-gray-600">
+            @if(($viewType ?? 'aktif') === 'riwayat')
+                Riwayat permintaan yang sudah selesai atau ditolak
+            @else
+                Daftar permintaan barang dan aset yang masih berjalan
+            @endif
+        </p>
     </div>
-    <a 
-        href="{{ route('transaction.permintaan-barang.create') }}" 
-        class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-    >
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Tambah Permintaan
-    </a>
+    @if(($viewType ?? 'aktif') !== 'riwayat')
+        <a 
+            href="{{ route('transaction.permintaan-barang.create') }}" 
+            class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+        >
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Tambah Permintaan
+        </a>
+    @endif
+</div>
+
+<!-- Tab Navigation -->
+<div class="mb-6 bg-white shadow-sm rounded-lg border border-gray-200">
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex" aria-label="Tabs">
+            @php $currentViewType = $viewType ?? 'aktif'; @endphp
+            <a
+                href="{{ route('transaction.permintaan-barang.index', ['view_type' => 'aktif']) }}"
+                class="px-6 py-3 text-sm font-medium {{ $currentViewType === 'aktif' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+            >
+                Aktif
+            </a>
+            <a
+                href="{{ route('transaction.permintaan-barang.index', ['view_type' => 'riwayat']) }}"
+                class="px-6 py-3 text-sm font-medium {{ $currentViewType === 'riwayat' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+            >
+                Riwayat
+            </a>
+        </nav>
+    </div>
 </div>
 
 <!-- Filters -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
     <form method="GET" action="{{ route('transaction.permintaan-barang.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <input type="hidden" name="view_type" value="{{ $viewType ?? 'aktif' }}">
         <div>
             <label for="unit_kerja" class="block text-sm font-medium text-gray-700 mb-1">Unit Kerja</label>
             <select 
@@ -168,7 +198,7 @@
                                     @endphp
                                     @if($gudangUnits->count() > 0)
                                         @foreach($gudangUnits as $gudang)
-                                            <span class="inline-block px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 mr-1">
+                                            <span class="inline-block px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-900 mr-1">
                                                 {{ $gudang->nama_gudang }}
                                             </span>
                                         @endforeach
@@ -197,7 +227,7 @@
                             @endphp
                             @if(is_array($jenisPermintaan) && count($jenisPermintaan) > 0)
                                 @foreach($jenisPermintaan as $jenis)
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $jenis == 'ASET' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }} mr-1">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $jenis == 'ASET' ? 'bg-blue-100 text-blue-900' : 'bg-green-100 text-green-900' }} mr-1">
                                         {{ $jenis }}
                                     </span>
                                 @endforeach
@@ -244,7 +274,7 @@
                                     </form>
                                     <a 
                                         href="{{ route('transaction.permintaan-barang.edit', $permintaan->id_permintaan) }}" 
-                                        class="btn-aksi-permintaan inline-flex items-center justify-center w-8 h-8 rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 transition-colors"
+                                        class="btn-aksi-permintaan inline-flex items-center justify-center w-8 h-8 rounded-md text-blue-800 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors"
                                         title="Edit"
                                     >
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -282,7 +312,13 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                             <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data</h3>
-                            <p class="mt-1 text-sm text-gray-500">Mulai dengan membuat permintaan barang baru.</p>
+                            <p class="mt-1 text-sm text-gray-500">
+                                @if(($viewType ?? 'aktif') === 'riwayat')
+                                    Belum ada permintaan selesai atau ditolak.
+                                @else
+                                    Mulai dengan membuat permintaan barang baru.
+                                @endif
+                            </p>
                         </td>
                     </tr>
                 @endforelse

@@ -134,13 +134,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
-                                $statusColor = match($retur->status_retur) {
-                                    'DRAFT' => 'bg-gray-100 text-gray-800',
-                                    'DIAJUKAN' => 'bg-yellow-100 text-yellow-800',
-                                    'DITERIMA' => 'bg-green-100 text-green-800',
-                                    'DITOLAK' => 'bg-red-100 text-red-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $statusColor = \App\Support\UiColor::badgeForStatus($retur->status_retur);
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">
                                 {{ $retur->status_retur }}
@@ -162,7 +156,7 @@
                                 @if(in_array($retur->status_retur, ['DRAFT', 'DIAJUKAN']))
                                     <a 
                                         href="{{ route('transaction.retur-barang.edit', $retur->id_retur) }}" 
-                                        class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200 transition-colors"
+                                        class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-800 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
                                         title="Edit"
                                     >
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

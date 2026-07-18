@@ -5,13 +5,41 @@
 <div class="mb-6 flex justify-between items-center">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Persetujuan Permintaan Barang</h1>
-        <p class="mt-1 text-sm text-gray-600">Daftar permintaan barang yang menunggu persetujuan Anda</p>
+        <p class="mt-1 text-sm text-gray-600">
+            @if(($viewType ?? 'aktif') === 'riwayat')
+                Riwayat permintaan yang sudah disetujui, ditolak, atau selesai diproses
+            @else
+                Daftar permintaan barang yang menunggu persetujuan Anda
+            @endif
+        </p>
+    </div>
+</div>
+
+<!-- Tab Navigation -->
+<div class="mb-6 bg-white shadow-sm rounded-lg border border-gray-200">
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex" aria-label="Tabs">
+            @php $currentViewType = $viewType ?? 'aktif'; @endphp
+            <a
+                href="{{ route('transaction.approval.index', ['view_type' => 'aktif']) }}"
+                class="px-6 py-3 text-sm font-medium {{ $currentViewType === 'aktif' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+            >
+                Aktif
+            </a>
+            <a
+                href="{{ route('transaction.approval.index', ['view_type' => 'riwayat']) }}"
+                class="px-6 py-3 text-sm font-medium {{ $currentViewType === 'riwayat' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+            >
+                Riwayat
+            </a>
+        </nav>
     </div>
 </div>
 
 <!-- Filters -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
     <form method="GET" action="{{ route('transaction.approval.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <input type="hidden" name="view_type" value="{{ $viewType ?? 'aktif' }}">
         <div>
             <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select 
@@ -20,12 +48,17 @@
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             >
                 <option value="">Semua Status</option>
-                <option value="MENUNGGU" {{ request('status') == 'MENUNGGU' ? 'selected' : '' }}>Menunggu</option>
-                <option value="DIKETAHUI" {{ request('status') == 'DIKETAHUI' ? 'selected' : '' }}>Diketahui</option>
-                <option value="DIVERIFIKASI" {{ request('status') == 'DIVERIFIKASI' ? 'selected' : '' }}>Diverifikasi</option>
-                <option value="DISETUJUI" {{ request('status') == 'DISETUJUI' ? 'selected' : '' }}>Disetujui</option>
-                <option value="DIDISPOSISIKAN" {{ request('status') == 'DIDISPOSISIKAN' ? 'selected' : '' }}>Didisposisikan</option>
-                <option value="DITOLAK" {{ request('status') == 'DITOLAK' ? 'selected' : '' }}>Ditolak</option>
+                @if(($viewType ?? 'aktif') === 'riwayat')
+                    <option value="DISETUJUI" {{ request('status') == 'DISETUJUI' ? 'selected' : '' }}>Disetujui</option>
+                    <option value="DIDISPOSISIKAN" {{ request('status') == 'DIDISPOSISIKAN' ? 'selected' : '' }}>Didisposisikan</option>
+                    <option value="DIPROSES" {{ request('status') == 'DIPROSES' ? 'selected' : '' }}>Diproses</option>
+                    <option value="SELESAI" {{ request('status') == 'SELESAI' ? 'selected' : '' }}>Selesai</option>
+                    <option value="DITOLAK" {{ request('status') == 'DITOLAK' ? 'selected' : '' }}>Ditolak</option>
+                @else
+                    <option value="MENUNGGU" {{ request('status') == 'MENUNGGU' ? 'selected' : '' }}>Menunggu</option>
+                    <option value="DIKETAHUI" {{ request('status') == 'DIKETAHUI' ? 'selected' : '' }}>Diketahui</option>
+                    <option value="DIVERIFIKASI" {{ request('status') == 'DIVERIFIKASI' ? 'selected' : '' }}>Diverifikasi</option>
+                @endif
             </select>
         </div>
 
@@ -63,7 +96,7 @@
         <div class="flex items-end">
             @if(request('status') || request('tanggal_mulai') || request('tanggal_akhir'))
                 <a 
-                    href="{{ route('transaction.approval.index') }}" 
+                    href="{{ route('transaction.approval.index', ['view_type' => $viewType ?? 'aktif']) }}" 
                     class="w-full px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 text-center"
                 >
                     Reset
@@ -129,9 +162,9 @@
                             // Sudah diverifikasi dan disetujui oleh Kasubbag TU (step 3) atau sudah disetujui
                             $rowBgColor = 'bg-green-50';
                             $rowBorderColor = 'border-l-4 border-green-500';
-                        } elseif ($lastCompletedStep == 4 || $currentStatus === 'DIDISPOSISIKAN') {
-                            // Sudah didisposisikan ke Admin Gudang (step 4)
-                            $rowBgColor = 'bg-indigo-50';
+                        } elseif ($lastCompletedStep == 4 || in_array($currentStatus, ['DIDISPOSISIKAN', 'DIPROSES', 'SELESAI'], true)) {
+                            // Sudah didisposisikan / diproses / selesai (step 4+)
+                            $rowBgColor = 'bg-blue-50';
                             $rowBorderColor = 'border-l-4 border-indigo-500';
                         } elseif ($lastCompletedStep >= 5 || $currentStatus === 'DIPROSES') {
                             // Sudah diproses oleh Admin Gudang (step 5 atau lebih)
@@ -140,16 +173,7 @@
                         }
                         
                         // Status badge color
-                        $statusColor = match($currentStatus) {
-                            'MENUNGGU' => 'bg-yellow-100 text-yellow-800',
-                            'DIKETAHUI' => 'bg-blue-100 text-blue-800',
-                            'DIVERIFIKASI' => 'bg-purple-100 text-purple-800',
-                            'DISETUJUI' => 'bg-green-100 text-green-800',
-                            'DIDISPOSISIKAN' => 'bg-indigo-100 text-indigo-800',
-                            'DIPROSES' => 'bg-blue-100 text-blue-800',
-                            'DITOLAK' => 'bg-red-100 text-red-800',
-                            default => 'bg-gray-100 text-gray-800',
-                        };
+                        $statusColor = \App\Support\UiColor::badgeForStatus($currentStatus);
                         
                         // Tentukan step yang sedang berjalan
                         $stepName = '-';
@@ -177,7 +201,7 @@
                                     @endphp
                                     @if($gudangUnits->count() > 0)
                                         @foreach($gudangUnits as $gudang)
-                                            <span class="inline-block px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 mr-1">
+                                            <span class="inline-block px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-900 mr-1">
                                                 {{ $gudang->nama_gudang }}
                                             </span>
                                         @endforeach
@@ -310,7 +334,13 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data</h3>
-                            <p class="mt-1 text-sm text-gray-500">Tidak ada permintaan yang menunggu persetujuan Anda.</p>
+                            <p class="mt-1 text-sm text-gray-500">
+                                @if(($viewType ?? 'aktif') === 'riwayat')
+                                    Belum ada riwayat persetujuan.
+                                @else
+                                    Tidak ada permintaan yang menunggu persetujuan Anda.
+                                @endif
+                            </p>
                         </td>
                     </tr>
                 @endforelse

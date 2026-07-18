@@ -132,8 +132,8 @@
                         $badge = match ($meta['prioritas']) {
                             \App\Services\FarmasiExpiryReminderService::PRIORITAS_KRITIS => 'bg-red-100 text-red-900',
                             \App\Services\FarmasiExpiryReminderService::PRIORITAS_TINGGI => 'bg-orange-100 text-orange-900',
-                            \App\Services\FarmasiExpiryReminderService::PRIORITAS_SEDANG => 'bg-amber-100 text-amber-900',
-                            \App\Services\FarmasiExpiryReminderService::PRIORITAS_RENDAH => 'bg-lime-100 text-lime-900',
+                            \App\Services\FarmasiExpiryReminderService::PRIORITAS_SEDANG => 'bg-amber-100 text-amber-950',
+                            \App\Services\FarmasiExpiryReminderService::PRIORITAS_RENDAH => 'bg-green-100 text-green-900',
                             default => 'bg-gray-100 text-gray-800',
                         };
                     @endphp

@@ -130,9 +130,9 @@
                         <dd class="mt-1">
                             @php
                                 $kondisiColors = [
-                                    'BAIK' => 'bg-green-100 text-green-800',
-                                    'RUSAK_RINGAN' => 'bg-yellow-100 text-yellow-800',
-                                    'RUSAK_BERAT' => 'bg-red-100 text-red-800',
+                                    'BAIK' => 'bg-green-100 text-green-900',
+                                    'RUSAK_RINGAN' => 'bg-amber-100 text-amber-950',
+                                    'RUSAK_BERAT' => 'bg-red-100 text-red-900',
                                 ];
                                 $color = $kondisiColors[$kir->registerAset->kondisi_aset] ?? 'bg-gray-100 text-gray-800';
                             @endphp
@@ -145,7 +145,7 @@
                         <dt class="text-sm font-medium text-gray-500">Status Aset</dt>
                         <dd class="mt-1">
                             @if($kir->registerAset->status_aset == 'AKTIF')
-                                <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-900">
                                     AKTIF
                                 </span>
                             @else

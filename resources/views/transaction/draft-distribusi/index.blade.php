@@ -162,9 +162,9 @@
                                     }
                                 }
                                 $kategoriColor = match($kategori) {
-                                    'ASET' => 'bg-blue-100 text-blue-800',
-                                    'PERSEDIAAN' => 'bg-green-100 text-green-800',
-                                    'FARMASI' => 'bg-purple-100 text-purple-800',
+                                    'ASET' => 'bg-blue-100 text-blue-900',
+                                    'PERSEDIAAN' => 'bg-green-100 text-green-900',
+                                    'FARMASI' => 'bg-blue-100 text-blue-900',
                                     default => 'bg-gray-100 text-gray-800',
                                 };
                             @endphp
@@ -191,16 +191,13 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
-                                $statusColor = match($approvalLog->status) {
-                                    'MENUNGGU' => 'bg-yellow-100 text-yellow-800',
-                                    'DIPROSES' => 'bg-blue-100 text-blue-800',
-                                    'DIDISPOSISIKAN' => 'bg-indigo-100 text-indigo-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $statusColor = \App\Support\UiColor::badgeForStatus($approvalLog->status);
                                 $statusText = match($approvalLog->status) {
                                     'MENUNGGU' => 'Menunggu',
                                     'DIPROSES' => 'Diproses',
                                     'DIDISPOSISIKAN' => 'Didisposisikan',
+                                    'SELESAI' => 'Selesai',
+                                    'DITOLAK' => 'Ditolak',
                                     default => $approvalLog->status,
                                 };
                             @endphp
@@ -242,7 +239,7 @@
                             @else
                                 <a 
                                     href="{{ route('transaction.draft-distribusi.show', $approvalLog->id) }}" 
-                                    class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200 transition-colors"
+                                    class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-800 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
                                     title="Lihat Detail"
                                 >
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -24,7 +24,7 @@
             <div><dt class="text-sm font-medium text-gray-500">Metode Pengadaan</dt><dd class="mt-1 text-sm text-gray-900">{{ $paket->metode_pengadaan }}</dd></div>
             <div><dt class="text-sm font-medium text-gray-500">Nilai Paket</dt><dd class="mt-1 text-sm font-semibold text-gray-900">Rp {{ number_format($paket->nilai_paket ?? 0, 0, ',', '.') }}</dd></div>
             <div><dt class="text-sm font-medium text-gray-500">Status</dt><dd class="mt-1">
-                @php $sc = ['DRAFT'=>'bg-gray-100 text-gray-800','DIAJUKAN'=>'bg-yellow-100 text-yellow-800','DIPROSES'=>'bg-blue-100 text-blue-800','SELESAI'=>'bg-green-100 text-green-800','DIBATALKAN'=>'bg-red-100 text-red-800']; $c = $sc[$paket->status_paket] ?? 'bg-gray-100 text-gray-800'; @endphp
+                @php $c = \App\Support\UiColor::badgeForStatus($paket->status_paket); @endphp
                 <span class="px-2 py-1 text-xs font-medium rounded-full {{ $c }}">{{ $paket->status_paket }}</span>
             </dd></div>
             <div><dt class="text-sm font-medium text-gray-500">Tanggal Mulai</dt><dd class="mt-1 text-sm text-gray-900">{{ $paket->tanggal_mulai ? $paket->tanggal_mulai->format('d/m/Y') : '-' }}</dd></div>

@@ -4,12 +4,41 @@
 <div class="mb-6 flex items-center justify-between">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Peminjaman Barang</h1>
-        <p class="mt-1 text-sm text-gray-600">Kelola alur peminjaman lintas unit atau gudang pusat dari pengajuan hingga selesai.</p>
+        <p class="mt-1 text-sm text-gray-600">
+            @if(($viewType ?? 'aktif') === 'riwayat')
+                Riwayat peminjaman yang sudah selesai atau ditolak
+            @else
+                Kelola alur peminjaman lintas unit atau gudang pusat dari pengajuan hingga selesai.
+            @endif
+        </p>
     </div>
-    <a href="{{ route('transaction.peminjaman-barang.create') }}" class="btn-primary-ui">Tambah Peminjaman</a>
+    @if(($viewType ?? 'aktif') !== 'riwayat')
+        <a href="{{ route('transaction.peminjaman-barang.create') }}" class="btn-primary-ui">Tambah Peminjaman</a>
+    @endif
 </div>
 
+<!-- Tab Navigation -->
+<div class="mb-6 bg-white shadow-sm rounded-lg border border-gray-200">
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex" aria-label="Tabs">
+            @php $currentViewType = $viewType ?? 'aktif'; @endphp
+            <a
+                href="{{ route('transaction.peminjaman-barang.index', ['view_type' => 'aktif']) }}"
+                class="px-6 py-3 text-sm font-medium {{ $currentViewType === 'aktif' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+            >
+                Aktif
+            </a>
+            <a
+                href="{{ route('transaction.peminjaman-barang.index', ['view_type' => 'riwayat']) }}"
+                class="px-6 py-3 text-sm font-medium {{ $currentViewType === 'riwayat' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+            >
+                Riwayat
+            </a>
+        </nav>
+    </div>
+</div>
 
+@if(($viewType ?? 'aktif') !== 'riwayat')
 <div class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-6">
     <div class="rounded-lg border border-gray-200 bg-white p-3">
         <p class="text-xs text-gray-500">Total Dokumen</p>
@@ -23,9 +52,9 @@
         <p class="text-xs text-blue-700">Menunggu Pengurus</p>
         <p class="mt-1 text-xl font-semibold text-blue-800">{{ $summary['menunggu_pengurus'] ?? 0 }}</p>
     </div>
-    <div class="rounded-lg border border-indigo-200 bg-indigo-50 p-3">
-        <p class="text-xs text-indigo-700">Menunggu Unit Dipinjam</p>
-        <p class="mt-1 text-xl font-semibold text-indigo-800">{{ $summary['menunggu_unit_pemilik'] ?? 0 }}</p>
+    <div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
+        <p class="text-xs text-blue-800">Menunggu Unit Dipinjam</p>
+        <p class="mt-1 text-xl font-semibold text-blue-800">{{ $summary['menunggu_unit_pemilik'] ?? 0 }}</p>
     </div>
     <div class="rounded-lg border border-purple-200 bg-purple-50 p-3">
         <p class="text-xs text-purple-700">Menunggu Pengembalian</p>
@@ -36,9 +65,11 @@
         <p class="mt-1 text-xl font-semibold text-green-800">{{ $summary['selesai'] ?? 0 }}</p>
     </div>
 </div>
+@endif
 
 <div class="mb-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
     <form method="GET" action="{{ route('transaction.peminjaman-barang.index') }}" class="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <input type="hidden" name="view_type" value="{{ $viewType ?? 'aktif' }}">
         <div>
             <label for="status" class="mb-1 block text-sm font-medium text-gray-700">Status</label>
             <select id="status" name="status" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
@@ -64,7 +95,7 @@
         </div>
         <div class="flex items-end gap-2">
             <button type="submit" class="btn-primary-ui">Terapkan</button>
-            <a href="{{ route('transaction.peminjaman-barang.index') }}" class="btn-secondary-ui">Reset</a>
+            <a href="{{ route('transaction.peminjaman-barang.index', ['view_type' => $viewType ?? 'aktif']) }}" class="btn-secondary-ui">Reset</a>
         </div>
     </form>
 </div>
@@ -105,7 +136,13 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-500">Belum ada data peminjaman.</td>
+                    <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-500">
+                        @if(($viewType ?? 'aktif') === 'riwayat')
+                            Belum ada riwayat peminjaman selesai atau ditolak.
+                        @else
+                            Belum ada data peminjaman aktif.
+                        @endif
+                    </td>
                 </tr>
             @endforelse
         </tbody>

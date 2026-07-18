@@ -228,6 +228,12 @@ class RkuService
 
         if (!empty($filters['status'])) {
             $query->where('status_rku', $filters['status']);
+        } elseif (! empty($filters['view_type']) && ! empty($filters['riwayat_statuses']) && is_array($filters['riwayat_statuses'])) {
+            if ($filters['view_type'] === 'riwayat') {
+                $query->whereIn('status_rku', $filters['riwayat_statuses']);
+            } else {
+                $query->whereNotIn('status_rku', $filters['riwayat_statuses']);
+            }
         }
 
         if (!empty($filters['tahun'] ?? null) || !empty($filters['tahun_anggaran'] ?? null)) {

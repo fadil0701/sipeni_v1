@@ -90,7 +90,7 @@
                                         @if($pegawai->user && $pegawai->user->roles->isNotEmpty())
                                             <div class="flex flex-wrap gap-1">
                                                 @foreach($pegawai->user->roles as $role)
-                                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800">{{ $role->display_name }}</span>
+                                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-900">{{ $role->display_name }}</span>
                                                 @endforeach
                                             </div>
                                         @else

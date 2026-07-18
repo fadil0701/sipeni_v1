@@ -17,6 +17,7 @@ class DetailPenerimaanBarang extends Model
         'qty_diterima',
         'id_satuan',
         'keterangan',
+        'hasil_verifikasi',
     ];
 
     protected $casts = [

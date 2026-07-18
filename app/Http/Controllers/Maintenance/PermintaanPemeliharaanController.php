@@ -22,6 +22,11 @@ class PermintaanPemeliharaanController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+        $viewType = $request->query('view_type', 'aktif');
+        if (! in_array($viewType, ['aktif', 'riwayat'], true)) {
+            $viewType = 'aktif';
+        }
+
         $query = PermintaanPemeliharaan::with(['registerAset.inventory.dataBarang', 'unitKerja', 'pemohon']);
 
         // Filter berdasarkan unit kerja user yang login untuk pegawai/kepala_unit
@@ -36,6 +41,13 @@ class PermintaanPemeliharaanController extends Controller
             }
         } else {
             $unitKerjas = MasterUnitKerja::all();
+        }
+
+        $riwayatStatuses = ['SELESAI', 'DITOLAK', 'DIBATALKAN'];
+        if ($viewType === 'riwayat') {
+            $query->whereIn('status_permintaan', $riwayatStatuses);
+        } else {
+            $query->whereNotIn('status_permintaan', $riwayatStatuses);
         }
 
         // Filters
@@ -71,7 +83,7 @@ class PermintaanPemeliharaanController extends Controller
         $perPage = PaginationHelper::getPerPage($request, 10);
         $permintaans = $query->latest('tanggal_permintaan')->paginate($perPage)->appends($request->query());
 
-        return view('maintenance.permintaan-pemeliharaan.index', compact('permintaans', 'unitKerjas'));
+        return view('maintenance.permintaan-pemeliharaan.index', compact('permintaans', 'unitKerjas', 'viewType'));
     }
 
     public function create()

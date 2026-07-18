@@ -83,13 +83,7 @@
                         <dt class="text-sm font-medium text-gray-500 mb-1">Status</dt>
                         <dd class="text-sm font-semibold text-gray-900">
                             @php
-                                $statusColor = match($pemakaian->status_pemakaian) {
-                                    'DRAFT' => 'bg-gray-100 text-gray-800',
-                                    'DIAJUKAN' => 'bg-yellow-100 text-yellow-800',
-                                    'DISETUJUI' => 'bg-green-100 text-green-800',
-                                    'DITOLAK' => 'bg-red-100 text-red-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $statusColor = \App\Support\UiColor::badgeForStatus($pemakaian->status_pemakaian);
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">
                                 {{ $pemakaian->status_pemakaian }}

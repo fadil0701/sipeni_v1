@@ -25,7 +25,6 @@ use App\Services\PermintaanBarangStatusService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class PenerimaanBarangController extends Controller
 {
@@ -123,18 +122,44 @@ class PenerimaanBarangController extends Controller
 
         if ($penerimaan_barang->status_penerimaan !== 'MENUNGGU_VERIFIKASI') {
             return redirect()->route('transaction.penerimaan-barang.show', $penerimaan_barang->id_penerimaan)
-                ->with('error', 'Penerimaan ini sudah diverifikasi.');
+                ->with('error', $penerimaan_barang->status_penerimaan === 'MENUNGGU_BUKTI_SAMPAI'
+                    ? 'Verifikasi belum dapat dilakukan. Pengirim belum mengunggah bukti sampai (foto + nama penerima).'
+                    : 'Penerimaan ini sudah diverifikasi.');
+        }
+
+        if (! $penerimaan_barang->hasBuktiSampai()) {
+            return redirect()->route('transaction.penerimaan-barang.show', $penerimaan_barang->id_penerimaan)
+                ->with('error', 'Verifikasi belum dapat dilakukan. Bukti sampai dari pengirim belum lengkap.');
         }
 
         $validated = $request->validate([
-            'verifikasi' => 'required|in:sesuai,tidak_sesuai',
-            'keterangan' => [
-                Rule::requiredIf(fn () => $request->input('verifikasi') === 'tidak_sesuai'),
-                'nullable',
-                'string',
-                'max:2000',
-            ],
+            'items' => 'required|array|min:1',
+            'items.*.id_detail_penerimaan' => 'required|integer',
+            'items.*.hasil' => 'required|in:sesuai,tidak_sesuai',
+            'items.*.keterangan' => 'nullable|string|max:2000',
+        ], [
+            'items.required' => 'Data verifikasi detail wajib diisi.',
+            'items.*.hasil.required' => 'Pilih Sesuai atau Tidak sesuai untuk setiap barang.',
         ]);
+
+        $detailIds = $penerimaan_barang->detailPenerimaan()->pluck('id_detail_penerimaan')->map(fn ($id) => (int) $id)->all();
+        $postedIds = collect($validated['items'])->pluck('id_detail_penerimaan')->map(fn ($id) => (int) $id)->all();
+        sort($detailIds);
+        $postedSorted = $postedIds;
+        sort($postedSorted);
+        if ($detailIds !== $postedSorted) {
+            return back()->withInput()->with('error', 'Data detail verifikasi tidak lengkap atau tidak valid.');
+        }
+
+        foreach ($validated['items'] as $index => $item) {
+            if ($item['hasil'] === 'tidak_sesuai' && blank($item['keterangan'] ?? null)) {
+                return back()->withInput()->withErrors([
+                    "items.$index.keterangan" => 'Keterangan wajib diisi untuk barang yang tidak sesuai.',
+                ]);
+            }
+        }
+
+        $adaTidakSesuai = collect($validated['items'])->contains(fn ($item) => $item['hasil'] === 'tidak_sesuai');
 
         DB::beginTransaction();
         try {
@@ -143,12 +168,34 @@ class PenerimaanBarangController extends Controller
                 $penerimaan_barang->id_pegawai_penerima = $pegawaiLogin->id;
             }
 
-            if ($validated['verifikasi'] === 'sesuai') {
-                $penerimaan_barang->status_penerimaan = 'DITERIMA';
-                if (! empty($validated['keterangan'])) {
-                    $prev = (string) ($penerimaan_barang->keterangan ?? '');
-                    $penerimaan_barang->keterangan = trim($prev.($prev !== '' ? "\n\n" : '').'Catatan verifikasi: '.$validated['keterangan']);
+            $catatanRingkas = [];
+            foreach ($validated['items'] as $item) {
+                $detail = DetailPenerimaanBarang::query()
+                    ->with('inventory.dataBarang')
+                    ->where('id_penerimaan', $penerimaan_barang->id_penerimaan)
+                    ->where('id_detail_penerimaan', $item['id_detail_penerimaan'])
+                    ->firstOrFail();
+
+                $detail->hasil_verifikasi = $item['hasil'];
+                if ($item['hasil'] === 'tidak_sesuai') {
+                    $detail->keterangan = trim((string) ($item['keterangan'] ?? ''));
+                    $namaBarang = $detail->inventory?->dataBarang?->nama_barang
+                        ?? ('Item #'.$detail->id_detail_penerimaan);
+                    $catatanRingkas[] = $namaBarang.': '.$detail->keterangan;
+                } elseif (filled($item['keterangan'] ?? null)) {
+                    $detail->keterangan = trim((string) $item['keterangan']);
                 }
+                $detail->save();
+            }
+
+            if ($adaTidakSesuai) {
+                $penerimaan_barang->status_penerimaan = 'DITOLAK';
+                $prev = (string) ($penerimaan_barang->keterangan ?? '');
+                $extra = 'Verifikasi: ada barang tidak sesuai.'.($catatanRingkas !== [] ? ' '.implode('; ', $catatanRingkas) : '');
+                $penerimaan_barang->keterangan = trim($prev.($prev !== '' ? "\n\n" : '').$extra);
+                $penerimaan_barang->save();
+            } else {
+                $penerimaan_barang->status_penerimaan = 'DITERIMA';
                 $penerimaan_barang->save();
 
                 $distribusi = TransaksiDistribusi::with('gudangTujuan')->findOrFail($penerimaan_barang->id_distribusi);
@@ -173,19 +220,14 @@ class PenerimaanBarangController extends Controller
                     );
                 }
                 DataStockSyncService::syncFromInventory();
-            } else {
-                $penerimaan_barang->status_penerimaan = 'DITOLAK';
-                $prev = (string) ($penerimaan_barang->keterangan ?? '');
-                $penerimaan_barang->keterangan = trim($prev.($prev !== '' ? "\n\n" : '').'Verifikasi: barang tidak sesuai pengiriman.'.($validated['keterangan'] ? ' '.$validated['keterangan'] : ''));
-                $penerimaan_barang->save();
             }
 
             DB::commit();
 
             return redirect()->route('transaction.penerimaan-barang.show', $penerimaan_barang->id_penerimaan)
-                ->with('success', $validated['verifikasi'] === 'sesuai'
-                    ? 'Barang dinyatakan sesuai dengan pengiriman.'
-                    : 'Barang dinyatakan tidak sesuai dengan pengiriman.');
+                ->with('success', $adaTidakSesuai
+                    ? 'Verifikasi disimpan: ada barang yang tidak sesuai.'
+                    : 'Semua barang dinyatakan sesuai dengan pengiriman.');
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Verify penerimaan gagal: '.$e->getMessage());

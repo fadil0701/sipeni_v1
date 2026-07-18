@@ -95,7 +95,7 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             @if($pegawai->user)
                                 <div class="flex items-center">
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-900">
                                         {{ $pegawai->user->email }}
                                     </span>
                                     @if($pegawai->user->roles->count() > 0)
@@ -111,7 +111,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex items-center justify-end space-x-3">
                                 <a href="{{ route('master-manajemen.master-pegawai.show', $pegawai->id) }}" class="text-blue-600 hover:text-blue-900 transition-colors">Detail</a>
-                                <a href="{{ route('master-manajemen.master-pegawai.edit', $pegawai->id) }}" class="text-indigo-600 hover:text-indigo-900 transition-colors">Edit</a>
+                                <a href="{{ route('master-manajemen.master-pegawai.edit', $pegawai->id) }}" class="text-blue-700 hover:text-blue-900 transition-colors">Edit</a>
                                 <form action="{{ route('master-manajemen.master-pegawai.destroy', $pegawai->id) }}" method="POST" class="inline" data-confirm="Apakah Anda yakin ingin menghapus pegawai ini?">
                                     @csrf
                                     @method('DELETE')

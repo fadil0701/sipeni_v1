@@ -82,7 +82,7 @@
                             <p class="mt-1 text-sm text-slate-600">Dokumen alur — {{ strtoupper($tpl->paper_size ?? 'a4') }}, {{ ($tpl->orientation ?? 'portrait') === 'landscape' ? 'lanskap' : 'potret' }}</p>
                             <div class="mt-3 flex flex-wrap gap-2">
                                 @if($tpl->is_active)
-                                    <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-[#22C55E]">Aktif</span>
+                                    <span class="inline-flex rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-[#22C55E]">Aktif</span>
                                 @else
                                     <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">Nonaktif</span>
                                 @endif

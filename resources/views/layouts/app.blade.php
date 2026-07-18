@@ -300,9 +300,6 @@
                                     @if(PermissionHelper::canAccess($currentUser, 'transaction.draft-distribusi.index'))
                                         <li><a href="{{ route('transaction.draft-distribusi.index') }}" class="{{ $linkClass($isRoute(['transaction.draft-distribusi.*'])) }}">Daftar Permintaan</a></li>
                                     @endif
-                                    @if(PermissionHelper::canAccess($currentUser, 'transaction.distribusi.create'))
-                                        <li><a href="{{ route('transaction.distribusi.create') }}" class="{{ $linkClass($isRoute(['transaction.distribusi.create'])) }}">Buat SBBK / Distribusi</a></li>
-                                    @endif
                                     @if(PermissionHelper::canAccess($currentUser, 'transaction.distribusi.index'))
                                         <li><a href="{{ route('transaction.distribusi.index') }}" class="{{ $linkClass($isRoute(['transaction.distribusi.*'])) }}">Distribusi Barang (SBBK)</a></li>
                                     @endif

@@ -224,26 +224,93 @@ main form :is(
         @apply rounded-lg border border-gray-200 bg-gray-50 p-4;
     }
 
-    /* Alert error/success konsisten */
+    /* Alert error/success konsisten (kontras teks tinggi) */
     .alert-box {
         @apply rounded-lg border px-4 py-3 text-sm;
     }
 
-    .alert-box.alert-error {
-        @apply border-red-200 bg-red-50 text-red-700;
+    .alert-box.alert-error,
+    .alert-box.alert-danger {
+        @apply border-red-200 bg-red-50 text-red-900;
     }
 
     .alert-box.alert-success {
-        @apply border-green-200 bg-green-50 text-green-700;
+        @apply border-green-200 bg-green-50 text-green-900;
     }
 
-    /* Tombol aksi utama/sekunder konsisten */
-    .btn-primary-ui {
+    .alert-box.alert-warning {
+        @apply border-amber-200 bg-amber-50 text-amber-950;
+    }
+
+    .alert-box.alert-info {
+        @apply border-blue-200 bg-blue-50 text-blue-900;
+    }
+
+    /* Tombol aksi — semantic system (UiColor) */
+    .btn-primary-ui,
+    .ui-btn-primary {
         @apply inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
     }
 
-    .btn-secondary-ui {
-        @apply inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+    .btn-secondary-ui,
+    .ui-btn-secondary {
+        @apply inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+    }
+
+    .ui-btn-success {
+        @apply inline-flex items-center justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2;
+    }
+
+    .ui-btn-warning {
+        @apply inline-flex items-center justify-center rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2;
+    }
+
+    .ui-btn-danger {
+        @apply inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+    }
+
+    .ui-btn-soft-primary,
+    .ui-btn-soft-info {
+        @apply inline-flex items-center justify-center rounded-md bg-blue-100 px-3 py-1.5 text-sm font-medium text-blue-800 transition hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+    }
+
+    .ui-btn-soft-success {
+        @apply inline-flex items-center justify-center rounded-md bg-green-100 px-3 py-1.5 text-sm font-medium text-green-900 transition hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2;
+    }
+
+    .ui-btn-soft-warning {
+        @apply inline-flex items-center justify-center rounded-md bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-950 transition hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2;
+    }
+
+    .ui-btn-soft-danger {
+        @apply inline-flex items-center justify-center rounded-md bg-red-100 px-3 py-1.5 text-sm font-medium text-red-900 transition hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+    }
+
+    /* Badge semantic (soft + readable) */
+    .ui-badge {
+        @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+    }
+
+    .ui-badge-primary,
+    .ui-badge-info {
+        @apply bg-blue-100 text-blue-900;
+    }
+
+    .ui-badge-success {
+        @apply bg-green-100 text-green-900;
+    }
+
+    .ui-badge-warning {
+        @apply bg-amber-100 text-amber-950;
+    }
+
+    .ui-badge-danger {
+        @apply bg-red-100 text-red-900;
+    }
+
+    .ui-badge-neutral,
+    .ui-badge-secondary {
+        @apply bg-gray-100 text-gray-900;
     }
 
     /*

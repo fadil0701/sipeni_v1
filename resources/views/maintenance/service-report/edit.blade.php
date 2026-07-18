@@ -58,9 +58,9 @@
             <div>
                 <label class="block text-sm font-medium mb-2">File Laporan (Open Kamera)</label>
                 <input id="file_laporan_kamera_edit" type="file" name="file_laporan_kamera" accept="image/*" capture="environment" class="hidden">
-                <label for="file_laporan_kamera_edit" class="inline-flex items-center px-3 py-2 border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-md cursor-pointer hover:bg-emerald-100">
+                <label for="file_laporan_kamera_edit" class="inline-flex items-center px-3 py-2 border border-green-200 bg-green-100 text-green-900 text-sm font-medium rounded-md cursor-pointer hover:bg-green-100">
                     Buka Kamera
-                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-600 text-white">KAMERA</span>
+                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-600 text-white">KAMERA</span>
                 </label>
                 <p id="file_laporan_kamera_edit_name" class="mt-1 text-xs text-gray-500">Belum ada foto diambil</p>
                 <p class="mt-1 text-xs text-gray-500">Gunakan kamera perangkat (maks 4MB)</p>

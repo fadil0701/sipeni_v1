@@ -165,7 +165,7 @@
                         @if($registerAset && $registerAset->nomor_register)
                             <span class="font-medium text-blue-600">{{ $registerAset->nomor_register }}</span>
                         @else
-                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800" title="Belum di-register">
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-950" title="Belum di-register">
                                 Belum Register
                             </span>
                         @endif
@@ -224,9 +224,9 @@
                     <td class="px-6 py-4 whitespace-nowrap">
                         @php
                             $kondisiColors = [
-                                'BAIK' => 'bg-green-100 text-green-800',
-                                'RUSAK_RINGAN' => 'bg-yellow-100 text-yellow-800',
-                                'RUSAK_BERAT' => 'bg-red-100 text-red-800',
+                                'BAIK' => 'bg-green-100 text-green-900',
+                                'RUSAK_RINGAN' => 'bg-amber-100 text-amber-950',
+                                'RUSAK_BERAT' => 'bg-red-100 text-red-900',
                             ];
                             $kondisi = $item->kondisi_item ?? 'BAIK';
                             $color = $kondisiColors[$kondisi] ?? 'bg-gray-100 text-gray-800';
@@ -240,7 +240,7 @@
                             $status = $item->status_item ?? 'AKTIF';
                         @endphp
                         @if($status == 'AKTIF')
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-900">
                                 AKTIF
                             </span>
                         @else
@@ -251,11 +251,11 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         @if($isKIB)
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-900">
                                 KIB
                             </span>
                         @elseif($isKIR)
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-950">
                                 KIR
                             </span>
                         @else
@@ -276,7 +276,7 @@
                                 @if(PermissionHelper::canAccess($user, 'asset.register-aset.edit'))
                                 <a 
                                     href="{{ route('asset.register-aset.edit', $registerAset->id_register_aset) }}" 
-                                    class="text-indigo-600 hover:text-indigo-900"
+                                    class="text-blue-700 hover:text-blue-900"
                                 >
                                     Edit
                                 </a>

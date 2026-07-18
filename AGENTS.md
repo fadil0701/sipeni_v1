@@ -32,14 +32,19 @@ Single test: `php artisan test --filter=TestName`
 - Observers: `DataInventoryObserver`, `PermintaanBarangObserver`.
 - Enums in `app/Enums/` — `PermintaanBarangStatus` is the canonical workflow source.
 - Print templates: dynamic renderer (`PrintTemplateRenderer`), gated by `FEATURE_PRINT_TEMPLATES` env var (default `false`).
+- **Semantic UI colors**: `App\Support\UiColor` — single source for button/badge/status tones (`primary`, `success`, `warning`, `danger`, `info`, `neutral`). Prefer `UiColor::badgeForStatus()` / Blade `x-ui.status-badge` / `x-ui.btn` instead of hardcoding Tailwind hues. CSS utilities: `.ui-btn-*`, `.ui-badge-*`, `.alert-box`.
 
 ## Transaction Flow
 
 ```
-Permintaan → Approval Multi-Level → Disposisi → Draft Distribusi → Compile SBBK → Distribusi/Kirim → Penerimaan → Retur (optional)
+Permintaan → Approval Multi-Level → Disposisi → Draft Distribusi → Compile SBBK → Distribusi/Kirim → Bukti sampai → Penerimaan verifikasi → Retur (optional)
 ```
 
 PermintaanBarang status enum: `draft → diajukan → diverifikasi → ditolak | menunggu_pengadaan → proses_pengadaan → barang_tersedia → proses_distribusi → dikirim → diterima → selesai`
+
+Distribusi after **Kirim**: penerimaan `MENUNGGU_BUKTI_SAMPAI` → (foto + nama penerima) → `MENUNGGU_VERIFIKASI` → verifikasi per-item → `DITERIMA` / `DITOLAK`.
+
+Daftar permintaan (draft-distribusi) tab **Riwayat** hanya status approval log `SELESAI`.
 
 ## Middleware (registered aliases)
 

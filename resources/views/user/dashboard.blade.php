@@ -12,25 +12,25 @@
 </div>
 
 <!-- @if(!empty($panduanRoleGuides))
-<div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+<div class="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-            <h2 class="text-base font-semibold text-emerald-900">Panduan Pengguna</h2>
-            <p class="mt-1 text-sm text-emerald-800">Petunjuk tugas sesuai role Anda di SI-MANTIK.</p>
+            <h2 class="text-base font-semibold text-green-900">Panduan Pengguna</h2>
+            <p class="mt-1 text-sm text-green-900">Petunjuk tugas sesuai role Anda di SI-MANTIK.</p>
         </div>
-        <a href="{{ route('panduan.index') }}" class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700">
+        <a href="{{ route('panduan.index') }}" class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700">
             Semua panduan
         </a>
     </div>
     <div class="mt-3 flex flex-wrap gap-2">
         @foreach($panduanRoleGuides as $guide)
             <a href="{{ route('panduan.show', $guide['slug']) }}"
-               class="inline-flex items-center rounded-md border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-emerald-900 hover:border-emerald-400">
+               class="inline-flex items-center rounded-md border border-green-200 bg-white px-3 py-2 text-xs font-medium text-green-900 hover:border-green-400">
                 {{ $guide['title'] }}
             </a>
         @endforeach
         <a href="{{ route('panduan.show', 'alur-kerja') }}"
-           class="inline-flex items-center rounded-md border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-emerald-900 hover:border-emerald-400">
+           class="inline-flex items-center rounded-md border border-green-200 bg-white px-3 py-2 text-xs font-medium text-green-900 hover:border-green-400">
             Alur kerja utama
         </a>
     </div>
@@ -95,10 +95,10 @@
             <a href="{{ route('transaction.approval.index') }}" class="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700">Buka Approval</a>
         @endif
         @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.draft-distribusi.index'))
-            <a href="{{ route('transaction.draft-distribusi.index') }}" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-700">Draft Distribusi</a>
+            <a href="{{ route('transaction.draft-distribusi.index') }}" class="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700">Draft Distribusi</a>
         @endif
         @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.distribusi.index'))
-            <a href="{{ route('transaction.distribusi.index') }}" class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700">Distribusi (SBBK)</a>
+            <a href="{{ route('transaction.distribusi.index') }}" class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700">Distribusi (SBBK)</a>
         @endif
         @if(\App\Helpers\PermissionHelper::canAccess($currentUser, 'transaction.penerimaan-barang.index'))
             <a href="{{ route('transaction.penerimaan-barang.index') }}" class="inline-flex items-center rounded-md bg-cyan-600 px-3 py-2 text-xs font-medium text-white hover:bg-cyan-700">Penerimaan Barang</a>
@@ -118,12 +118,7 @@
             <div class="mt-3 space-y-2">
                 @forelse(($urgentQueue ?? collect()) as $row)
                     @php
-                        $statusClass = match($row['status']) {
-                            'MENUNGGU', 'DIAJUKAN' => 'bg-yellow-100 text-yellow-800',
-                            'DIPROSES' => 'bg-blue-100 text-blue-800',
-                            'DIKIRIM' => 'bg-indigo-100 text-indigo-800',
-                            default => 'bg-gray-100 text-gray-800',
-                        };
+                        $statusClass = \App\Support\UiColor::badgeForStatus($row['status']);
                     @endphp
                     <a href="{{ $row['url'] }}" class="flex items-center justify-between rounded-md border border-gray-100 px-3 py-2 hover:bg-gray-50">
                         <div>
@@ -260,7 +255,7 @@
                 <p class="mt-2 text-2xl font-semibold text-gray-900">{{ number_format($totalAssets, 0, ',', '.') }}</p>
                 <p class="mt-1 text-xs text-gray-500">Unit terdaftar</p>
             </div>
-            <div class="rounded-lg bg-indigo-100 p-3 text-indigo-600">
+            <div class="rounded-lg bg-blue-100 p-3 text-blue-700">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                 </svg>
@@ -275,7 +270,7 @@
                 <p class="mt-2 text-2xl font-semibold text-gray-900">Rp {{ number_format($totalPersediaanValue, 0, ',', '.') }}</p>
                 <p class="mt-1 text-xs text-gray-500">Akumulasi nilai inventory persediaan</p>
             </div>
-            <div class="rounded-lg bg-emerald-100 p-3 text-emerald-600">
+            <div class="rounded-lg bg-green-100 p-3 text-green-700">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9 5 9-5-9-5-9 5zm0 5l9 5 9-5M3 17l9 5 9-5"/>
                 </svg>
@@ -365,12 +360,7 @@
         <div class="divide-y divide-gray-100">
             @forelse($latestDistribusiTracking as $item)
                 @php
-                    $badgeColor = match($item['status']) {
-                        'SELESAI' => 'bg-emerald-100 text-emerald-800',
-                        'DIKIRIM' => 'bg-indigo-100 text-indigo-800',
-                        'DIPROSES' => 'bg-amber-100 text-amber-800',
-                        default => 'bg-gray-100 text-gray-800',
-                    };
+                    $badgeColor = \App\Support\UiColor::badgeForStatus($item['status']);
                 @endphp
                 <div class="px-6 py-4">
                     <div class="mb-2 flex items-start justify-between gap-3">
@@ -387,7 +377,7 @@
                         <span class="font-semibold text-gray-700">{{ $item['progress_percent'] }}%</span>
                     </div>
                     <div class="h-2 rounded-full bg-gray-100">
-                        <div class="h-2 rounded-full bg-indigo-600 transition-all" style="width: {{ $item['progress_percent'] }}%"></div>
+                        <div class="h-2 rounded-full bg-blue-600 transition-all" style="width: {{ $item['progress_percent'] }}%"></div>
                     </div>
                 </div>
             @empty
@@ -422,15 +412,7 @@
         <div class="divide-y divide-gray-100">
             @forelse($trackingItems as $item)
                 @php
-                    $badgeColor = match($item['status']) {
-                        'MENUNGGU', 'DIAJUKAN' => 'bg-yellow-100 text-yellow-800',
-                        'DIKETAHUI' => 'bg-blue-100 text-blue-800',
-                        'DIVERIFIKASI', 'DISETUJUI' => 'bg-green-100 text-green-800',
-                        'DIDISPOSISIKAN', 'DIPROSES' => 'bg-indigo-100 text-indigo-800',
-                        'DITOLAK' => 'bg-red-100 text-red-800',
-                        'SELESAI', 'DITERIMA' => 'bg-emerald-100 text-emerald-800',
-                        default => 'bg-gray-100 text-gray-800',
-                    };
+                    $badgeColor = \App\Support\UiColor::badgeForStatus($item['status']);
                 @endphp
                 <div class="px-6 py-4">
                     <div class="mb-2 flex items-start justify-between gap-3">
@@ -511,12 +493,7 @@
                         <td class="px-4 py-3 text-sm">
                             @php
                                 $status = $asset->kondisi_item ?? 'N/A';
-                                $color = match($status) {
-                                    'BAIK' => 'bg-green-100 text-green-700',
-                                    'RUSAK_RINGAN' => 'bg-yellow-100 text-yellow-700',
-                                    'RUSAK_BERAT' => 'bg-red-100 text-red-700',
-                                    default => 'bg-gray-100 text-gray-700',
-                                };
+                                $color = \App\Support\UiColor::badgeForStatus($status);
                             @endphp
                             <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold {{ $color }}">{{ $status }}</span>
                         </td>

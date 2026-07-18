@@ -220,7 +220,7 @@
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-slate-500">Status</span>
                         @if($user->is_active)
-                            <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                            <span class="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-800">
                                 Aktif
                             </span>
                         @else
@@ -258,8 +258,8 @@
                                 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium 
                                     {{ $role['group'] === 'SYSTEM' ? 'bg-[#1E3A8A] text-white' : 
                                        ($role['group'] === 'STRUKTURAL' ? 'bg-violet-100 text-violet-800' : 
-                                       ($role['group'] === 'MANAJERIAL' ? 'bg-emerald-100 text-emerald-800' : 
-                                       ($role['group'] === 'OPERATOR' ? 'bg-orange-100 text-orange-800' : 
+                                       ($role['group'] === 'MANAJERIAL' ? 'bg-green-100 text-green-900' : 
+                                       ($role['group'] === 'OPERATOR' ? 'bg-amber-100 text-amber-950' : 
                                        'bg-slate-200 text-slate-700'))) }}">
                                     {{ $role['display_name'] }}
                                     @if($role['level'])
@@ -275,7 +275,7 @@
                     <div class="flex items-center justify-between pt-2 border-t border-gray-100">
                         <span class="text-sm text-slate-500">Approval Authority</span>
                         @if($roleInfo['has_approval'])
-                            <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                            <span class="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-800">
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                 </svg>

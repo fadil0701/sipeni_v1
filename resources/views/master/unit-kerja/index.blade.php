@@ -63,7 +63,7 @@
                                 </a>
                                 <a 
                                     href="{{ route('master.unit-kerja.edit', $unitKerja->id_unit_kerja) }}" 
-                                    class="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                    class="text-blue-700 hover:text-blue-900 transition-colors"
                                 >
                                     Edit
                                 </a>

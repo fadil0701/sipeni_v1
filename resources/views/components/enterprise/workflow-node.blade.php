@@ -3,20 +3,21 @@ $nodes = $nodes ?? [];
 $currentStage = $currentStage ?? null;
 $showLabels = $showLabels ?? true;
 
+// Semantic workflow stages only (no violet/cyan rainbow)
 $stageColors = [
-    'draft' => 'bg-slate-100 text-slate-500',
-    'submitted' => 'bg-blue-100 text-blue-700',
-    'pending' => 'bg-amber-100 text-amber-700',
-    'approve' => 'bg-emerald-100 text-emerald-700',
-    'approved' => 'bg-emerald-500 text-white',
-    'verify' => 'bg-cyan-100 text-cyan-700',
-    'verified' => 'bg-cyan-500 text-white',
-    'process' => 'bg-violet-100 text-violet-700',
-    'processed' => 'bg-violet-500 text-white',
-    'finish' => 'bg-slate-100 text-slate-500',
-    'completed' => 'bg-emerald-500 text-white',
-    'rejected' => 'bg-red-500 text-white',
-    'cancelled' => 'bg-slate-400 text-white',
+    'draft' => \App\Support\UiColor::badge('neutral'),
+    'submitted' => \App\Support\UiColor::badge('warning'),
+    'pending' => \App\Support\UiColor::badge('warning'),
+    'approve' => \App\Support\UiColor::badge('success'),
+    'approved' => 'bg-green-600 text-white',
+    'verify' => \App\Support\UiColor::badge('info'),
+    'verified' => 'bg-blue-600 text-white',
+    'process' => \App\Support\UiColor::badge('info'),
+    'processed' => 'bg-blue-600 text-white',
+    'finish' => \App\Support\UiColor::badge('neutral'),
+    'completed' => 'bg-green-600 text-white',
+    'rejected' => 'bg-red-600 text-white',
+    'cancelled' => 'bg-gray-500 text-white',
 ];
 
 $nodeLabels = [
@@ -46,13 +47,13 @@ $nodeLabels = [
                 $isRejected = $node['rejected'] ?? false;
 
                 if ($isRejected) {
-                    $colorClass = 'bg-red-500 text-white';
+                    $colorClass = 'bg-red-600 text-white';
                 } elseif ($isCompleted) {
-                    $colorClass = 'bg-emerald-500 text-white';
+                    $colorClass = 'bg-green-600 text-white';
                 } elseif ($isActive) {
                     $colorClass = $stageColors[$stage] ?? 'bg-blue-600 text-white';
                 } else {
-                    $colorClass = 'bg-slate-100 text-slate-400';
+                    $colorClass = 'bg-gray-100 text-gray-500';
                 }
             @endphp
 

@@ -19,7 +19,7 @@
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 space-y-6">
     <div class="flex flex-wrap gap-3">
-        <a href="{{ route('inventory.data-inventory.import.template') }}" class="inline-flex items-center px-4 py-2.5 rounded-md text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors">
+        <a href="{{ route('inventory.data-inventory.import.template') }}" class="inline-flex items-center px-4 py-2.5 rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors">
             Download Template Excel
         </a>
     </div>

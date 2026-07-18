@@ -42,9 +42,23 @@ class RkuController extends Controller
             abort(403, 'Unauthorized access.');
         }
 
+        $viewType = $request->query('view_type', 'aktif');
+        if (! in_array($viewType, ['aktif', 'riwayat'], true)) {
+            $viewType = 'aktif';
+        }
+
         $filters = $request->only(['tahun_anggaran', 'id_unit_kerja', 'search']);
         if ($request->filled('status_rku')) {
             $filters['status'] = $request->input('status_rku');
+        }
+
+        $riwayatStatuses = [
+            RkuHeader::STATUS_DISETUJUI,
+            RkuHeader::STATUS_DITOLAK,
+        ];
+        if (! $request->filled('status_rku')) {
+            $filters['view_type'] = $viewType;
+            $filters['riwayat_statuses'] = $riwayatStatuses;
         }
         
         // Filter by user's unit if no permission to view all
@@ -61,7 +75,7 @@ class RkuController extends Controller
 
         $unitKerjaList = MasterUnitKerja::orderBy('nama_unit_kerja')->get();
 
-        return view('planning.rku.index', compact('rkus', 'tahunList', 'unitKerjaList'));
+        return view('planning.rku.index', compact('rkus', 'tahunList', 'unitKerjaList', 'viewType'));
     }
 
     /**

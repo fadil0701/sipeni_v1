@@ -83,7 +83,7 @@
                             @if($pegawai->user->roles->count() > 0)
                                 <div class="flex flex-wrap gap-2 mt-2">
                                     @foreach($pegawai->user->roles as $role)
-                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-900">
                                             {{ $role->display_name }}
                                         </span>
                                     @endforeach

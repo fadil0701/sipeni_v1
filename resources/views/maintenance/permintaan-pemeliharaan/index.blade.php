@@ -5,22 +5,52 @@
 <div class="mb-6 flex justify-between items-center">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Permintaan Pemeliharaan</h1>
-        <p class="mt-1 text-sm text-gray-600">Daftar semua permintaan pemeliharaan aset</p>
+        <p class="mt-1 text-sm text-gray-600">
+            @if(($viewType ?? 'aktif') === 'riwayat')
+                Riwayat permintaan pemeliharaan yang sudah selesai atau ditolak
+            @else
+                Daftar permintaan pemeliharaan aset yang masih berjalan
+            @endif
+        </p>
     </div>
-    <a 
-        href="{{ route('maintenance.permintaan-pemeliharaan.create') }}" 
-        class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-    >
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Tambah Permintaan
-    </a>
+    @if(($viewType ?? 'aktif') !== 'riwayat')
+        <a 
+            href="{{ route('maintenance.permintaan-pemeliharaan.create') }}" 
+            class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+        >
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Tambah Permintaan
+        </a>
+    @endif
+</div>
+
+<!-- Tab Navigation -->
+<div class="mb-6 bg-white shadow-sm rounded-lg border border-gray-200">
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex" aria-label="Tabs">
+            @php $currentViewType = $viewType ?? 'aktif'; @endphp
+            <a
+                href="{{ route('maintenance.permintaan-pemeliharaan.index', ['view_type' => 'aktif']) }}"
+                class="px-6 py-3 text-sm font-medium {{ $currentViewType === 'aktif' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+            >
+                Aktif
+            </a>
+            <a
+                href="{{ route('maintenance.permintaan-pemeliharaan.index', ['view_type' => 'riwayat']) }}"
+                class="px-6 py-3 text-sm font-medium {{ $currentViewType === 'riwayat' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+            >
+                Riwayat
+            </a>
+        </nav>
+    </div>
 </div>
 
 <!-- Filters -->
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-6">
     <form method="GET" action="{{ route('maintenance.permintaan-pemeliharaan.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-5">
+        <input type="hidden" name="view_type" value="{{ $viewType ?? 'aktif' }}">
         <div>
             <label for="unit_kerja" class="block text-sm font-medium text-gray-700 mb-1">Unit Kerja</label>
             <select 
@@ -45,12 +75,16 @@
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             >
                 <option value="">Semua Status</option>
-                <option value="DRAFT" {{ request('status') == 'DRAFT' ? 'selected' : '' }}>Draft</option>
-                <option value="DIAJUKAN" {{ request('status') == 'DIAJUKAN' ? 'selected' : '' }}>Diajukan</option>
-                <option value="DISETUJUI" {{ request('status') == 'DISETUJUI' ? 'selected' : '' }}>Disetujui</option>
-                <option value="DITOLAK" {{ request('status') == 'DITOLAK' ? 'selected' : '' }}>Ditolak</option>
-                <option value="DIPROSES" {{ request('status') == 'DIPROSES' ? 'selected' : '' }}>Diproses</option>
-                <option value="SELESAI" {{ request('status') == 'SELESAI' ? 'selected' : '' }}>Selesai</option>
+                @if(($viewType ?? 'aktif') === 'riwayat')
+                    <option value="SELESAI" {{ request('status') == 'SELESAI' ? 'selected' : '' }}>Selesai</option>
+                    <option value="DITOLAK" {{ request('status') == 'DITOLAK' ? 'selected' : '' }}>Ditolak</option>
+                    <option value="DIBATALKAN" {{ request('status') == 'DIBATALKAN' ? 'selected' : '' }}>Dibatalkan</option>
+                @else
+                    <option value="DRAFT" {{ request('status') == 'DRAFT' ? 'selected' : '' }}>Draft</option>
+                    <option value="DIAJUKAN" {{ request('status') == 'DIAJUKAN' ? 'selected' : '' }}>Diajukan</option>
+                    <option value="DISETUJUI" {{ request('status') == 'DISETUJUI' ? 'selected' : '' }}>Disetujui</option>
+                    <option value="DIPROSES" {{ request('status') == 'DIPROSES' ? 'selected' : '' }}>Diproses</option>
+                @endif
             </select>
         </div>
 
@@ -148,13 +182,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
-                                $jenisColor = match($permintaan->jenis_pemeliharaan) {
-                                    'RUTIN' => 'bg-blue-100 text-blue-800',
-                                    'KALIBRASI' => 'bg-purple-100 text-purple-800',
-                                    'PERBAIKAN' => 'bg-orange-100 text-orange-800',
-                                    'PENGGANTIAN_SPAREPART' => 'bg-yellow-100 text-yellow-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $jenisColor = \App\Support\UiColor::badgeForStatus($permintaan->jenis_pemeliharaan);
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $jenisColor }}">
                                 {{ $permintaan->jenis_pemeliharaan }}
@@ -162,13 +190,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
-                                $prioritasColor = match($permintaan->prioritas) {
-                                    'RENDAH' => 'bg-gray-100 text-gray-800',
-                                    'SEDANG' => 'bg-yellow-100 text-yellow-800',
-                                    'TINGGI' => 'bg-orange-100 text-orange-800',
-                                    'DARURAT' => 'bg-red-100 text-red-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $prioritasColor = \App\Support\UiColor::badgeForStatus($permintaan->prioritas);
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $prioritasColor }}">
                                 {{ $permintaan->prioritas }}
@@ -176,15 +198,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
-                                $statusColor = match($permintaan->status_permintaan) {
-                                    'DRAFT' => 'bg-gray-100 text-gray-800',
-                                    'DIAJUKAN' => 'bg-yellow-100 text-yellow-800',
-                                    'DISETUJUI' => 'bg-green-100 text-green-800',
-                                    'DITOLAK' => 'bg-red-100 text-red-800',
-                                    'DIPROSES' => 'bg-blue-100 text-blue-800',
-                                    'SELESAI' => 'bg-indigo-100 text-indigo-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $statusColor = \App\Support\UiColor::badgeForStatus($permintaan->status_permintaan);
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">
                                 {{ $permintaan->status_permintaan }}
@@ -201,7 +215,7 @@
                                 @if($permintaan->status_permintaan == 'DRAFT')
                                     <a 
                                         href="{{ route('maintenance.permintaan-pemeliharaan.edit', $permintaan->id_permintaan_pemeliharaan) }}" 
-                                        class="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                        class="text-blue-700 hover:text-blue-900 transition-colors"
                                     >
                                         Edit
                                     </a>
@@ -231,7 +245,13 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                             <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data</h3>
-                            <p class="mt-1 text-sm text-gray-500">Mulai dengan membuat permintaan pemeliharaan baru.</p>
+                            <p class="mt-1 text-sm text-gray-500">
+                                @if(($viewType ?? 'aktif') === 'riwayat')
+                                    Belum ada permintaan pemeliharaan selesai atau ditolak.
+                                @else
+                                    Belum ada permintaan pemeliharaan aktif.
+                                @endif
+                            </p>
                         </td>
                     </tr>
                 @endforelse

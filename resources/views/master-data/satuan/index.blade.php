@@ -48,7 +48,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex items-center justify-end space-x-3">
                                 <a href="{{ route('master-data.satuan.show', $satuan->id_satuan) }}" class="text-blue-600 hover:text-blue-900 transition-colors">Detail</a>
-                                <a href="{{ route('master-data.satuan.edit', $satuan->id_satuan) }}" class="text-indigo-600 hover:text-indigo-900 transition-colors">Edit</a>
+                                <a href="{{ route('master-data.satuan.edit', $satuan->id_satuan) }}" class="text-blue-700 hover:text-blue-900 transition-colors">Edit</a>
                                 <form action="{{ route('master-data.satuan.destroy', $satuan->id_satuan) }}" method="POST" class="inline" data-confirm="Apakah Anda yakin ingin menghapus data ini?">
                                     @csrf
                                     @method('DELETE')

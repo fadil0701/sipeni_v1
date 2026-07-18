@@ -62,7 +62,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex items-center justify-end space-x-3">
                                 <a href="{{ route('master-manajemen.master-jabatan.show', $jabatan->id_jabatan) }}" class="text-blue-600 hover:text-blue-900 transition-colors">Detail</a>
-                                <a href="{{ route('master-manajemen.master-jabatan.edit', $jabatan->id_jabatan) }}" class="text-indigo-600 hover:text-indigo-900 transition-colors">Edit</a>
+                                <a href="{{ route('master-manajemen.master-jabatan.edit', $jabatan->id_jabatan) }}" class="text-blue-700 hover:text-blue-900 transition-colors">Edit</a>
                                 <form action="{{ route('master-manajemen.master-jabatan.destroy', $jabatan->id_jabatan) }}" method="POST" class="inline" data-confirm="Apakah Anda yakin ingin menghapus jabatan ini?">
                                     @csrf
                                     @method('DELETE')

@@ -87,14 +87,13 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">Rp {{ number_format($paket->nilai_paket ?? 0, 0, ',', '.') }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                         @php
-                            $sc = ['DRAFT'=>'bg-gray-100 text-gray-800','DIAJUKAN'=>'bg-yellow-100 text-yellow-800','DIPROSES'=>'bg-blue-100 text-blue-800','SELESAI'=>'bg-green-100 text-green-800','DIBATALKAN'=>'bg-red-100 text-red-800'];
-                            $c = $sc[$paket->status_paket] ?? 'bg-gray-100 text-gray-800';
+                            $c = \App\Support\UiColor::badgeForStatus($paket->status_paket);
                         @endphp
                         <span class="px-2 py-1 text-xs font-medium rounded-full {{ $c }}">{{ $paket->status_paket }}</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <a href="{{ route('procurement.paket-pengadaan.show', $paket->id_paket) }}" class="text-blue-600 hover:text-blue-900">Detail</a>
-                        <a href="{{ route('procurement.paket-pengadaan.edit', $paket->id_paket) }}" class="ml-3 text-indigo-600 hover:text-indigo-900">Edit</a>
+                        <a href="{{ route('procurement.paket-pengadaan.edit', $paket->id_paket) }}" class="ml-3 text-blue-700 hover:text-blue-900">Edit</a>
                         @if(!$paket->kontrak)
                         <form action="{{ route('procurement.paket-pengadaan.destroy', $paket->id_paket) }}" method="POST" class="inline ml-1" data-confirm="Yakin hapus paket ini?">
                             @csrf

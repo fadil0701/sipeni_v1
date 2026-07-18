@@ -68,10 +68,10 @@
                             <div class="mt-1 flex flex-wrap gap-2">
                                 @if(is_array($approvalLog->permintaan->jenis_permintaan))
                                     @foreach($approvalLog->permintaan->jenis_permintaan as $jenis)
-                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">{{ $jenis }}</span>
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-900">{{ $jenis }}</span>
                                     @endforeach
                                 @else
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">{{ $approvalLog->permintaan->jenis_permintaan }}</span>
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-900">{{ $approvalLog->permintaan->jenis_permintaan }}</span>
                                 @endif
                             </div>
                         </div>

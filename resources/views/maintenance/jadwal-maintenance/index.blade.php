@@ -134,7 +134,7 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-900">
                                 {{ $jadwal->jenis_maintenance }}
                             </span>
                         </td>
@@ -148,7 +148,7 @@
                             {{ $jadwal->tanggal_selanjutnya ? $jadwal->tanggal_selanjutnya->format('d/m/Y') : '-' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $jadwal->status == 'AKTIF' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $jadwal->status == 'AKTIF' ? 'bg-green-100 text-green-900' : 'bg-gray-100 text-gray-800' }}">
                                 {{ $jadwal->status }}
                             </span>
                         </td>
@@ -162,7 +162,7 @@
                                 </a>
                                 <a 
                                     href="{{ route('maintenance.jadwal-maintenance.edit', $jadwal->id_jadwal) }}" 
-                                    class="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                    class="text-blue-700 hover:text-blue-900 transition-colors"
                                 >
                                     Edit
                                 </a>

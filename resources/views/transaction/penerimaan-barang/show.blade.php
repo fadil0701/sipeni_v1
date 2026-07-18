@@ -11,7 +11,7 @@
 </div>
 
 @if($penerimaan->status_penerimaan === 'DITERIMA')
-<div class="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+<div class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
     Penerimaan ini sudah disahkan (sesuai pengiriman). Data tidak dapat diubah.
 </div>
 @endif
@@ -55,13 +55,9 @@
                         <dt class="text-sm font-medium text-gray-500 mb-1">Status</dt>
                         <dd class="text-sm font-semibold text-gray-900">
                             @php
-                                $statusColor = match($penerimaan->status_penerimaan) {
-                                    'MENUNGGU_VERIFIKASI' => 'bg-amber-100 text-amber-900',
-                                    'DITERIMA' => 'bg-green-100 text-green-800',
-                                    'DITOLAK' => 'bg-red-100 text-red-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $statusColor = \App\Support\UiColor::badgeForStatus($penerimaan->status_penerimaan);
                                 $statusLabel = match($penerimaan->status_penerimaan) {
+                                    'MENUNGGU_BUKTI_SAMPAI' => 'Menunggu bukti sampai',
                                     'MENUNGGU_VERIFIKASI' => 'Menunggu verifikasi',
                                     default => $penerimaan->status_penerimaan,
                                 };
@@ -110,66 +106,77 @@
                     $kategoriGudang = $detail->inventory->gudang->kategori_gudang ?? null;
                     return $kategoriGudang === 'ASET';
                 })->count() > 0;
+                $canVerify = $penerimaan->status_penerimaan === 'MENUNGGU_VERIFIKASI'
+                    && $penerimaan->hasBuktiSampai()
+                    && (
+                        \App\Helpers\PermissionHelper::canAccess(auth()->user(), 'transaction.penerimaan-barang.update')
+                        || \App\Helpers\PermissionHelper::canAccess(auth()->user(), 'transaction.penerimaan-barang.store')
+                    );
             @endphp
             <div>
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Detail Penerimaan ({{ $penerimaan->detailPenerimaan->count() }} item)</h3>
-                <div class="overflow-x-auto rounded-md border border-gray-100">
-                    <table class="w-full min-w-[680px] table-fixed divide-y divide-gray-200 text-sm">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Detail Penerimaan ({{ $penerimaan->detailPenerimaan->count() }} item)</h3>
+                    @if($canVerify)
+                        <button
+                            type="button"
+                            id="btn_sesuai_semua"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border border-green-300 text-green-900 bg-green-50 hover:bg-green-100"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Sesuai semua
+                        </button>
+                    @endif
+                </div>
+
+                @if($canVerify)
+                <form method="POST" action="{{ route('transaction.penerimaan-barang.verify', $penerimaan) }}" id="formVerifikasiDetail" class="space-y-4">
+                    @csrf
+                @endif
+
+                <div class="-mx-1 sm:mx-0">
+                    <p class="mb-2 px-1 text-xs text-gray-500 sm:hidden">Geser tabel ke samping untuk melihat Verifikasi &amp; Keterangan.</p>
+                    <div class="overflow-x-auto overscroll-x-contain rounded-md border border-gray-100" style="-webkit-overflow-scrolling: touch">
+                    <table class="table-fixed divide-y divide-gray-200 text-sm" id="tabelDetailPenerimaan" style="width: 1000px; min-width: 1000px">
                         <colgroup>
-                            @if($hasFarmasiPersediaan && $hasAset)
-                            <col style="width:1.625rem">
-                            <col style="width:19%">
-                            <col style="width:9%">
-                            <col style="width:5.5%">
-                            <col style="width:5.5%">
-                            <col style="width:4.5%">
-                            <col style="width:6%">
-                            <col style="width:6%">
-                            <col style="width:8%">
-                            <col style="width:27%">
-                            @elseif($hasFarmasiPersediaan)
-                            <col style="width:1.625rem">
-                            <col style="width:24%">
-                            <col style="width:10%">
-                            <col style="width:6%">
-                            <col style="width:6%">
-                            <col style="width:5%">
-                            <col style="width:6%">
-                            <col style="width:6%">
-                            <col style="width:27%">
-                            @elseif($hasAset)
-                            <col style="width:1.625rem">
-                            <col style="width:24%">
-                            <col style="width:10%">
-                            <col style="width:6%">
-                            <col style="width:6%">
-                            <col style="width:5%">
-                            <col style="width:9%">
-                            <col style="width:33%">
+                            <col style="width: 40px">
+                            <col style="width: 150px">
+                            <col style="width: 70px">
+                            <col style="width: 78px">
+                            <col style="width: 78px">
+                            <col style="width: 60px">
+                            @if($hasFarmasiPersediaan)
+                            <col style="width: 70px">
+                            <col style="width: 84px">
+                            @endif
+                            @if($hasAset)
+                            <col style="width: 90px">
+                            @endif
+                            @if($canVerify)
+                            <col style="width: 88px">
+                            <col style="width: 220px">
                             @else
-                            <col style="width:1.625rem">
-                            <col style="width:30%">
-                            <col style="width:12%">
-                            <col style="width:7%">
-                            <col style="width:7%">
-                            <col style="width:6%">
-                            <col style="width:33%">
+                            <col style="width: 220px">
                             @endif
                         </colgroup>
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase w-8">No</th>
+                                <th class="px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase">No</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nama Barang</th>
-                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Jenis</th>
-                                <th class="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase tabular-nums">Qty Kirim</th>
-                                <th class="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase tabular-nums">Qty Terima</th>
-                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Satuan</th>
+                                <th class="px-1 py-2 text-left text-xs font-medium text-gray-500 uppercase">Jenis</th>
+                                <th class="px-1 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty Kirim</th>
+                                <th class="px-1 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty Terima</th>
+                                <th class="px-1 py-2 text-left text-xs font-medium text-gray-500 uppercase">Satuan</th>
                                 @if($hasFarmasiPersediaan)
-                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
-                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Exp</th>
+                                <th class="px-1 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
+                                <th class="px-1 py-2 text-left text-xs font-medium text-gray-500 uppercase">Exp</th>
                                 @endif
                                 @if($hasAset)
-                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">No. Seri</th>
+                                <th class="px-1 py-2 text-left text-xs font-medium text-gray-500 uppercase">No. Seri</th>
+                                @endif
+                                @if($canVerify)
+                                <th class="px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase">Verifikasi</th>
                                 @endif
                                 <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Keterangan</th>
                             </tr>
@@ -177,51 +184,45 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($penerimaan->detailPenerimaan as $index => $detail)
                             @php
-                                // Cari detail distribusi yang sesuai berdasarkan id_inventory
                                 $detailDistribusi = $penerimaan->distribusi->detailDistribusi->firstWhere('id_inventory', $detail->id_inventory);
                                 $qtyDikirim = $detailDistribusi ? $detailDistribusi->qty_distribusi : 0;
                                 $qtyDiterima = $detail->qty_diterima ?? 0;
-                                
                                 $inventory = $detail->inventory;
                                 $kategoriGudang = $inventory->gudang->kategori_gudang ?? null;
                                 $isAset = $kategoriGudang === 'ASET';
                                 $isFarmasiPersediaan = in_array($kategoriGudang, ['FARMASI', 'PERSEDIAAN']);
-                                
-                                // Untuk ASET, ambil nomor seri dari inventory_item
-                                $noSeriList = [];
+                                $noSeriList = collect();
                                 if ($isAset) {
                                     $inventoryItems = \App\Models\InventoryItem::where('id_inventory', $inventory->id_inventory)
                                         ->where('id_gudang', $inventory->id_gudang)
                                         ->where('status_item', 'AKTIF')
-                                        ->limit((int)$qtyDiterima)
+                                        ->limit((int) $qtyDiterima)
                                         ->get();
                                     $noSeriList = $inventoryItems->pluck('no_seri')->filter()->unique()->values();
                                 }
+                                $oldHasil = old("items.$index.hasil", $detail->hasil_verifikasi);
+                                $oldKet = old("items.$index.keterangan", $detail->keterangan);
                             @endphp
-                            <tr class="align-middle">
+                            <tr class="align-top js-verifikasi-row" data-index="{{ $index }}">
                                 <td class="px-1 py-2 text-center text-gray-600 tabular-nums text-xs">{{ $index + 1 }}</td>
-                                <td class="px-2 py-2 font-medium text-gray-900 max-w-0">
-                                    <span class="block truncate" title="{{ $inventory->dataBarang->nama_barang ?? '-' }}">{{ $inventory->dataBarang->nama_barang ?? '-' }}</span>
+                                <td class="px-2 py-2 font-medium text-gray-900 align-top overflow-hidden">
+                                    <span class="block break-words whitespace-normal leading-snug [overflow-wrap:anywhere]">{{ $inventory->dataBarang->nama_barang ?? '-' }}</span>
                                 </td>
-                                <td class="px-2 py-2 text-gray-900 max-w-0">
-                                    <span class="block truncate" title="{{ $inventory->jenis_barang ?? '-' }}">{{ $inventory->jenis_barang ?? '-' }}</span>
+                                <td class="px-1 py-2 text-gray-900 align-top overflow-hidden">
+                                    <span class="block break-words whitespace-normal leading-snug">{{ $inventory->jenis_barang ?? '-' }}</span>
                                 </td>
-                                <td class="px-2 py-2 text-right tabular-nums whitespace-nowrap text-gray-900">
-                                    {{ number_format($qtyDikirim, 2, ',', '.') }}
-                                </td>
-                                <td class="px-2 py-2 text-right tabular-nums whitespace-nowrap text-gray-900">
-                                    {{ number_format($qtyDiterima, 2, ',', '.') }}
-                                </td>
-                                <td class="px-2 py-2 whitespace-nowrap text-gray-900">{{ $detail->satuan->nama_satuan ?? '-' }}</td>
+                                <td class="px-1 py-2 text-right tabular-nums whitespace-nowrap text-gray-900">{{ number_format($qtyDikirim, 2, ',', '.') }}</td>
+                                <td class="px-1 py-2 text-right tabular-nums whitespace-nowrap text-gray-900">{{ number_format($qtyDiterima, 2, ',', '.') }}</td>
+                                <td class="px-1 py-2 whitespace-nowrap text-gray-900 overflow-hidden">{{ $detail->satuan->nama_satuan ?? '-' }}</td>
                                 @if($hasFarmasiPersediaan)
-                                <td class="px-2 py-2 text-gray-600 max-w-0">
+                                <td class="px-1 py-2 text-gray-600 overflow-hidden">
                                     @if($isFarmasiPersediaan)
-                                        <span class="block truncate text-gray-900" title="{{ $inventory->no_batch ?? '-' }}">{{ $inventory->no_batch ?? '-' }}</span>
+                                        <span class="block break-words whitespace-normal">{{ $inventory->no_batch ?? '-' }}</span>
                                     @else
                                         <span class="text-gray-400">—</span>
                                     @endif
                                 </td>
-                                <td class="px-2 py-2 whitespace-nowrap text-gray-600">
+                                <td class="px-1 py-2 whitespace-nowrap text-gray-600">
                                     @if($isFarmasiPersediaan && $inventory->tanggal_kedaluwarsa)
                                         {{ \Carbon\Carbon::parse($inventory->tanggal_kedaluwarsa)->format('d/m/Y') }}
                                     @else
@@ -230,82 +231,199 @@
                                 </td>
                                 @endif
                                 @if($hasAset)
-                                <td class="px-2 py-2 max-w-0 text-gray-900">
+                                <td class="px-1 py-2 text-gray-900 overflow-hidden">
                                     @if($isAset)
                                         @if($noSeriList->count() > 0)
-                                            @if($noSeriList->count() <= 3)
-                                                {{ $noSeriList->join(', ') }}
-                                            @else
-                                                {{ $noSeriList->take(3)->join(', ') }}<br>
-                                                <span class="text-xs text-gray-500">+{{ $noSeriList->count() - 3 }} lainnya</span>
-                                            @endif
+                                            <span class="block break-words whitespace-normal">{{ $noSeriList->join(', ') }}</span>
                                         @else
-                                            {{ $inventory->no_seri ?? '-' }}
+                                            <span class="block break-words whitespace-normal">{{ $inventory->no_seri ?? '-' }}</span>
                                         @endif
                                     @else
                                         <span class="text-gray-400">—</span>
                                     @endif
                                 </td>
                                 @endif
-                                <td class="px-2 py-2 max-w-0 text-gray-700">
+
+                                @if($canVerify)
+                                <td class="p-1 align-middle text-center overflow-hidden">
+                                    <input type="hidden" name="items[{{ $index }}][id_detail_penerimaan]" value="{{ $detail->id_detail_penerimaan }}">
+                                    <input type="hidden" name="items[{{ $index }}][hasil]" class="js-hasil-input" value="{{ $oldHasil }}" required>
+                                    <div class="mx-auto flex w-[68px] items-center justify-center gap-1">
+                                        <button
+                                            type="button"
+                                            class="js-btn-sesuai inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border {{ $oldHasil === 'sesuai' ? 'border-green-600 bg-green-600 text-white' : 'border-green-300 bg-white text-green-700 hover:bg-green-50' }}"
+                                            data-value="sesuai"
+                                            title="Sesuai"
+                                            aria-label="Sesuai"
+                                        >
+                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="js-btn-tidak inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border {{ $oldHasil === 'tidak_sesuai' ? 'border-red-600 bg-red-600 text-white' : 'border-red-300 bg-white text-red-700 hover:bg-red-50' }}"
+                                            data-value="tidak_sesuai"
+                                            title="Tidak sesuai"
+                                            aria-label="Tidak sesuai"
+                                        >
+                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    @error("items.$index.hasil")
+                                        <p class="mt-1 text-[10px] text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </td>
+                                <td class="px-2 py-2 align-top overflow-hidden">
+                                    <textarea
+                                        name="items[{{ $index }}][keterangan]"
+                                        rows="2"
+                                        class="js-ket-input block w-full min-w-0 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs @error('items.'.$index.'.keterangan') border-red-500 @enderror"
+                                        placeholder="Wajib jika tidak sesuai"
+                                        {{ $oldHasil === 'tidak_sesuai' ? 'required' : '' }}
+                                    >{{ $oldKet }}</textarea>
+                                    @error("items.$index.keterangan")
+                                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </td>
+                                @else
+                                <td class="px-2 py-2 text-gray-700 overflow-hidden">
+                                    @if($detail->hasil_verifikasi === 'sesuai')
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-900" title="Sesuai">
+                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" /></svg>
+                                            Sesuai
+                                        </span>
+                                    @elseif($detail->hasil_verifikasi === 'tidak_sesuai')
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-900" title="Tidak sesuai">
+                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            Tidak sesuai
+                                        </span>
+                                    @endif
                                     @if(filled($detail->keterangan))
-                                        <span class="line-clamp-2 break-words text-gray-900" title="{{ $detail->keterangan }}">{{ $detail->keterangan }}</span>
-                                    @else
+                                        <p class="mt-1 text-xs text-gray-700 break-words whitespace-normal">{{ $detail->keterangan }}</p>
+                                    @elseif(!$detail->hasil_verifikasi)
                                         <span class="text-gray-400">—</span>
                                     @endif
                                 </td>
+                                @endif
                             </tr>
                             @empty
                             <tr>
                                 @php
-                                    $colspan = 7;
-                                    if ($hasFarmasiPersediaan) $colspan += 2;
-                                    if ($hasAset) $colspan += 1;
+                                    $colspan = 7 + ($hasFarmasiPersediaan ? 2 : 0) + ($hasAset ? 1 : 0) + ($canVerify ? 1 : 0);
                                 @endphp
                                 <td colspan="{{ $colspan }}" class="px-4 py-3 text-sm text-center text-gray-500">Tidak ada data detail penerimaan</td>
                             </tr>
                             @endforelse
                         </tbody>
                     </table>
+                    </div>
                 </div>
+
+                @if($canVerify)
+                    <div class="flex justify-end pt-2">
+                        <button type="submit" class="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                            Simpan verifikasi
+                        </button>
+                    </div>
+                </form>
+                @endif
             </div>
 
-            @if($penerimaan->status_penerimaan === 'MENUNGGU_VERIFIKASI' && (\App\Helpers\PermissionHelper::canAccess(auth()->user(), 'transaction.penerimaan-barang.update') || \App\Helpers\PermissionHelper::canAccess(auth()->user(), 'transaction.penerimaan-barang.store')))
-            <div id="verifikasi" class="border border-amber-200 rounded-lg bg-amber-50 p-6 mt-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-2">Verifikasi terhadap pengiriman (SBBK)</h3>
-                <p class="text-sm text-gray-600 mb-4">Periksa fisik barang dan bandingkan dengan kolom qty dikirim vs qty diterima di atas. Simpan hasil apakah sesuai atau tidak.</p>
-                <form method="POST" action="{{ route('transaction.penerimaan-barang.verify', $penerimaan) }}" class="space-y-4">
-                    @csrf
-                    <fieldset class="space-y-3">
-                        <legend class="text-sm font-medium text-gray-700 mb-2">Hasil verifikasi</legend>
-                        <label class="flex items-start gap-2 cursor-pointer">
-                            <input type="radio" name="verifikasi" value="sesuai" required class="mt-1 rounded-full border-gray-300 text-blue-600 focus:ring-blue-500" {{ old('verifikasi') === 'sesuai' ? 'checked' : '' }}>
-                            <span class="text-sm text-gray-900">Sesuai — barang dan jumlah sesuai pengiriman</span>
-                        </label>
-                        <label class="flex items-start gap-2 cursor-pointer">
-                            <input type="radio" name="verifikasi" value="tidak_sesuai" class="mt-1 rounded-full border-gray-300 text-blue-600 focus:ring-blue-500" {{ old('verifikasi') === 'tidak_sesuai' ? 'checked' : '' }}>
-                            <span class="text-sm text-gray-900">Tidak sesuai — ada selisih atau ketidaksesuaian</span>
-                        </label>
-                    </fieldset>
-                    @error('verifikasi')
-                        <p class="text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    <div>
-                        <label for="keterangan_verifikasi" class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
-                        <p class="text-xs text-gray-500 mb-1">Wajib diisi jika memilih &quot;Tidak sesuai&quot;. Opsional jika &quot;Sesuai&quot;.</p>
-                        <textarea name="keterangan" id="keterangan_verifikasi" rows="3" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm @error('keterangan') border-red-500 @enderror" placeholder="Contoh: qty kurang, kemasan rusak, …">{{ old('keterangan') }}</textarea>
-                        @error('keterangan')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <button type="submit" class="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                        Simpan verifikasi
-                    </button>
-                </form>
+            @if($penerimaan->status_penerimaan === 'MENUNGGU_BUKTI_SAMPAI')
+            <div class="border border-blue-200 rounded-lg bg-blue-50 p-6 mt-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Menunggu bukti pengiriman</h3>
+                <p class="text-sm text-gray-600 mb-3">Verifikasi klinik baru dapat dilakukan setelah pengirim mengunggah foto bukti dan nama penerima di detail distribusi (SBBK).</p>
+                @if($penerimaan->distribusi)
+                    <a href="{{ route('transaction.distribusi.show', $penerimaan->distribusi->id_distribusi) }}#bukti-sampai" class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900">
+                        Buka detail distribusi untuk isi bukti sampai →
+                    </a>
+                @endif
             </div>
             @endif
+
         </div>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    const form = document.getElementById('formVerifikasiDetail');
+    if (!form) return;
+
+    function styleRow(row, value) {
+        const hidden = row.querySelector('.js-hasil-input');
+        const ket = row.querySelector('.js-ket-input');
+        const btnSesuai = row.querySelector('.js-btn-sesuai');
+        const btnTidak = row.querySelector('.js-btn-tidak');
+        if (!hidden || !btnSesuai || !btnTidak) return;
+
+        hidden.value = value || '';
+        const aktifSesuai = value === 'sesuai';
+        const aktifTidak = value === 'tidak_sesuai';
+
+        btnSesuai.className = 'js-btn-sesuai inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border ' +
+            (aktifSesuai
+                ? 'border-green-600 bg-green-600 text-white'
+                : 'border-green-300 bg-white text-green-700 hover:bg-green-50');
+        btnTidak.className = 'js-btn-tidak inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border ' +
+            (aktifTidak
+                ? 'border-red-600 bg-red-600 text-white'
+                : 'border-red-300 bg-white text-red-700 hover:bg-red-50');
+
+        if (ket) {
+            if (aktifTidak) {
+                ket.setAttribute('required', 'required');
+                ket.placeholder = 'Wajib diisi (qty kurang, rusak, dll)';
+            } else {
+                ket.removeAttribute('required');
+                ket.placeholder = 'Opsional';
+            }
+        }
+    }
+
+    form.querySelectorAll('.js-verifikasi-row').forEach(function (row) {
+        const hidden = row.querySelector('.js-hasil-input');
+        styleRow(row, hidden ? hidden.value : '');
+
+        row.querySelector('.js-btn-sesuai')?.addEventListener('click', function () {
+            styleRow(row, 'sesuai');
+        });
+        row.querySelector('.js-btn-tidak')?.addEventListener('click', function () {
+            styleRow(row, 'tidak_sesuai');
+            row.querySelector('.js-ket-input')?.focus();
+        });
+    });
+
+    document.getElementById('btn_sesuai_semua')?.addEventListener('click', function () {
+        form.querySelectorAll('.js-verifikasi-row').forEach(function (row) {
+            styleRow(row, 'sesuai');
+        });
+    });
+
+    form.addEventListener('submit', function (e) {
+        let ok = true;
+        form.querySelectorAll('.js-verifikasi-row').forEach(function (row) {
+            const hasil = row.querySelector('.js-hasil-input')?.value;
+            const ket = row.querySelector('.js-ket-input');
+            if (!hasil) {
+                ok = false;
+            }
+            if (hasil === 'tidak_sesuai' && ket && !String(ket.value || '').trim()) {
+                ok = false;
+                ket.focus();
+            }
+        });
+        if (!ok) {
+            e.preventDefault();
+            alert('Pilih Sesuai / Tidak sesuai untuk setiap barang. Keterangan wajib jika Tidak sesuai.');
+        }
+    });
+})();
+</script>
+@endpush
 

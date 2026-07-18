@@ -37,6 +37,10 @@ class ApprovalPermintaanController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+        $viewType = $request->query('view_type', 'aktif');
+        if (! in_array($viewType, ['aktif', 'riwayat'], true)) {
+            $viewType = 'aktif';
+        }
 
         // Pastikan setiap permintaan berstatus diajukan memiliki log approval awal (step 2).
         // Ini menangani data lama yang status-nya sudah diajukan tetapi belum punya approval_log.
@@ -54,13 +58,18 @@ class ApprovalPermintaanController extends Controller
             ->whereIn('role_id', $userRoles)
             ->pluck('id');
 
+        // Aktif: masih dalam alur approval. Riwayat: sudah selesai/ditolak/diproses disposisi.
+        $logStatuses = $viewType === 'riwayat'
+            ? ['MENUNGGU', 'DIKETAHUI', 'DIVERIFIKASI', 'DIDISPOSISIKAN', 'DISETUJUI', 'DIPROSES', 'SELESAI', 'DITOLAK']
+            : ['MENUNGGU', 'DIKETAHUI', 'DIVERIFIKASI', 'DIDISPOSISIKAN'];
+
         // Ambil approval log yang menunggu persetujuan
         // Jika user adalah admin, tampilkan semua approval log
         // Jika tidak, tampilkan hanya yang sesuai dengan role user
         if (UserScope::canViewCrossUnitData($user)) {
             $query = ApprovalLog::with(['approvalFlow.role', 'user', 'permintaan'])
                 ->where('modul_approval', 'PERMINTAAN_BARANG')
-                ->whereIn('status', ['MENUNGGU', 'DIKETAHUI', 'DIVERIFIKASI', 'DIDISPOSISIKAN']);
+                ->whereIn('status', $logStatuses);
         } else {
             // Ambil approval log yang menunggu persetujuan untuk role user saat ini
             // Gunakan whereIn untuk id_approval_flow yang sesuai dengan role user
@@ -73,7 +82,7 @@ class ApprovalPermintaanController extends Controller
                 $query = ApprovalLog::with(['approvalFlow.role', 'user', 'permintaan'])
                     ->where('modul_approval', 'PERMINTAAN_BARANG')
                     ->whereIn('id_approval_flow', $flowDefinitions)
-                    ->whereIn('status', ['MENUNGGU', 'DIKETAHUI', 'DIVERIFIKASI', 'DIDISPOSISIKAN']);
+                    ->whereIn('status', $logStatuses);
             }
         }
 
@@ -169,7 +178,7 @@ class ApprovalPermintaanController extends Controller
                     $stepOrder = $approval->approvalFlow->step_order ?? 999;
 
                     // Jika status sudah diselesaikan (bukan MENUNGGU), update last completed step
-                    if (in_array($approval->status, ['DIKETAHUI', 'DIVERIFIKASI', 'DISETUJUI', 'DIDISPOSISIKAN', 'DIPROSES'])) {
+                    if (in_array($approval->status, ['DIKETAHUI', 'DIVERIFIKASI', 'DISETUJUI', 'DIDISPOSISIKAN', 'DIPROSES', 'SELESAI'], true)) {
                         if ($stepOrder > $maxCompletedStep) {
                             $maxCompletedStep = $stepOrder;
                             $lastCompletedStep = $stepOrder;
@@ -212,6 +221,9 @@ class ApprovalPermintaanController extends Controller
                     } elseif ($step4Approval->status === 'DIPROSES') {
                         $currentStep = $step4Approval;
                         $currentStatus = 'DIPROSES';
+                    } elseif ($step4Approval->status === 'SELESAI') {
+                        $currentStep = $step4Approval;
+                        $currentStatus = 'SELESAI';
                     }
                 }
 
@@ -262,7 +274,7 @@ class ApprovalPermintaanController extends Controller
                 // Jika ada yang ditolak, tetap hitung last completed step untuk display
                 foreach ($group['approvals'] as $approval) {
                     $stepOrder = $approval->approvalFlow->step_order ?? 999;
-                    if (in_array($approval->status, ['DIKETAHUI', 'DIVERIFIKASI', 'DISETUJUI', 'DIDISPOSISIKAN', 'DIPROSES'])) {
+                    if (in_array($approval->status, ['DIKETAHUI', 'DIVERIFIKASI', 'DISETUJUI', 'DIDISPOSISIKAN', 'DIPROSES', 'SELESAI'], true)) {
                         if ($stepOrder > $maxCompletedStep) {
                             $maxCompletedStep = $stepOrder;
                             $lastCompletedStep = $stepOrder;
@@ -300,6 +312,14 @@ class ApprovalPermintaanController extends Controller
             return $item['permintaan'] !== null;
         });
 
+        // Tab Aktif vs Riwayat berdasarkan status tampilan approval.
+        $riwayatDisplayStatuses = ['DISETUJUI', 'DIDISPOSISIKAN', 'DIPROSES', 'SELESAI', 'DITOLAK'];
+        $permintaanList = $permintaanList->filter(function ($item) use ($viewType, $riwayatDisplayStatuses) {
+            $isRiwayat = in_array($item['current_status'], $riwayatDisplayStatuses, true);
+
+            return $viewType === 'riwayat' ? $isRiwayat : ! $isRiwayat;
+        })->values();
+
         // Pagination manual
         $page = $request->get('page', 1);
         $perPage = PaginationHelper::getPerPage($request, 10);
@@ -315,7 +335,7 @@ class ApprovalPermintaanController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        return view('transaction.approval.index', compact('paginator', 'permintaans'));
+        return view('transaction.approval.index', compact('paginator', 'permintaans', 'viewType'));
     }
 
     private function syncInitialApprovalLogsForSubmittedRequests(): void

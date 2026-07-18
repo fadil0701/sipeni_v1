@@ -20,6 +20,8 @@
         </h2>
         @if($isProsesMode)
             <p class="text-sm text-gray-600 mt-1">Tahap ini untuk menyusun SBBK dari permintaan yang sudah di-approve. Pegawai pengirim ditentukan pada tahap Distribusi.</p>
+        @else
+            <p class="text-sm text-gray-600 mt-1">Pengiriman langsung tanpa melalui permintaan barang. Pilih gudang asal/tujuan dan isi detail item manual.</p>
         @endif
     </div>
     
@@ -35,28 +37,30 @@
             <div>
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Distribusi</h3>
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <div>
-                        <label for="id_permintaan" class="block text-sm font-medium text-gray-700 mb-2">
-                            Permintaan Barang <span class="text-red-500">*</span>
-                        </label>
-                        <select 
-                            id="id_permintaan" 
-                            name="id_permintaan" 
-                            required
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_permintaan') border-red-500 @enderror"
-                            onchange="loadPermintaanDetail(this.value)"
-                        >
-                            <option value="">Pilih Permintaan Barang</option>
-                            @foreach($permintaans as $permintaan)
-                                <option value="{{ $permintaan->id_permintaan }}" {{ old('id_permintaan', $selectedPermintaan?->id_permintaan) == $permintaan->id_permintaan ? 'selected' : '' }}>
-                                    {{ $permintaan->no_permintaan }} - {{ $permintaan->unitKerja->nama_unit_kerja ?? '-' }} ({{ $permintaan->tanggal_permintaan->format('d/m/Y') }})
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('id_permintaan')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
+                    @if($isProsesMode)
+                        <div>
+                            <label for="id_permintaan" class="block text-sm font-medium text-gray-700 mb-2">
+                                Permintaan Barang <span class="text-red-500">*</span>
+                            </label>
+                            <select 
+                                id="id_permintaan" 
+                                name="id_permintaan" 
+                                required
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_permintaan') border-red-500 @enderror"
+                                onchange="loadPermintaanDetail(this.value)"
+                            >
+                                <option value="">Pilih Permintaan Barang</option>
+                                @foreach($permintaans as $permintaan)
+                                    <option value="{{ $permintaan->id_permintaan }}" {{ old('id_permintaan', $selectedPermintaan?->id_permintaan) == $permintaan->id_permintaan ? 'selected' : '' }}>
+                                        {{ $permintaan->no_permintaan }} - {{ $permintaan->unitKerja->nama_unit_kerja ?? '-' }} ({{ $permintaan->tanggal_permintaan->format('d/m/Y') }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('id_permintaan')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    @endif
 
                     <div>
                         <label for="tanggal_distribusi" class="block text-sm font-medium text-gray-700 mb-2">
@@ -651,10 +655,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Load permintaan detail jika sudah dipilih
-    const permintaanId = document.getElementById('id_permintaan').value;
-    if (permintaanId) {
-        loadPermintaanDetail(permintaanId);
+    // Load permintaan detail jika sudah dipilih (hanya mode proses dari approval)
+    const permintaanSelect = document.getElementById('id_permintaan');
+    if (permintaanSelect && permintaanSelect.value) {
+        loadPermintaanDetail(permintaanSelect.value);
     }
     
     // Load inventory jika gudang asal sudah dipilih

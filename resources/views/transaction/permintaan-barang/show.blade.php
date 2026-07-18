@@ -91,7 +91,7 @@
                             @endphp
                             @if(is_array($jenisPermintaan) && count($jenisPermintaan) > 0)
                                 @foreach($jenisPermintaan as $jenis)
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $jenis == 'ASET' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }} mr-1">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $jenis == 'ASET' ? 'bg-blue-100 text-blue-900' : 'bg-green-100 text-green-900' }} mr-1">
                                         {{ $jenis }}
                                     </span>
                                 @endforeach
@@ -151,12 +151,7 @@
                             @php
                                 $log = (isset($approvalHistory) ? $approvalHistory->firstWhere('id_approval_flow', $flow->id) : null);
                                 $stepStatus = $log?->status ?? 'BELUM_DIAJUKAN';
-                                $stepBadge = match($stepStatus) {
-                                    'DISETUJUI', 'DIKETAHUI', 'DIVERIFIKASI', 'DIDISPOSISIKAN', 'DIPROSES' => 'bg-green-100 text-green-800',
-                                    'MENUNGGU' => 'bg-yellow-100 text-yellow-800',
-                                    'DITOLAK' => 'bg-red-100 text-red-800',
-                                    default => 'bg-gray-100 text-gray-700',
-                                };
+                                $stepBadge = \App\Support\UiColor::badgeForStatus($stepStatus);
                                 $stepLabel = $stepStatus === 'BELUM_DIAJUKAN' ? 'Belum diajukan' : $stepStatus;
                             @endphp
                             <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -205,12 +200,7 @@
                     <div class="space-y-3">
                         @foreach($approvalHistory as $log)
                             @php
-                                $statusClasses = match($log->status) {
-                                    'DISETUJUI', 'DIKETAHUI', 'DIVERIFIKASI', 'DIDISPOSISIKAN', 'DIPROSES' => 'bg-green-100 text-green-800',
-                                    'DITOLAK' => 'bg-red-100 text-red-800',
-                                    'MENUNGGU' => 'bg-yellow-100 text-yellow-800',
-                                    default => 'bg-gray-100 text-gray-700',
-                                };
+                                $statusClasses = \App\Support\UiColor::badgeForStatus($log->status);
                             @endphp
                             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                 <div class="flex justify-between items-start gap-3">

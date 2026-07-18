@@ -27,12 +27,7 @@
                     <dd class="mt-1">
                         @php
                             $status = $asset->kondisi_item ?? 'N/A';
-                            $color = match($status) {
-                                'BAIK' => 'bg-green-100 text-green-800',
-                                'RUSAK_RINGAN' => 'bg-yellow-100 text-yellow-800',
-                                'RUSAK_BERAT' => 'bg-red-100 text-red-800',
-                                default => 'bg-gray-100 text-gray-800',
-                            };
+                            $color = \App\Support\UiColor::badgeForStatus($status);
                         @endphp
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $color }}">
                             {{ $status === 'BAIK' ? 'Baik' : $status }}

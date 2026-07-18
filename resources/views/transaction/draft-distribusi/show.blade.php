@@ -37,7 +37,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Status Approval</label>
                         <span class="mt-1 inline-flex px-2 py-1 text-xs font-medium rounded-full 
-                            {{ $approvalLog->status == 'DIPROSES' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                            {{ $approvalLog->status == 'DIPROSES' ? 'bg-green-100 text-green-900' : 'bg-amber-100 text-amber-950' }}">
                             {{ $approvalLog->status }}
                         </span>
                     </div>
@@ -75,7 +75,7 @@
                                     <td class="px-4 py-2 text-sm text-gray-900 font-medium">Rp {{ number_format($draft->subtotal, 2, ',', '.') }}</td>
                                     <td class="px-4 py-2 text-sm">
                                         <span class="px-2 py-1 text-xs font-medium rounded-full 
-                                            {{ $draft->status == 'READY' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                            {{ $draft->status == 'READY' ? 'bg-green-100 text-green-900' : 'bg-amber-100 text-amber-950' }}">
                                             {{ $draft->status }}
                                         </span>
                                     </td>

@@ -60,7 +60,7 @@
                         <p class="text-xs text-gray-500 mt-0.5">Gudang Pusat</p>
                     </div>
                 </div>
-                <span class="flex-shrink-0 px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-100 text-blue-800">KIB</span>
+                <span class="flex-shrink-0 px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-100 text-blue-900">KIB</span>
             </div>
             <div class="grid grid-cols-1 gap-3 mb-4">
                 <div class="rounded-lg bg-blue-50 p-3 text-center">
@@ -101,7 +101,7 @@
                     </div>
                 </div>
                 @php $kirCount = $gudang->kir_count ?? 0; @endphp
-                <span class="flex-shrink-0 px-2.5 py-1 text-xs font-semibold rounded-lg bg-orange-100 text-orange-800">
+                <span class="flex-shrink-0 px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-100 text-amber-950">
                     KIR
                 </span>
             </div>

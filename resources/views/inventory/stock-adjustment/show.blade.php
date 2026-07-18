@@ -75,7 +75,7 @@
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Jenis Adjustment</dt>
                         <dd class="mt-1">
-                            <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                            <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-blue-100 text-blue-900">
                                 {{ $adjustment->jenis_adjustment }}
                             </span>
                         </dd>
@@ -84,13 +84,7 @@
                         <dt class="text-sm font-medium text-gray-500">Status</dt>
                         <dd class="mt-1">
                             @php
-                                $statusColors = [
-                                    'DRAFT' => 'bg-gray-100 text-gray-800',
-                                    'DIAJUKAN' => 'bg-yellow-100 text-yellow-800',
-                                    'DISETUJUI' => 'bg-green-100 text-green-800',
-                                    'DITOLAK' => 'bg-red-100 text-red-800',
-                                ];
-                                $color = $statusColors[$adjustment->status] ?? 'bg-gray-100 text-gray-800';
+                                $color = \App\Support\UiColor::badgeForStatus($adjustment->status);
                             @endphp
                             <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full {{ $color }}">
                                 {{ $adjustment->status }}

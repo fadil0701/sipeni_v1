@@ -81,7 +81,7 @@
                         @endif
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-950">
                             {{ number_format((int) $summary->total_item, 0, ',', '.') }} item
                         </span>
                     </td>
@@ -98,7 +98,7 @@
                         <a 
                             href="{{ route('asset.kartu-inventaris-ruangan.dokumen-unit', ['id_unit_kerja' => $summary->id_unit_kerja, 'print' => 1, 'tte' => 1]) }}" 
                             target="_blank"
-                            class="text-indigo-600 hover:text-indigo-900"
+                            class="text-blue-700 hover:text-blue-900"
                         >
                             Cetak
                         </a>

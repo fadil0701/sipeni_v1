@@ -32,13 +32,13 @@ if (! function_exists('getAvatarColor')) {
     function getAvatarColor(string $name): string {
         $colors = [
             'bg-blue-600',
-            'bg-emerald-600',
+            'bg-green-600',
             'bg-amber-600',
             'bg-violet-600',
             'bg-rose-600',
             'bg-cyan-600',
             'bg-orange-600',
-            'bg-indigo-600',
+            'bg-blue-600',
         ];
         $index = crc32($name) % count($colors);
         return $colors[$index];

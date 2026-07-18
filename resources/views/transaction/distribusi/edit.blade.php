@@ -10,15 +10,26 @@
     </a>
 </div>
 
+@php($intentProses = $intentProses ?? false)
 <div class="bg-white shadow-sm rounded-lg border border-gray-200">
     <div class="px-6 py-5 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">Edit Distribusi Barang (SBBK)</h2>
+        <h2 class="text-xl font-semibold text-gray-900">
+            {{ $intentProses ? 'Proses Distribusi — Isi Pegawai Pengirim' : 'Edit Distribusi Barang (SBBK)' }}
+        </h2>
         <p class="text-sm text-gray-600 mt-1">No. SBBK: <span class="font-semibold">{{ $distribusi->no_sbbk }}</span></p>
+        @if($intentProses)
+            <p class="mt-2 text-sm text-blue-800 bg-blue-50 border border-indigo-100 rounded-md px-3 py-2">
+                Pilih <strong>Pegawai Pengirim</strong> lalu simpan untuk memproses SBBK. Setelah itu Anda dapat mengirim distribusi.
+            </p>
+        @endif
     </div>
     
     <form action="{{ route('transaction.distribusi.update', $distribusi->id_distribusi) }}" method="POST" class="p-6" id="formDistribusi">
         @csrf
         @method('PUT')
+        @if($intentProses)
+            <input type="hidden" name="intent" value="proses">
+        @endif
         
         <div class="space-y-6">
             <!-- Informasi Distribusi -->
@@ -97,15 +108,19 @@
                         @enderror
                     </div>
 
-                    <div>
+                    <div class="{{ $intentProses ? 'sm:col-span-2 rounded-lg border border-blue-200 bg-blue-50/50 p-4' : '' }}">
                         <label for="id_pegawai_pengirim" class="block text-sm font-medium text-gray-700 mb-2">
                             Pegawai Pengirim <span class="text-red-500">*</span>
+                            @if($intentProses)
+                                <span class="ml-1 text-xs font-normal text-blue-700">(wajib untuk memproses)</span>
+                            @endif
                         </label>
                         <select 
                             id="id_pegawai_pengirim" 
                             name="id_pegawai_pengirim" 
                             required
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_pegawai_pengirim') border-red-500 @enderror"
+                            @if($intentProses) autofocus @endif
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_pegawai_pengirim') border-red-500 @enderror {{ $intentProses ? 'border-blue-300 ring-1 ring-indigo-200' : '' }}"
                         >
                             <option value="">Pilih Pegawai Pengirim</option>
                             @foreach($pegawais as $pegawai)
@@ -287,9 +302,9 @@
             </a>
             <button 
                 type="submit" 
-                class="px-5 py-2.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                class="px-5 py-2.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white {{ $intentProses ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' }} focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
             >
-                Simpan
+                {{ $intentProses ? 'Simpan & Proses' : 'Simpan' }}
             </button>
         </div>
     </form>

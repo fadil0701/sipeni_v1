@@ -62,15 +62,7 @@
                         <dt class="text-sm font-medium text-gray-500 mb-1">Status</dt>
                         <dd class="text-sm font-semibold text-gray-900">
                             @php
-                                $statusColor = match($permintaan->status_permintaan) {
-                                    'DRAFT' => 'bg-gray-100 text-gray-800',
-                                    'DIAJUKAN' => 'bg-yellow-100 text-yellow-800',
-                                    'DISETUJUI' => 'bg-green-100 text-green-800',
-                                    'DITOLAK' => 'bg-red-100 text-red-800',
-                                    'DIPROSES' => 'bg-blue-100 text-blue-800',
-                                    'SELESAI' => 'bg-indigo-100 text-indigo-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $statusColor = \App\Support\UiColor::badgeForStatus($permintaan->status_permintaan);
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusColor }}">
                                 {{ $permintaan->status_permintaan }}
@@ -98,13 +90,7 @@
                         <dt class="text-sm font-medium text-gray-500 mb-1">Jenis Pemeliharaan</dt>
                         <dd class="text-sm font-semibold text-gray-900">
                             @php
-                                $jenisColor = match($permintaan->jenis_pemeliharaan) {
-                                    'RUTIN' => 'bg-blue-100 text-blue-800',
-                                    'KALIBRASI' => 'bg-purple-100 text-purple-800',
-                                    'PERBAIKAN' => 'bg-orange-100 text-orange-800',
-                                    'PENGGANTIAN_SPAREPART' => 'bg-yellow-100 text-yellow-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $jenisColor = \App\Support\UiColor::badgeForStatus($permintaan->jenis_pemeliharaan);
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $jenisColor }}">
                                 {{ $permintaan->jenis_pemeliharaan }}
@@ -115,13 +101,7 @@
                         <dt class="text-sm font-medium text-gray-500 mb-1">Prioritas</dt>
                         <dd class="text-sm font-semibold text-gray-900">
                             @php
-                                $prioritasColor = match($permintaan->prioritas) {
-                                    'RENDAH' => 'bg-gray-100 text-gray-800',
-                                    'SEDANG' => 'bg-yellow-100 text-yellow-800',
-                                    'TINGGI' => 'bg-orange-100 text-orange-800',
-                                    'DARURAT' => 'bg-red-100 text-red-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
+                                $prioritasColor = \App\Support\UiColor::badgeForStatus($permintaan->prioritas);
                             @endphp
                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $prioritasColor }}">
                                 {{ $permintaan->prioritas }}
@@ -150,7 +130,7 @@
                     <div>
                         <dt class="text-sm font-medium text-gray-500 mb-1">Status Aset</dt>
                         <dd class="text-sm font-semibold text-gray-900">
-                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-900">
                                 {{ $permintaan->registerAset->status_aset ?? '-' }}
                             </span>
                         </dd>
@@ -199,14 +179,7 @@
                                 <div class="relative flex space-x-3">
                                     <div>
                                         @php
-                                            $statusIcon = match($log->status) {
-                                                'MENUNGGU' => 'bg-yellow-100 text-yellow-800',
-                                                'DIKETAHUI' => 'bg-blue-100 text-blue-800',
-                                                'DIVERIFIKASI' => 'bg-purple-100 text-purple-800',
-                                                'DISETUJUI' => 'bg-green-100 text-green-800',
-                                                'DITOLAK' => 'bg-red-100 text-red-800',
-                                                default => 'bg-gray-100 text-gray-800',
-                                            };
+                                            $statusIcon = \App\Support\UiColor::badgeForStatus($log->status);
                                         @endphp
                                         <span class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white {{ $statusIcon }}">
                                             @if($log->status === 'DISETUJUI')

@@ -14,9 +14,9 @@
         <p class="text-xs text-amber-700">Siap Dikembalikan</p>
         <p class="mt-1 text-xl font-semibold text-amber-800">{{ $summary['siap_dikembalikan'] ?? 0 }}</p>
     </div>
-    <div class="rounded-lg border border-indigo-200 bg-indigo-50 p-3">
-        <p class="text-xs text-indigo-700">Menunggu Finalisasi Pengurus</p>
-        <p class="mt-1 text-xl font-semibold text-indigo-800">{{ $summary['menunggu_finalisasi'] ?? 0 }}</p>
+    <div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
+        <p class="text-xs text-blue-800">Menunggu Finalisasi Pengurus</p>
+        <p class="mt-1 text-xl font-semibold text-blue-800">{{ $summary['menunggu_finalisasi'] ?? 0 }}</p>
     </div>
     <div class="rounded-lg border border-green-200 bg-green-50 p-3">
         <p class="text-xs text-green-700">Selesai</p>
@@ -79,7 +79,7 @@
                                 && (int) $pegawai->id_unit_kerja === (int) $item->id_unit_peminjam
                             )
                                 @canAccess('transaction.peminjaman-barang.pengembalian.create')
-                                <a href="{{ route('transaction.peminjaman-barang.pengembalian.create', $item->id_peminjaman) }}" class="text-emerald-600 hover:text-emerald-800">Isi Pengembalian</a>
+                                <a href="{{ route('transaction.peminjaman-barang.pengembalian.create', $item->id_peminjaman) }}" class="text-green-700 hover:text-green-900">Isi Pengembalian</a>
                                 @endcanAccess
                             @endif
                         </div>

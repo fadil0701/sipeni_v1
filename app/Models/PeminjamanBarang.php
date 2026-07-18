@@ -111,7 +111,7 @@ class PeminjamanBarang extends Model
         return match ($this->status) {
             self::STATUS_SELESAI => 'bg-green-50 text-green-700',
             self::STATUS_DITOLAK_KEPALA_UNIT_PEMILIK, self::STATUS_DITOLAK_PENGURUS => 'bg-red-50 text-red-700',
-            self::STATUS_SERAH_TERIMA, self::STATUS_PENGEMBALIAN => 'bg-indigo-50 text-indigo-700',
+            self::STATUS_SERAH_TERIMA, self::STATUS_PENGEMBALIAN => 'bg-blue-50 text-blue-800',
             default => 'bg-blue-50 text-blue-700',
         };
     }

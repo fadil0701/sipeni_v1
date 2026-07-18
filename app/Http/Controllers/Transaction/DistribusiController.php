@@ -19,11 +19,12 @@ use App\Models\User;
 use App\Services\DistribusiService;
 use App\Services\PrintTemplateRenderer;
 use App\Services\SbbkPrintTemplateData;
+use App\Support\Http\SafeUserMessage;
+use App\Support\Rbac\UserScope;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
-use App\Support\Rbac\UserScope;
 
 class DistribusiController extends Controller
 {
@@ -140,7 +141,9 @@ class DistribusiController extends Controller
             }
         }
 
-        $validated = $this->validatePayload($request, true, ! $isProsesMode);
+        // Mode distribusi langsung (tanpa permintaan) tidak wajib id_permintaan.
+        // Mode proses dari approval wajib mengaitkan permintaan yang sudah disetujui.
+        $validated = $this->validatePayload($request, $isProsesMode, ! $isProsesMode);
         $this->distribusiService->createDraft($validated);
 
         if ($isProsesMode && $request->filled('approval_log_id')) {
@@ -160,13 +163,33 @@ class DistribusiController extends Controller
     public function show(int|string $id)
     {
         $distribusi = TransaksiDistribusi::with([
-            'permintaan.unitKerja', 'permintaan.pemohon', 'gudangAsal', 'gudangTujuan',
+            'permintaan.unitKerja', 'permintaan.pemohon', 'gudangAsal', 'gudangTujuan.unitKerja',
             'pegawaiPengirim', 'detailDistribusi.inventory.dataBarang', 'detailDistribusi.inventory.gudang', 'detailDistribusi.satuan',
+            'penerimaanBarang',
         ])->findOrFail($id);
 
         UserScope::assertCanAccessDistribusi(Auth::user(), $distribusi);
 
-        return view('transaction.distribusi.show', compact('distribusi'));
+        $penerimaanAktif = $distribusi->penerimaanBarang()->latest('id_penerimaan')->first();
+
+        // Pegawai penerima: dari unit kerja klinik/pemohon, fallback unit gudang tujuan.
+        $idUnitTujuan = $distribusi->permintaan?->id_unit_kerja
+            ?? $distribusi->gudangTujuan?->id_unit_kerja;
+        $namaUnitTujuan = $distribusi->permintaan?->unitKerja?->nama_unit_kerja
+            ?? $distribusi->gudangTujuan?->unitKerja?->nama_unit_kerja;
+        $pegawaiPenerimaOptions = $idUnitTujuan
+            ? MasterPegawai::query()
+                ->where('id_unit_kerja', $idUnitTujuan)
+                ->orderBy('nama_pegawai')
+                ->get()
+            : collect();
+
+        return view('transaction.distribusi.show', compact(
+            'distribusi',
+            'penerimaanAktif',
+            'pegawaiPenerimaOptions',
+            'namaUnitTujuan'
+        ));
     }
 
     /**
@@ -199,7 +222,7 @@ class DistribusiController extends Controller
             ->header('Content-Type', 'text/html; charset=UTF-8');
     }
 
-    public function edit(int|string $id)
+    public function edit(Request $request, int|string $id)
     {
         $distribusi = TransaksiDistribusi::with([
             'detailDistribusi',
@@ -217,8 +240,18 @@ class DistribusiController extends Controller
         $satuans = MasterSatuan::all();
         $inventories = DataInventory::where('id_gudang', $distribusi->id_gudang_asal)->with('dataBarang')->get();
         $selectedPermintaan = $distribusi->permintaan;
+        $intentProses = $request->query('intent') === 'proses';
 
-        return view('transaction.distribusi.edit', compact('distribusi', 'permintaans', 'gudangs', 'pegawais', 'satuans', 'inventories', 'selectedPermintaan'));
+        return view('transaction.distribusi.edit', compact(
+            'distribusi',
+            'permintaans',
+            'gudangs',
+            'pegawais',
+            'satuans',
+            'inventories',
+            'selectedPermintaan',
+            'intentProses'
+        ));
     }
 
     public function update(Request $request, int|string $id)
@@ -228,8 +261,17 @@ class DistribusiController extends Controller
             return redirect()->route('transaction.distribusi.show', $id)->with('error', 'Hanya distribusi berstatus draft atau diproses yang bisa diubah.');
         }
 
-        $validated = $this->validatePayload($request, false);
+        $intentProses = $request->input('intent') === 'proses';
+        // Saat proses dari daftar, pegawai pengirim wajib diisi.
+        $validated = $this->validatePayload($request, false, true);
         $this->distribusiService->updateDraft($distribusi, $validated);
+
+        if ($intentProses && $distribusi->fresh()->status_distribusi === DistribusiStatus::Draft) {
+            $this->distribusiService->markDiproses($distribusi->fresh());
+
+            return redirect()->route('transaction.distribusi.show', $id)
+                ->with('success', 'Pegawai pengirim disimpan dan distribusi berhasil diproses. Selanjutnya Anda dapat mengirim SBBK.');
+        }
 
         return redirect()->route('transaction.distribusi.show', $id)->with('success', 'Distribusi berhasil diperbarui.');
     }
@@ -253,9 +295,8 @@ class DistribusiController extends Controller
             return redirect()->route('transaction.distribusi.show', $id)->with('error', 'Status tidak valid untuk diproses.');
         }
 
-        $this->distribusiService->markDiproses($distribusi);
-
-        return redirect()->route('transaction.distribusi.show', $id)->with('success', 'Distribusi diproses.');
+        // Arahkan ke form edit agar pegawai pengirim diisi sebelum status menjadi diproses.
+        return redirect()->route('transaction.distribusi.edit', ['id' => $id, 'intent' => 'proses']);
     }
 
     public function kirim(Request $request, int|string $id)
@@ -280,6 +321,90 @@ class DistribusiController extends Controller
         }
 
         return redirect()->route('transaction.distribusi.show', $id)->with('success', 'Distribusi dikirim.');
+    }
+
+    /**
+     * Pengirim melaporkan barang sudah sampai (foto + nama penerima di lokasi).
+     */
+    public function buktiSampai(Request $request, int|string $id)
+    {
+        $distribusi = TransaksiDistribusi::with('penerimaanBarang')->findOrFail($id);
+        UserScope::assertCanAccessDistribusi(Auth::user(), $distribusi);
+
+        if ($distribusi->status_distribusi?->value !== DistribusiStatus::Dikirim->value) {
+            return redirect()->route('transaction.distribusi.show', $id)
+                ->with('error', 'Bukti sampai hanya dapat diisi setelah distribusi dikirim.');
+        }
+
+        $distribusi->loadMissing(['permintaan', 'gudangTujuan']);
+        $idUnitTujuan = $distribusi->permintaan?->id_unit_kerja
+            ?? $distribusi->gudangTujuan?->id_unit_kerja;
+
+        $validated = $request->validate([
+            'id_pegawai_penerima' => [
+                'required',
+                'exists:master_pegawai,id',
+                function (string $attribute, mixed $value, \Closure $fail) use ($idUnitTujuan): void {
+                    if (! $idUnitTujuan) {
+                        $fail('Unit kerja tujuan tidak ditemukan untuk validasi penerima.');
+
+                        return;
+                    }
+                    $belongs = MasterPegawai::query()
+                        ->where('id', $value)
+                        ->where('id_unit_kerja', $idUnitTujuan)
+                        ->exists();
+                    if (! $belongs) {
+                        $fail('Pegawai penerima harus berasal dari unit kerja klinik tujuan.');
+                    }
+                },
+            ],
+            'sumber_bukti_sampai' => 'required|in:upload,kamera',
+            'foto_bukti_sampai' => 'required|image|mimes:jpeg,jpg,png,webp|max:5120',
+            'gps_latitude' => 'nullable|numeric|between:-90,90',
+            'gps_longitude' => 'nullable|numeric|between:-180,180',
+            'gps_akurasi' => 'nullable|numeric|min:0|max:99999',
+            'catatan_pengirim' => 'nullable|string|max:2000',
+        ], [
+            'id_pegawai_penerima.required' => 'Pilih pegawai penerima di lokasi.',
+            'id_pegawai_penerima.exists' => 'Pegawai penerima tidak valid.',
+            'sumber_bukti_sampai.required' => 'Pilih cara pengambilan bukti (unggah atau kamera).',
+            'foto_bukti_sampai.required' => 'Foto bukti pengiriman sampai wajib diisi.',
+            'foto_bukti_sampai.image' => 'File harus berupa gambar.',
+            'foto_bukti_sampai.max' => 'Ukuran foto maksimal 5 MB.',
+        ]);
+
+        $pegawaiPenerima = MasterPegawai::query()->findOrFail($validated['id_pegawai_penerima']);
+        $namaPenerima = $pegawaiPenerima->nama_pegawai
+            ?: ($pegawaiPenerima->nama ?? 'Pegawai #'.$pegawaiPenerima->id);
+
+        try {
+            $fotoPath = \App\Support\Storage\PrivateStorage::storeUploadedFile(
+                $request->file('foto_bukti_sampai'),
+                'bukti-sampai'
+            );
+
+            $this->distribusiService->laporkanBuktiSampai($distribusi, [
+                'nama_penerima_lokasi' => $namaPenerima,
+                'foto_bukti_sampai' => $fotoPath,
+                'sumber_bukti_sampai' => $validated['sumber_bukti_sampai'],
+                'gps_latitude' => isset($validated['gps_latitude']) ? (float) $validated['gps_latitude'] : null,
+                'gps_longitude' => isset($validated['gps_longitude']) ? (float) $validated['gps_longitude'] : null,
+                'gps_akurasi' => isset($validated['gps_akurasi']) ? (float) $validated['gps_akurasi'] : null,
+                'catatan_pengirim' => $validated['catatan_pengirim'] ?? null,
+                'dilapor_oleh' => Auth::id(),
+            ]);
+        } catch (\Throwable $e) {
+            if (! empty($fotoPath ?? null)) {
+                \App\Support\Storage\PrivateStorage::delete($fotoPath);
+            }
+
+            return redirect()->route('transaction.distribusi.show', $id)
+                ->with('error', SafeUserMessage::fromThrowable($e, 'menyimpan bukti sampai'));
+        }
+
+        return redirect()->route('transaction.distribusi.show', $id)
+            ->with('success', 'Bukti sampai berhasil disimpan. Status distribusi menjadi selesai. Klinik dapat melakukan verifikasi penerimaan.');
     }
 
     public function getGudangTujuanByPermintaan(int|string $permintaanId)
@@ -420,6 +545,8 @@ class DistribusiController extends Controller
 
         if ($requirePermintaan) {
             $rules['id_permintaan'] = 'required|exists:permintaan_barang,id_permintaan';
+        } else {
+            $rules['id_permintaan'] = 'nullable|exists:permintaan_barang,id_permintaan';
         }
 
         return $request->validate($rules);
