@@ -281,6 +281,30 @@ function initLoadingAndConfirm() {
     if (loadGlobal) {
         var nativeFetch = window.fetch;
         window.fetch = function () {
+            var input = arguments[0];
+            var init = arguments[1] || {};
+            var silent = false;
+
+            try {
+                if (init && init.sipeniSilent === true) {
+                    silent = true;
+                } else if (init && init.headers) {
+                    if (typeof Headers !== 'undefined' && init.headers instanceof Headers) {
+                        silent = init.headers.get('X-Sipeni-Silent') === '1';
+                    } else if (typeof init.headers === 'object') {
+                        silent = String(init.headers['X-Sipeni-Silent'] || init.headers['x-sipeni-silent'] || '') === '1';
+                    }
+                } else if (typeof Request !== 'undefined' && input instanceof Request) {
+                    silent = input.headers.get('X-Sipeni-Silent') === '1';
+                }
+            } catch (e) {
+                silent = false;
+            }
+
+            if (silent) {
+                return nativeFetch.apply(window, arguments);
+            }
+
             pendingProcess++;
             showLoading();
             return nativeFetch.apply(window, arguments).finally(function () {

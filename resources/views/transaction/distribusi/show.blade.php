@@ -311,9 +311,10 @@
                                         <span id="gps_status_text" style="word-break: break-word; white-space: normal;">Belum diambil — akan diminta saat buka kamera / upload</span>
                                     </div>
                                     <button type="button" id="btn_ambil_gps" class="shrink-0 px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100">
-                                        Ambil lokasi
+                                        Ambil ulang lokasi
                                     </button>
                                 </div>
+                                <p class="mt-1 text-xs text-gray-500">Lokasi dikunci sekali saat buka kamera. Gunakan tombol di atas hanya jika titik tidak sesuai.</p>
                             </div>
                         </div>
 
@@ -568,6 +569,7 @@
     let watchId = null;
     let lastGps = null;
     let gpsPending = null;
+    let gpsLocked = false;
 
     if (lightbox && lightbox.parentElement !== document.body) {
         document.body.appendChild(lightbox);
@@ -595,16 +597,19 @@
         if (sumberInput) sumberInput.value = value;
     }
 
-    function updateGpsUi(pos) {
+    function updateGpsUi(pos, options) {
+        const keepAlamat = options && options.keepAlamat === true && lastGps && lastGps.alamat;
         lastGps = {
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
             acc: pos.coords.accuracy || 0,
-            alamat: lastGps && lastGps.alamat ? lastGps.alamat : null
+            alamat: keepAlamat ? lastGps.alamat : null
         };
         if (gpsLat) gpsLat.value = String(lastGps.lat);
         if (gpsLng) gpsLng.value = String(lastGps.lng);
         if (gpsAcc) gpsAcc.value = String(lastGps.acc);
+        if (!keepAlamat && gpsAlamatInput) gpsAlamatInput.value = '';
+        gpsLocked = true;
         renderGpsStatus();
         resolvePlaceName(lastGps.lat, lastGps.lng);
     }
@@ -613,35 +618,37 @@
         if (!lastGps) return;
         const coord = lastGps.lat.toFixed(6) + ', ' + lastGps.lng.toFixed(6)
             + ' (±' + Math.round(lastGps.acc) + ' m)';
+        const lockHint = gpsLocked ? ' [terkunci]' : '';
         const text = lastGps.alamat
-            ? (lastGps.alamat + ' — ' + coord)
-            : coord;
+            ? (lastGps.alamat + ' — ' + coord + lockHint)
+            : (coord + lockHint);
         if (gpsStatusText) gpsStatusText.textContent = text;
         if (kameraGpsLive) {
             kameraGpsLive.textContent = lastGps.alamat
-                ? ('Lokasi: ' + lastGps.alamat)
-                : ('GPS: ' + coord);
+                ? ('Lokasi terkunci: ' + lastGps.alamat)
+                : ('GPS terkunci: ' + coord);
         }
     }
 
     function resolvePlaceName(lat, lng) {
-        if (reverseGeocodePending) {
-            // batalkan logika sederhana: biarkan request terbaru menang
-        }
         const url = reverseGeocodeUrl
             + (reverseGeocodeUrl.indexOf('?') >= 0 ? '&' : '?')
             + 'lat=' + encodeURIComponent(lat)
             + '&lng=' + encodeURIComponent(lng);
 
         reverseGeocodePending = fetch(url, {
-            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin'
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-Sipeni-Silent': '1'
+            },
+            credentials: 'same-origin',
+            sipeniSilent: true
         })
             .then(function (res) { return res.ok ? res.json() : null; })
             .then(function (data) {
                 if (!data || !data.success || !data.alamat) return;
                 if (!lastGps) return;
-                // Abaikan jika koordinat sudah berubah
                 if (Math.abs(lastGps.lat - lat) > 0.00001 || Math.abs(lastGps.lng - lng) > 0.00001) return;
                 lastGps.alamat = data.alamat;
                 if (gpsAlamatInput) gpsAlamatInput.value = data.alamat;
@@ -664,7 +671,6 @@
 
     function isGpsPolicyBlocked() {
         try {
-            // Feature disabled by Permissions-Policy returns false in Chromium
             if (typeof document.featurePolicy !== 'undefined'
                 && typeof document.featurePolicy.allowsFeature === 'function') {
                 return !document.featurePolicy.allowsFeature('geolocation');
@@ -703,35 +709,51 @@
         });
     }
 
-    async function startGps() {
+    /**
+     * Ambil GPS sekali lalu kunci.
+     * @param {{force?: boolean}} opts force=true untuk tombol "Ambil ulang lokasi"
+     */
+    async function startGps(opts) {
+        const force = !!(opts && opts.force);
+
         if (!navigator.geolocation) {
             if (gpsStatusText) gpsStatusText.textContent = 'Perangkat tidak mendukung GPS/lokasi';
             if (kameraGpsLive) kameraGpsLive.textContent = 'GPS tidak tersedia';
             return null;
         }
 
+        // Sudah terkunci: jangan refresh otomatis saat perangkat bergeser
+        if (gpsLocked && lastGps && !force) {
+            renderGpsStatus();
+            return lastGps;
+        }
+
         if (gpsPending) return gpsPending;
 
-        if (gpsStatusText) gpsStatusText.textContent = 'Mengambil lokasi… izinkan jika browser meminta';
+        stopGpsWatch();
+
+        if (gpsStatusText) {
+            gpsStatusText.textContent = force
+                ? 'Mengambil ulang lokasi…'
+                : 'Mengambil lokasi… izinkan jika browser meminta';
+        }
         if (kameraGpsLive) kameraGpsLive.textContent = 'GPS: mengambil lokasi…';
 
         gpsPending = (async function () {
             try {
-                // 1) Coba akurasi tinggi (HP)
                 const hi = await requestPosition({
                     enableHighAccuracy: true,
                     timeout: 12000,
-                    maximumAge: 30000
+                    maximumAge: force ? 0 : 30000
                 });
                 updateGpsUi(hi);
                 return lastGps;
             } catch (e1) {
                 try {
-                    // 2) Fallback akurasi rendah (laptop/Wi‑Fi)
                     const lo = await requestPosition({
                         enableHighAccuracy: false,
                         timeout: 25000,
-                        maximumAge: 120000
+                        maximumAge: force ? 0 : 120000
                     });
                     updateGpsUi(lo);
                     return lastGps;
@@ -745,18 +767,6 @@
                 gpsPending = null;
             }
         })();
-
-        // Watch untuk update berikutnya (HP bergerak)
-        if (watchId !== null) {
-            navigator.geolocation.clearWatch(watchId);
-        }
-        if (!isGpsPolicyBlocked()) {
-            watchId = navigator.geolocation.watchPosition(updateGpsUi, function () {}, {
-                enableHighAccuracy: false,
-                maximumAge: 15000,
-                timeout: 20000
-            });
-        }
 
         return gpsPending;
     }
@@ -1024,7 +1034,7 @@
         stopKamera();
         setSumber('upload');
         showHasil(file);
-        startGps();
+        startGps({ force: false });
     });
 
     btnBukaFoto?.addEventListener('click', function (e) {
@@ -1049,7 +1059,7 @@
     });
     btnAmbilGps?.addEventListener('click', function (e) {
         e.preventDefault();
-        startGps();
+        startGps({ force: true });
     });
 
     form?.addEventListener('submit', function (e) {
