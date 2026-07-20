@@ -106,7 +106,7 @@
             @if($penerimaans instanceof \Illuminate\Contracts\Pagination\Paginator) data-pagination-base="{{ $penerimaans->firstItem() }}" @endif
         >
             <colgroup>
-                <col style="width:3rem">
+                <col style="width:2.5rem">
                 <col style="width:13%">
                 <col style="width:12%">
                 <col style="width:18%">
@@ -117,7 +117,7 @@
             </colgroup>
             <thead class="bg-gray-50">
                 <tr>
-                    <x-table.num-th class="!px-3" />
+                    <x-table.num-th class="!px-2 !text-center" />
                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Penerimaan</th>
                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No SBBK</th>
                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Kerja</th>
@@ -130,7 +130,7 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($penerimaans as $penerimaan)
                     <tr class="hover:bg-gray-50 transition-colors">
-                        <x-table.num-td class="!px-3" :paginator="$penerimaans" />
+                        <x-table.num-td class="!px-2 !text-center" :paginator="$penerimaans" />
                         <td class="px-3 py-3 align-top">
                             <div class="text-sm font-medium text-gray-900 truncate" title="{{ $penerimaan->no_penerimaan }}">{{ $penerimaan->no_penerimaan }}</div>
                         </td>

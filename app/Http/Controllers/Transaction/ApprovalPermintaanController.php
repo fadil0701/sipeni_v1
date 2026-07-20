@@ -201,18 +201,30 @@ class ApprovalPermintaanController extends Controller
                     }
                 }
 
-                // Cek apakah ada step 4 (disposisi)
+                // Cek apakah ada step 4 (disposisi / kepala pusat / pengadaan)
                 $step4Approval = null;
+                $kepalaPusatPending = null;
                 foreach ($group['approvals'] as $approval) {
                     $stepOrder = $approval->approvalFlow->step_order ?? 999;
-                    if ($stepOrder == 4) {
+                    if ($stepOrder != 4) {
+                        continue;
+                    }
+                    $roleName = $approval->approvalFlow?->role?->name;
+                    if ($roleName === 'kepala_pusat' && $approval->status === 'MENUNGGU') {
+                        $kepalaPusatPending = $approval;
+                    }
+                    if (! $step4Approval) {
                         $step4Approval = $approval;
-                        break;
                     }
                 }
 
+                // Prioritas 0: Menunggu persetujuan Kepala Pusat (jalur pengadaan)
+                if ($kepalaPusatPending) {
+                    $currentStep = $kepalaPusatPending;
+                    $currentStatus = 'MENUNGGU';
+                }
                 // Prioritas 1: Cek step 4 (disposisi) dulu - ini adalah step terpenting untuk ditampilkan
-                if ($step4Approval) {
+                elseif ($step4Approval) {
                     if ($step4Approval->status === 'MENUNGGU') {
                         $currentStep = $step4Approval;
                         // Jika step 3 sudah diverifikasi, status = DISETUJUI (karena sudah diverifikasi dan didisposisikan)
@@ -487,7 +499,7 @@ class ApprovalPermintaanController extends Controller
             'catatan' => 'nullable|string',
             'koreksi_qty' => 'nullable|array',
             'koreksi_qty.*' => 'nullable|numeric|min:0.01',
-        ], 'Permintaan telah diverifikasi dan diteruskan ke proses distribusi.');
+        ], 'Permintaan telah diverifikasi. Jika stok tersedia diteruskan ke disposisi gudang; jika stok kosong menunggu persetujuan Kepala Pusat.');
     }
 
     /**

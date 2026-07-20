@@ -223,7 +223,7 @@ class MasterPegawaiController extends Controller
                 $userId = null;
             } elseif ($option === 'new' && $request->filled('create_user') && (string) $request->create_user === '1') {
                 if ($pegawai->user_id) {
-                    $user = User::findOrFail($pegawai->user_id);
+                    $user = $pegawai->user()->firstOrFail();
                     $user->update([
                         'name' => $validated['user_name'],
                         'email' => $validated['user_email'],

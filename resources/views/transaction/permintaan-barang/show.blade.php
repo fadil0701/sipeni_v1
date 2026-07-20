@@ -142,93 +142,118 @@
                 </div>
             </div>
 
-            <!-- Alur Approval PPKP -->
+            <!-- Progress Approval PPKP (hanya langkah yang sudah/sedang diproses) -->
             <div>
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Alur Approval PPKP</h3>
-                @if(isset($approvalFlow) && $approvalFlow->count() > 0)
-                    <div class="space-y-3">
-                        @foreach($approvalFlow as $flow)
-                            @php
-                                $log = (isset($approvalHistory) ? $approvalHistory->firstWhere('id_approval_flow', $flow->id) : null);
-                                $stepStatus = $log?->status ?? 'BELUM_DIAJUKAN';
-                                $stepBadge = \App\Support\UiColor::badgeForStatus($stepStatus);
-                                $stepLabel = $stepStatus === 'BELUM_DIAJUKAN' ? 'Belum diajukan' : $stepStatus;
-                            @endphp
-                            <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                                <div class="flex flex-wrap items-start justify-between gap-3">
-                                    <div>
-                                        <p class="text-sm font-semibold text-gray-900">
-                                            Step {{ $flow->step_order }} - {{ $flow->nama_step }}
-                                        </p>
-                                        <p class="mt-1 text-xs text-gray-600">
-                                            Role: {{ $flow->role->display_name ?? $flow->role->name ?? 'N/A' }}
-                                        </p>
-                                        @if($log?->user)
-                                            <p class="mt-1 text-xs text-gray-600">
-                                                Diproses oleh: {{ $log->user->name }}
-                                            </p>
-                                        @endif
-                                        @if($log?->catatan)
-                                            <p class="mt-2 text-sm text-gray-700">{{ $log->catatan }}</p>
-                                        @endif
-                                    </div>
-                                    <div class="text-right">
-                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {{ $stepBadge }}">
-                                            {{ $stepLabel }}
-                                        </span>
-                                        @if($log)
-                                            <p class="mt-1 text-xs text-gray-500">
-                                                {{ ($log->approved_at ?? $log->created_at)?->format('d/m/Y H:i') }}
-                                            </p>
-                                        @endif
-                                    </div>
-                                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Progress Approval</h3>
+                @php
+                    $progressLogs = isset($approvalHistory)
+                        ? $approvalHistory
+                            ->filter(fn ($log) => ! in_array($log->status, ['DIBATALKAN'], true))
+                            ->sortBy(fn ($log) => [
+                                $log->approvalFlow?->step_order ?? 999,
+                                $log->created_at?->timestamp ?? 0,
+                            ])
+                            ->values()
+                        : collect();
+                    // Prioritas tampilan: langkah MENUNGGU saat ini, lalu langkah terakhir.
+                    $currentLog = $progressLogs->firstWhere('status', 'MENUNGGU')
+                        ?? $progressLogs->last();
+                @endphp
+                @if($progressLogs->count() > 0)
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-900">
+                                    @if($currentLog?->approvalFlow)
+                                        Step {{ $currentLog->approvalFlow->step_order }} - {{ $currentLog->approvalFlow->nama_step }}
+                                    @else
+                                        Step approval
+                                    @endif
+                                </p>
+                                <p class="mt-1 text-xs text-gray-600">
+                                    Role: {{ $currentLog->approvalFlow?->role?->display_name
+                                        ?? $currentLog->approvalFlow?->role?->name
+                                        ?? $currentLog->role?->display_name
+                                        ?? 'N/A' }}
+                                </p>
+                                @if($currentLog?->user)
+                                    <p class="mt-1 text-xs text-gray-600">
+                                        Diproses oleh: {{ $currentLog->user->name }}
+                                    </p>
+                                @endif
+                                @if($currentLog?->catatan)
+                                    <p class="mt-2 text-sm text-gray-700">{{ $currentLog->catatan }}</p>
+                                @endif
+                                @if($progressLogs->count() > 1)
+                                    <p class="mt-2 text-xs text-gray-500">
+                                        {{ $progressLogs->count() }} langkah sudah dilalui
+                                    </p>
+                                @endif
                             </div>
-                        @endforeach
+                            <div class="text-right">
+                                @php
+                                    $currentStatus = $currentLog?->status ?? 'BELUM_DIAJUKAN';
+                                    $currentBadge = \App\Support\UiColor::badgeForStatus($currentStatus);
+                                @endphp
+                                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {{ $currentBadge }}">
+                                    {{ $currentStatus }}
+                                </span>
+                                @if($currentLog)
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        {{ ($currentLog->approved_at ?? $currentLog->created_at)?->format('d/m/Y H:i') }}
+                                    </p>
+                                @endif
+                            </div>
+                        </div>
                     </div>
+
+                    @if($progressLogs->count() > 1)
+                        <details class="mt-3">
+                            <summary class="cursor-pointer text-sm font-medium text-blue-700 hover:text-blue-800">
+                                Lihat riwayat langkah
+                            </summary>
+                            <div class="mt-3 space-y-3">
+                                @foreach($progressLogs as $log)
+                                    @php
+                                        $statusClasses = \App\Support\UiColor::badgeForStatus($log->status);
+                                    @endphp
+                                    <div class="rounded-lg border border-gray-200 bg-white p-4">
+                                        <div class="flex justify-between items-start gap-3">
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-900">
+                                                    @if($log->approvalFlow)
+                                                        Step {{ $log->approvalFlow->step_order }} - {{ $log->approvalFlow->nama_step }}
+                                                    @else
+                                                        Step approval
+                                                    @endif
+                                                </p>
+                                                <p class="text-xs text-gray-500 mt-1">
+                                                    {{ $log->user?->name ?? ($log->role?->display_name ?? 'System') }}
+                                                </p>
+                                                @if($log->catatan)
+                                                    <p class="text-sm text-gray-700 mt-2">{{ $log->catatan }}</p>
+                                                @endif
+                                            </div>
+                                            <div class="text-right">
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusClasses }}">
+                                                    {{ $log->status }}
+                                                </span>
+                                                <p class="text-xs text-gray-500 mt-1">
+                                                    {{ ($log->approved_at ?? $log->created_at)?->format('d/m/Y H:i') }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </details>
+                    @endif
                 @else
                     <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
-                        Alur approval belum dikonfigurasi.
+                        Belum ada progress approval. Permintaan belum diajukan.
                     </div>
                 @endif
             </div>
-
-            <!-- Riwayat Persetujuan -->
-            @if(isset($approvalHistory) && $approvalHistory->count() > 0)
-                <div>
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Riwayat Persetujuan</h3>
-                    <div class="space-y-3">
-                        @foreach($approvalHistory as $log)
-                            @php
-                                $statusClasses = \App\Support\UiColor::badgeForStatus($log->status);
-                            @endphp
-                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                <div class="flex justify-between items-start gap-3">
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-900">
-                                            {{ $log->approvalFlow?->nama_step ?? 'Step approval' }}
-                                        </p>
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            {{ $log->user?->name ?? ($log->role?->display_name ?? 'System') }}
-                                        </p>
-                                        @if($log->catatan)
-                                            <p class="text-sm text-gray-700 mt-2">{{ $log->catatan }}</p>
-                                        @endif
-                                    </div>
-                                    <div class="text-right">
-                                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusClasses }}">
-                                            {{ $log->status }}
-                                        </span>
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            {{ ($log->approved_at ?? $log->created_at)?->format('d/m/Y H:i') }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            @endif
         </div>
     </div>
 </div>

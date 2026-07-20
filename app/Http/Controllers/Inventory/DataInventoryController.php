@@ -28,67 +28,66 @@ class DataInventoryController extends Controller
     public function index(Request $request)
     {   
         $user = $this->authUser();
+        $pegawai = null;
+        $gudangUnitIds = collect();
+
+        if (UserScope::mustScopeToUnitKerja($user)) {
+            $pegawai = MasterPegawai::query()->where('user_id', $user->id)->first();
+            if ($pegawai && $pegawai->id_unit_kerja) {
+                $gudangUnitIds = MasterGudang::query()
+                    ->where('jenis_gudang', 'UNIT')
+                    ->where('id_unit_kerja', $pegawai->id_unit_kerja)
+                    ->pluck('id_gudang');
+            }
+        }
 
         // GUDANG PUSAT (Admin/Admin Gudang): Melihat SEMUA data inventory (global view)
         // GUDANG UNIT (Kepala Unit/Pegawai/Admin Gudang Unit): Hanya melihat data di unitnya saja (local view)
         // ADMIN GUDANG PER KATEGORI: Hanya melihat gudang sesuai kategori (Aset/Persediaan/Farmasi) agar tidak konflik
+        $indexWith = ['dataBarang', 'gudang', 'sumberAnggaran', 'subKegiatan', 'satuan'];
+
         if (UserScope::mustScopeToUnitKerja($user)) {
             // GUDANG UNIT: Hanya melihat data yang ada di gudang UNIT mereka
-            $pegawai = \call_user_func([MasterPegawai::class, 'where'], 'user_id', $user->id)->first();
-            if ($pegawai && $pegawai->id_unit_kerja) {
-                // Ambil id gudang UNIT yang terkait dengan unit kerja mereka
-                $gudangUnitIds = \call_user_func([MasterGudang::class, 'where'], 'jenis_gudang', 'UNIT')
-                    ->where('id_unit_kerja', $pegawai->id_unit_kerja)
-                    ->pluck('id_gudang');
-                
-                if ($gudangUnitIds->isEmpty()) {
-                    // Jika tidak ada gudang unit, tidak tampilkan data
-                    $query = \call_user_func([DataInventory::class, 'whereRaw'], '1 = 0');
-                } else {
-                    // Untuk GUDANG UNIT:
-                    // - PERSEDIAAN/FARMASI: melihat data_inventory yang id_gudang = gudang UNIT mereka
-                    // - ASET: melihat data_inventory yang memiliki inventory_item di gudang UNIT mereka
-                    $query = \call_user_func([DataInventory::class, 'with'], [
-                        'dataBarang', 
-                        'gudang', 
-                        'sumberAnggaran', 
-                        'subKegiatan', 
-                        'satuan',
-                        // Eager load inventoryItems yang ada di gudang unit mereka untuk ASET
-                        'inventoryItems' => function($q) use ($gudangUnitIds) {
-                            $q->whereIn('id_gudang', $gudangUnitIds)
-                              ->where('status_item', 'AKTIF')
-                              ->with(['gudang', 'ruangan']);
-                        }
-                    ])
-                        ->where(function($q) use ($gudangUnitIds) {
-                            // PERSEDIAAN/FARMASI: inventory yang langsung di gudang UNIT
-                            $q->where(function($subQ) use ($gudangUnitIds) {
-                                $subQ->whereIn('id_gudang', $gudangUnitIds)
-                                      ->whereIn('jenis_inventory', ['PERSEDIAAN', 'FARMASI']);
-                            })
-                            // ASET: inventory yang memiliki inventory_item di gudang UNIT (sudah didistribusikan)
-                            ->orWhere(function($subQ) use ($gudangUnitIds) {
-                                $subQ->where('jenis_inventory', 'ASET')
-                                      ->whereHas('inventoryItems', function($itemQ) use ($gudangUnitIds) {
-                                          $itemQ->whereIn('id_gudang', $gudangUnitIds)
-                                                ->where('status_item', 'AKTIF');
-                                      });
-                            });
-                        });
-                }
+            if (! $pegawai || ! $pegawai->id_unit_kerja || $gudangUnitIds->isEmpty()) {
+                // Jika tidak ada gudang unit / pegawai, tidak tampilkan data
+                $query = DataInventory::query()->whereRaw('1 = 0');
             } else {
-                // Jika user tidak memiliki pegawai atau unit kerja, tidak tampilkan data
-                $query = \call_user_func([DataInventory::class, 'whereRaw'], '1 = 0');
+                // Untuk ASET di unit: butuh inventoryItems (terbatas) untuk hitung qty & gudang tampilan
+                $query = DataInventory::query()
+                    ->with(array_merge($indexWith, [
+                        'inventoryItems' => function ($q) use ($gudangUnitIds) {
+                            $q->whereIn('id_gudang', $gudangUnitIds)
+                                ->where('status_item', 'AKTIF')
+                                ->select(['id_item', 'id_inventory', 'id_gudang', 'status_item'])
+                                ->with(['gudang:id_gudang,nama_gudang']);
+                        },
+                    ]))
+                    ->where(function ($q) use ($gudangUnitIds) {
+                        // PERSEDIAAN/FARMASI: inventory yang langsung di gudang UNIT
+                        $q->where(function ($subQ) use ($gudangUnitIds) {
+                            $subQ->whereIn('id_gudang', $gudangUnitIds)
+                                ->whereIn('jenis_inventory', ['PERSEDIAAN', 'FARMASI']);
+                        })
+                        // ASET: inventory yang memiliki inventory_item di gudang UNIT (sudah didistribusikan)
+                            ->orWhere(function ($subQ) use ($gudangUnitIds) {
+                                $subQ->where('jenis_inventory', 'ASET')
+                                    ->whereHas('inventoryItems', function ($itemQ) use ($gudangUnitIds) {
+                                        $itemQ->whereIn('id_gudang', $gudangUnitIds)
+                                            ->where('status_item', 'AKTIF');
+                                    });
+                            });
+                    });
             }
         } elseif ($user->hasRole('admin_gudang_aset') || $user->hasRole('admin_gudang_persediaan') || $user->hasRole('admin_gudang_farmasi')) {
             // Admin Gudang per kategori: hanya inventory di gudang dengan kategori yang sama (tidak konflik)
+            // Index list tidak butuh seluruh inventoryItems (hindari ribuan model).
             $kategori = $user->hasRole('admin_gudang_aset') ? 'ASET' : ($user->hasRole('admin_gudang_persediaan') ? 'PERSEDIAAN' : 'FARMASI');
-            $query = \call_user_func([DataInventory::class, 'with'], ['dataBarang', 'gudang', 'sumberAnggaran', 'subKegiatan', 'satuan', 'inventoryItems.gudang', 'inventoryItems.ruangan'])
+            $query = DataInventory::query()
+                ->with($indexWith)
                 ->whereHas('gudang', fn ($q) => $q->where('kategori_gudang', $kategori));
         } else {
-            // Admin / Admin Gudang (umum): Melihat SEMUA data inventory
-            $query = \call_user_func([DataInventory::class, 'with'], ['dataBarang', 'gudang', 'sumberAnggaran', 'subKegiatan', 'satuan', 'inventoryItems.gudang', 'inventoryItems.ruangan']);
+            // Admin / Admin Gudang (umum): list memakai qty_input dari data_inventory — tanpa eager load semua item.
+            $query = DataInventory::query()->with($indexWith);
         }
 
         if ($request->filled('search')) {
@@ -123,29 +122,17 @@ class DataInventoryController extends Controller
         $inventories = $query->latest()->paginate($perPage)->appends($request->query());
         
         // Untuk GUDANG UNIT: Hitung ulang qty dan update gudang berdasarkan inventory_item untuk ASET
-        if (UserScope::mustScopeToUnitKerja($user)) {
-            $pegawai = \call_user_func([MasterPegawai::class, 'where'], 'user_id', $user->id)->first();
-            if ($pegawai && $pegawai->id_unit_kerja) {
-                $gudangUnitIds = \call_user_func([MasterGudang::class, 'where'], 'jenis_gudang', 'UNIT')
-                    ->where('id_unit_kerja', $pegawai->id_unit_kerja)
-                    ->pluck('id_gudang');
-                
-                // Untuk ASET: Hitung ulang qty dan update gudang berdasarkan inventory_item yang sudah di-eager load
-                foreach ($inventories as $inventory) {
-                    if ($inventory->jenis_inventory === 'ASET' && $inventory->relationLoaded('inventoryItems')) {
-                        // Gunakan inventoryItems yang sudah di-eager load (sudah difilter untuk gudang unit)
-                        $itemsInUnit = $inventory->inventoryItems;
-                        
-                        if ($itemsInUnit->count() > 0) {
-                            // Update qty_input berdasarkan jumlah inventory_item di gudang unit
-                            $inventory->qty_input = $itemsInUnit->count();
-                            
-                            // Update gudang berdasarkan gudang dari inventory_item pertama
-                            $firstItem = $itemsInUnit->first();
-                            if ($firstItem->relationLoaded('gudang') && $firstItem->gudang) {
-                                // Set gudang dari inventory_item
-                                $inventory->setRelation('gudang', $firstItem->gudang);
-                            }
+        if (UserScope::mustScopeToUnitKerja($user) && $gudangUnitIds->isNotEmpty()) {
+            foreach ($inventories as $inventory) {
+                if ($inventory->jenis_inventory === 'ASET' && $inventory->relationLoaded('inventoryItems')) {
+                    $itemsInUnit = $inventory->inventoryItems;
+
+                    if ($itemsInUnit->count() > 0) {
+                        $inventory->qty_input = $itemsInUnit->count();
+
+                        $firstItem = $itemsInUnit->first();
+                        if ($firstItem->relationLoaded('gudang') && $firstItem->gudang) {
+                            $inventory->setRelation('gudang', $firstItem->gudang);
                         }
                     }
                 }
@@ -154,27 +141,26 @@ class DataInventoryController extends Controller
         
         // Filter gudang yang ditampilkan di dropdown berdasarkan role (agar tidak konflik)
         if (UserScope::mustScopeToUnitKerja($user)) {
-            $pegawai = \call_user_func([MasterPegawai::class, 'where'], 'user_id', $user->id)->first();
             if ($pegawai && $pegawai->id_unit_kerja) {
-                $gudangs = \call_user_func([MasterGudang::class, 'where'], 'jenis_gudang', 'UNIT')
+                $gudangs = MasterGudang::query()
+                    ->where('jenis_gudang', 'UNIT')
                     ->where('id_unit_kerja', $pegawai->id_unit_kerja)
-                    ->get();
+                    ->get(['id_gudang', 'nama_gudang', 'jenis_gudang', 'id_unit_kerja']);
             } else {
                 $gudangs = collect([]);
             }
         } elseif ($user->hasRole('admin_gudang_aset')) {
-            $gudangs = \call_user_func([MasterGudang::class, 'where'], 'kategori_gudang', 'ASET')->get();
+            $gudangs = MasterGudang::query()->where('kategori_gudang', 'ASET')->get(['id_gudang', 'nama_gudang', 'kategori_gudang']);
         } elseif ($user->hasRole('admin_gudang_persediaan')) {
-            $gudangs = \call_user_func([MasterGudang::class, 'where'], 'kategori_gudang', 'PERSEDIAAN')->get();
+            $gudangs = MasterGudang::query()->where('kategori_gudang', 'PERSEDIAAN')->get(['id_gudang', 'nama_gudang', 'kategori_gudang']);
         } elseif ($user->hasRole('admin_gudang_farmasi')) {
-            $gudangs = \call_user_func([MasterGudang::class, 'where'], 'kategori_gudang', 'FARMASI')->get();
+            $gudangs = MasterGudang::query()->where('kategori_gudang', 'FARMASI')->get(['id_gudang', 'nama_gudang', 'kategori_gudang']);
         } else {
-            $gudangs = \call_user_func([MasterGudang::class, 'all']);
+            $gudangs = MasterGudang::query()->get(['id_gudang', 'nama_gudang', 'jenis_gudang', 'kategori_gudang']);
         }
-        
-        $dataBarangs = \call_user_func([MasterDataBarang::class, 'all']);
 
-        return \call_user_func('\\view', 'inventory.data-inventory.index', compact('inventories', 'gudangs', 'dataBarangs'));
+        // Jangan load MasterDataBarang::all() di index — tidak dipakai view & memuat ribuan model.
+        return view('inventory.data-inventory.index', compact('inventories', 'gudangs'));
     }
 
     public function create()

@@ -8,7 +8,6 @@ use App\Support\Rbac\UserScope;
 use App\Enums\PermintaanBarangStatus;
 use App\Helpers\PaginationHelper;
 use App\Http\Controllers\Controller;
-use App\Models\ApprovalFlowDefinition;
 use App\Models\DataInventory;
 use App\Models\DataStock;
 use App\Models\MasterDataBarang;
@@ -281,13 +280,8 @@ class PermintaanBarangController extends Controller
             ->findOrFail($id);
         UserScope::assertCanAccessPermintaan(Auth::user(), $permintaan);
         $approvalHistory = $this->approvalService->history('PERMINTAAN_BARANG', (int) $permintaan->id_permintaan);
-        $approvalFlow = ApprovalFlowDefinition::query()
-            ->where('modul_approval', 'PERMINTAAN_BARANG')
-            ->with('role')
-            ->orderBy('step_order')
-            ->get();
 
-        return view('transaction.permintaan-barang.show', compact('permintaan', 'approvalHistory', 'approvalFlow'));
+        return view('transaction.permintaan-barang.show', compact('permintaan', 'approvalHistory'));
     }
 
     public function edit($id)

@@ -8,7 +8,7 @@
     aria-hidden="true"
 >
     <div data-confirm-backdrop class="sipeni-confirm-modal__backdrop" aria-hidden="true"></div>
-    <div class="sipeni-confirm-modal__dialog" data-confirm-dialog>
+    <div class="sipeni-confirm-modal__dialog" data-confirm-dialog tabindex="-1">
         <div class="sipeni-confirm-modal__body">
             <div class="sipeni-confirm-modal__icon" aria-hidden="true">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">

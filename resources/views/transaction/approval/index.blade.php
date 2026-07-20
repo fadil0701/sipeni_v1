@@ -248,8 +248,9 @@
                                     $stepOrder = $currentStep->approvalFlow->step_order ?? 0;
                                     $canMengetahui = $currentStatus === 'MENUNGGU' && $stepOrder == 2 && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.approval.mengetahui');
                                     $canVerifikasi = $currentStatus === 'MENUNGGU' && $stepOrder == 3 && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.approval.verifikasi');
-                                    $canApprove = $currentStatus === 'MENUNGGU' && $stepOrder == 4 && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.approval.approve');
-                                    $canReject = $currentStatus === 'MENUNGGU' && $stepOrder == 4 && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.approval.reject');
+                                    $isKepalaPusatStep = ($currentStep->approvalFlow?->role?->name ?? '') === 'kepala_pusat';
+                                    $canApprove = $currentStatus === 'MENUNGGU' && $stepOrder == 4 && $isKepalaPusatStep && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.approval.approve');
+                                    $canReject = $currentStatus === 'MENUNGGU' && $stepOrder == 4 && $isKepalaPusatStep && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.approval.reject');
                                 @endphp
                                 <div class="flex flex-wrap items-center justify-end gap-2">
                                     {{-- Detail --}}

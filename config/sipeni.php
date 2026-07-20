@@ -136,9 +136,9 @@ return [
             'email' => env('SIPENI_ADMIN_IT_EMAIL', ''),
             'password' => env('SIPENI_ADMIN_IT_PASSWORD', ''),
         ],
-        /** User demo per jabatan (PegawaiUserPerJabatanSeeder). Matikan di production. */
+        /** User demo (DemoUserSeeder / PegawaiUserPerJabatanSeeder). Matikan di production. */
         'seed_demo_users' => filter_var(env('SIPENI_SEED_DEMO_USERS', true), FILTER_VALIDATE_BOOL),
-        'demo_pegawai_password' => env('SIPENI_DEMO_PEGAWAI_PASSWORD', ''),
+        'demo_pegawai_password' => env('SIPENI_DEMO_PEGAWAI_PASSWORD', 'Demo@Sipeni2026!!'),
         'demo_emails' => [
             'pemohon' => env('SIPENI_DEMO_EMAIL_PEMOHON', ''),
             'admin_gudang' => env('SIPENI_DEMO_EMAIL_ADMIN_GUDANG', ''),

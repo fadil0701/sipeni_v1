@@ -138,47 +138,49 @@
                 <div class="-mx-1 sm:mx-0">
                     <p class="mb-2 px-1 text-xs text-gray-500 sm:hidden">Geser tabel ke samping untuk melihat Verifikasi &amp; Keterangan.</p>
                     <div class="overflow-x-auto overscroll-x-contain rounded-md border border-gray-100" style="-webkit-overflow-scrolling: touch">
-                    <table class="table-fixed divide-y divide-gray-200 text-sm" id="tabelDetailPenerimaan" style="width: 1000px; min-width: 1000px">
+                    <table class="w-full table-fixed divide-y divide-gray-200 text-sm" id="tabelDetailPenerimaan">
                         <colgroup>
-                            <col style="width: 40px">
-                            <col style="width: 150px">
-                            <col style="width: 70px">
-                            <col style="width: 78px">
-                            <col style="width: 78px">
-                            <col style="width: 60px">
+                            <col style="width:2.5rem">
+                            <col>
+                            <col style="width:4.5rem">
+                            <col style="width:5rem">
+                            <col style="width:5rem">
+                            <col style="width:4rem">
                             @if($hasFarmasiPersediaan)
-                            <col style="width: 70px">
-                            <col style="width: 84px">
+                            <col style="width:6.5rem">
+                            <col style="width:5.5rem">
                             @endif
                             @if($hasAset)
-                            <col style="width: 90px">
+                            <col style="width:7rem">
                             @endif
                             @if($canVerify)
-                            <col style="width: 88px">
-                            <col style="width: 220px">
+                            <col style="width:4.75rem">
+                            <col style="width:30%">
                             @else
-                            <col style="width: 220px">
+                            <col style="width:30%">
                             @endif
                         </colgroup>
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase">No</th>
-                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nama Barang</th>
-                                <th class="px-1 py-2 text-left text-xs font-medium text-gray-500 uppercase">Jenis</th>
-                                <th class="px-1 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty Kirim</th>
-                                <th class="px-1 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty Terima</th>
-                                <th class="px-1 py-2 text-left text-xs font-medium text-gray-500 uppercase">Satuan</th>
+                                <th class="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">No</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nama Barang</th>
+                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Jenis</th>
+                                <th class="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty Kirim</th>
+                                <th class="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty Terima</th>
+                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Satuan</th>
                                 @if($hasFarmasiPersediaan)
-                                <th class="px-1 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
-                                <th class="px-1 py-2 text-left text-xs font-medium text-gray-500 uppercase">Exp</th>
+                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
+                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Exp</th>
                                 @endif
                                 @if($hasAset)
-                                <th class="px-1 py-2 text-left text-xs font-medium text-gray-500 uppercase">No. Seri</th>
+                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">No. Seri</th>
                                 @endif
                                 @if($canVerify)
                                 <th class="px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase">Verifikasi</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Keterangan</th>
+                                @else
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Keterangan</th>
                                 @endif
-                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Keterangan</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -203,26 +205,26 @@
                                 $oldHasil = old("items.$index.hasil", $detail->hasil_verifikasi);
                                 $oldKet = old("items.$index.keterangan", $detail->keterangan);
                             @endphp
-                            <tr class="align-top js-verifikasi-row" data-index="{{ $index }}">
-                                <td class="px-1 py-2 text-center text-gray-600 tabular-nums text-xs">{{ $index + 1 }}</td>
-                                <td class="px-2 py-2 font-medium text-gray-900 align-top overflow-hidden">
-                                    <span class="block break-words whitespace-normal leading-snug [overflow-wrap:anywhere]">{{ $inventory->dataBarang->nama_barang ?? '-' }}</span>
+                            <tr class="js-verifikasi-row" data-index="{{ $index }}">
+                                <td class="px-2 py-2 text-center text-gray-600 tabular-nums text-xs align-middle">{{ $index + 1 }}</td>
+                                <td class="px-3 py-2 font-medium text-gray-900 align-middle">
+                                    <span class="block break-words leading-snug">{{ $inventory->dataBarang->nama_barang ?? '-' }}</span>
                                 </td>
-                                <td class="px-1 py-2 text-gray-900 align-top overflow-hidden">
-                                    <span class="block break-words whitespace-normal leading-snug">{{ $inventory->jenis_barang ?? '-' }}</span>
+                                <td class="px-2 py-2 text-gray-900 align-middle">
+                                    <span class="block break-words leading-snug">{{ $inventory->jenis_barang ?? '-' }}</span>
                                 </td>
-                                <td class="px-1 py-2 text-right tabular-nums whitespace-nowrap text-gray-900">{{ number_format($qtyDikirim, 2, ',', '.') }}</td>
-                                <td class="px-1 py-2 text-right tabular-nums whitespace-nowrap text-gray-900">{{ number_format($qtyDiterima, 2, ',', '.') }}</td>
-                                <td class="px-1 py-2 whitespace-nowrap text-gray-900 overflow-hidden">{{ $detail->satuan->nama_satuan ?? '-' }}</td>
+                                <td class="px-2 py-2 text-right tabular-nums whitespace-nowrap text-gray-900 align-middle">{{ number_format($qtyDikirim, 2, ',', '.') }}</td>
+                                <td class="px-2 py-2 text-right tabular-nums whitespace-nowrap text-gray-900 align-middle">{{ number_format($qtyDiterima, 2, ',', '.') }}</td>
+                                <td class="px-2 py-2 whitespace-nowrap text-gray-900 align-middle">{{ $detail->satuan->nama_satuan ?? '-' }}</td>
                                 @if($hasFarmasiPersediaan)
-                                <td class="px-1 py-2 text-gray-600 overflow-hidden">
+                                <td class="px-2 py-2 text-gray-600 align-middle">
                                     @if($isFarmasiPersediaan)
-                                        <span class="block break-words whitespace-normal">{{ $inventory->no_batch ?? '-' }}</span>
+                                        <span class="block break-words">{{ $inventory->no_batch ?? '-' }}</span>
                                     @else
                                         <span class="text-gray-400">—</span>
                                     @endif
                                 </td>
-                                <td class="px-1 py-2 whitespace-nowrap text-gray-600">
+                                <td class="px-2 py-2 whitespace-nowrap text-gray-600 align-middle">
                                     @if($isFarmasiPersediaan && $inventory->tanggal_kedaluwarsa)
                                         {{ \Carbon\Carbon::parse($inventory->tanggal_kedaluwarsa)->format('d/m/Y') }}
                                     @else
@@ -231,12 +233,12 @@
                                 </td>
                                 @endif
                                 @if($hasAset)
-                                <td class="px-1 py-2 text-gray-900 overflow-hidden">
+                                <td class="px-2 py-2 text-gray-900 align-middle">
                                     @if($isAset)
                                         @if($noSeriList->count() > 0)
-                                            <span class="block break-words whitespace-normal">{{ $noSeriList->join(', ') }}</span>
+                                            <span class="block break-words">{{ $noSeriList->join(', ') }}</span>
                                         @else
-                                            <span class="block break-words whitespace-normal">{{ $inventory->no_seri ?? '-' }}</span>
+                                            <span class="block break-words">{{ $inventory->no_seri ?? '-' }}</span>
                                         @endif
                                     @else
                                         <span class="text-gray-400">—</span>
@@ -245,10 +247,10 @@
                                 @endif
 
                                 @if($canVerify)
-                                <td class="p-1 align-middle text-center overflow-hidden">
+                                <td class="w-0 whitespace-nowrap px-1 py-2 align-middle text-center">
                                     <input type="hidden" name="items[{{ $index }}][id_detail_penerimaan]" value="{{ $detail->id_detail_penerimaan }}">
                                     <input type="hidden" name="items[{{ $index }}][hasil]" class="js-hasil-input" value="{{ $oldHasil }}" required>
-                                    <div class="mx-auto flex w-[68px] items-center justify-center gap-1">
+                                    <div class="inline-flex items-center justify-center gap-0.5">
                                         <button
                                             type="button"
                                             class="js-btn-sesuai inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border {{ $oldHasil === 'sesuai' ? 'border-green-600 bg-green-600 text-white' : 'border-green-300 bg-white text-green-700 hover:bg-green-50' }}"
@@ -256,7 +258,7 @@
                                             title="Sesuai"
                                             aria-label="Sesuai"
                                         >
-                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
                                             </svg>
                                         </button>
@@ -267,7 +269,7 @@
                                             title="Tidak sesuai"
                                             aria-label="Tidak sesuai"
                                         >
-                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
                                             </svg>
                                         </button>
@@ -276,14 +278,15 @@
                                         <p class="mt-1 text-[10px] text-red-600">{{ $message }}</p>
                                     @enderror
                                 </td>
-                                <td class="px-2 py-2 align-top overflow-hidden">
-                                    <textarea
+                                <td class="px-3 py-2 align-middle">
+                                    <input
+                                        type="text"
                                         name="items[{{ $index }}][keterangan]"
-                                        rows="2"
-                                        class="js-ket-input block w-full min-w-0 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs @error('items.'.$index.'.keterangan') border-red-500 @enderror"
-                                        placeholder="Wajib jika tidak sesuai"
+                                        value="{{ $oldKet }}"
+                                        class="js-ket-input block w-full min-w-0 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-1.5 @error('items.'.$index.'.keterangan') border-red-500 @enderror"
+                                        placeholder="Opsional"
                                         {{ $oldHasil === 'tidak_sesuai' ? 'required' : '' }}
-                                    >{{ $oldKet }}</textarea>
+                                    >
                                     @error("items.$index.keterangan")
                                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                     @enderror

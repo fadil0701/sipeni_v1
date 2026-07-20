@@ -25,7 +25,7 @@ class KemendagriImportSeeder extends Seeder
      */
     public function run(): void
     {
-        $relativePath = (string) env('KEMENDAGRI_IMPORT_FILE', 'database/seeders/data/kemendagri_import.xlsx');
+        $relativePath = (string) env('KEMENDAGRI_IMPORT_FILE', 'database/seeders/data/kemendagri_import_sheet6_objek_filtered_v2.backup_before_kib_bmd_20260720_085614.xlsx');
         $filePath = base_path($relativePath);
 
         if (! file_exists($filePath)) {

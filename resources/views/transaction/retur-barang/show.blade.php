@@ -85,6 +85,20 @@
     </div>
     
     <div class="p-6">
+        <div class="mb-6 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            <strong>Alur retur:</strong>
+            @if($retur->status_retur === 'DRAFT')
+                Draft — unit dapat mengedit lalu <em>ajukan</em> ke Admin Gudang Pusat.
+            @elseif($retur->status_retur === 'DIAJUKAN')
+                Menunggu verifikasi Admin Gudang Pusat (terima/tolak). Stok belum berubah.
+            @elseif($retur->status_retur === 'DITERIMA')
+                Retur diterima — stok unit berkurang dan stok pusat bertambah.
+            @elseif($retur->status_retur === 'DITOLAK')
+                Retur ditolak oleh Admin Gudang Pusat.
+            @else
+                {{ $retur->status_retur }}
+            @endif
+        </div>
         <div class="grid grid-cols-1 gap-6">
             <!-- Informasi Retur -->
             <div>

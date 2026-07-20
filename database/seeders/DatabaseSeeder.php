@@ -30,8 +30,9 @@ class DatabaseSeeder extends Seeder
             MasterGudangSeeder::class,
             MasterRuanganSeeder::class,
             MasterJabatanSeeder::class,
-            //AdminUserSeeder::class,
-            PegawaiUserPerJabatanSeeder::class,
+            AdminUserSeeder::class,
+            DemoUserSeeder::class,
+            // PegawaiUserPerJabatanSeeder::class, // alternatif: 1 user per jabatan
             ApprovalFlowDefinitionSeeder::class,
             SbbkPrintTemplateSeeder::class,
             // ComprehensiveDummySeeder::class,

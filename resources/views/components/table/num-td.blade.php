@@ -8,7 +8,7 @@
         ? ($loopContext['iteration'] ?? null)
         : (is_object($loopContext) ? ($loopContext->iteration ?? null) : null);
 @endphp
-<td {{ $attributes->merge(['class' => 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 tabular-nums']) }}>
+<td {{ $attributes->merge(['class' => 'w-0 whitespace-nowrap px-2 py-3 text-center text-sm text-gray-600 tabular-nums align-middle']) }}>
     @if($paginator instanceof \Illuminate\Contracts\Pagination\Paginator && $rowIndex !== null)
         {{ $paginator->firstItem() + $rowIndex }}
     @elseif($rowIteration !== null)

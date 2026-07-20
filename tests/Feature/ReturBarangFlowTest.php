@@ -87,7 +87,7 @@ class ReturBarangFlowTest extends TestCase
             'id_gudang_asal' => $gudangAsal->id_gudang,
             'id_gudang_tujuan' => $gudangTujuan->id_gudang,
             'id_pegawai_pengirim' => $pegawai->id,
-            'status_retur' => 'DIAJUKAN',
+            'submit_action' => 'ajukan',
             'jenis_retur' => 'SISA',
             'alasan_retur' => 'Uji otomatis retur',
             'detail' => [

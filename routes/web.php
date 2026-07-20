@@ -117,11 +117,12 @@ Route::middleware(['auth', 'scope.unit'])->group(function () {
     Route::get('/requests/{id}', [RequestController::class, 'show'])->name('user.requests.show')->middleware(['role']);
 
     // Lookup master (ruangan & pegawai per unit kerja) — untuk form yang ter-filter dinamis
-    Route::middleware(['permission.any:master.gudang.index,master.ruangan.index,master-manajemen.master-pegawai.index,transaction.permintaan-barang.create,transaction.permintaan-barang.edit,transaction.peminjaman-barang.create,transaction.peminjaman-barang.edit,inventory.data-inventory.create,inventory.data-inventory.edit'])->group(function () {
+    Route::middleware(['permission.any:master.gudang.index,master.ruangan.index,master-manajemen.master-pegawai.index,transaction.permintaan-barang.create,transaction.permintaan-barang.edit,transaction.peminjaman-barang.create,transaction.peminjaman-barang.edit,transaction.retur-barang.create,transaction.retur-barang.edit,transaction.retur-barang.store,transaction.retur-barang.update,inventory.data-inventory.create,inventory.data-inventory.edit'])->group(function () {
         Route::get('api/master/gudang-by-unit/{id_unit_kerja}', [MasterLookupController::class, 'gudangByUnit'])->name('api.master.gudang-by-unit');
         Route::get('api/master/ruangan-by-unit/{id_unit_kerja}', [MasterLookupController::class, 'ruanganByUnit'])->name('api.master.ruangan-by-unit');
         Route::get('api/master/pegawai-by-unit/{id_unit_kerja}', [MasterLookupController::class, 'pegawaiByUnit'])->name('api.master.pegawai-by-unit');
         Route::get('api/master/inventory-by-unit/{id_unit_kerja}', [MasterLookupController::class, 'inventoryByUnit'])->name('api.master.inventory-by-unit');
+        Route::get('api/master/inventory-by-gudang/{id_gudang}', [MasterLookupController::class, 'inventoryByGudang'])->name('api.master.inventory-by-gudang');
     });
 
     // Master Manajemen

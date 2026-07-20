@@ -58,7 +58,7 @@ class FixMissingInventoryItems extends Command
             $missingCount = $expectedCount - $currentItemCount;
 
             $this->info("📦 Inventory ID: {$inventory->id_inventory}");
-            $this->info("   Barang: {$inventory->dataBarang->nama_barang ?? 'N/A'}");
+            $this->info('   Barang: '.($inventory->dataBarang->nama_barang ?? 'N/A'));
             $this->info("   Qty Input: {$expectedCount}");
             $this->info("   Current Items: {$currentItemCount}");
             $this->info("   Missing Items: {$missingCount}");

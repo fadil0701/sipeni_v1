@@ -61,7 +61,20 @@ class ApprovalFlowDefinitionSeeder extends Seeder
                 'can_approve' => true,
             ],
 
-            // Step 4: Disposisi ke Admin Gudang berdasarkan kategori
+            // Step 4a: Persetujuan Kepala Pusat (hanya jika stok kosong / perlu pengadaan)
+            [
+                'modul_approval' => 'PERMINTAAN_BARANG',
+                'step_order' => 4,
+                'role_id' => $roles['kepala_pusat']->id ?? null,
+                'nama_step' => 'Persetujuan Kepala Pusat',
+                'status' => 'MENUNGGU',
+                'status_text' => 'Menunggu persetujuan Kepala Pusat sebelum disposisi ke Pengadaan (stok tidak tersedia)',
+                'is_required' => false,
+                'can_reject' => true,
+                'can_approve' => true,
+            ],
+
+            // Step 4b: Disposisi ke Admin Gudang berdasarkan kategori (jika stok tersedia)
             [
                 'modul_approval' => 'PERMINTAAN_BARANG',
                 'step_order' => 4,
@@ -106,13 +119,14 @@ class ApprovalFlowDefinitionSeeder extends Seeder
                 'can_reject' => false,
                 'can_approve' => false,
             ],
+            // Step 4c: Disposisi pengadaan (hanya setelah Kepala Pusat menyetujui, jika stok kosong)
             [
                 'modul_approval' => 'PERMINTAAN_BARANG',
                 'step_order' => 4,
                 'role_id' => $roles['pengadaan']->id ?? null,
                 'nama_step' => 'Didisposisikan ke Pengadaan',
                 'status' => 'MENUNGGU',
-                'status_text' => 'Permintaan mengandung item yang tidak ada di stock, didisposisikan ke Pengadaan Barang dan Jasa untuk pengadaan',
+                'status_text' => 'Setelah disetujui Kepala Pusat, didisposisikan ke Pengadaan karena stok tidak tersedia',
                 'is_required' => false,
                 'can_reject' => false,
                 'can_approve' => false,

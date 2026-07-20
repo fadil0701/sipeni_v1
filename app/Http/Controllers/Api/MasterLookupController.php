@@ -100,6 +100,7 @@ class MasterLookupController extends Controller
 
         $rows = DataInventory::query()
             ->with(['dataBarang', 'satuan', 'gudang'])
+            ->where('status_inventory', 'AKTIF')
             ->whereHas('gudang', static function ($q) use ($id_unit_kerja) {
                 $q->where('id_unit_kerja', $id_unit_kerja)
                     ->where('jenis_gudang', 'UNIT');
@@ -108,20 +109,59 @@ class MasterLookupController extends Controller
             ->orderBy('id_inventory')
             ->get();
 
-        return response()->json([
-            'data' => $rows->map(static function ($inv) {
-                return [
-                    'id_inventory' => (int) $inv->id_inventory,
-                    'id_data_barang' => (int) $inv->id_data_barang,
-                    'nama_barang' => (string) ($inv->dataBarang->nama_barang ?? '-'),
-                    'qty_tersedia' => (float) $inv->qty_input,
-                    'id_satuan' => (int) ($inv->id_satuan ?? 0),
-                    'nama_satuan' => (string) ($inv->satuan->nama_satuan ?? '-'),
-                    'id_gudang' => (int) $inv->id_gudang,
-                    'nama_gudang' => (string) ($inv->gudang->nama_gudang ?? '-'),
-                    'label' => ($inv->dataBarang->nama_barang ?? '-') . ' | Stok: ' . (float) $inv->qty_input . ' ' . ($inv->satuan->nama_satuan ?? ''),
-                ];
-            })->values(),
-        ]);
+        return response()->json(['data' => $this->mapInventoryForRetur($rows)]);
+    }
+
+    /**
+     * Inventory aktif pada satu gudang UNIT (untuk form retur barang).
+     */
+    public function inventoryByGudang(int $id_gudang): JsonResponse
+    {
+        $gudang = MasterGudang::query()->findOrFail($id_gudang);
+        if ($gudang->jenis_gudang !== 'UNIT' || ! $gudang->id_unit_kerja) {
+            return response()->json(['data' => []]);
+        }
+
+        UserScope::assertCanAccessUnitKerjaData(request()->user(), (int) $gudang->id_unit_kerja);
+
+        $rows = DataInventory::query()
+            ->with(['dataBarang', 'satuan', 'gudang'])
+            ->where('id_gudang', $id_gudang)
+            ->where('status_inventory', 'AKTIF')
+            ->where('qty_input', '>', 0)
+            ->orderBy('id_inventory')
+            ->get();
+
+        return response()->json(['data' => $this->mapInventoryForRetur($rows)]);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, DataInventory>  $rows
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function mapInventoryForRetur($rows)
+    {
+        return $rows->map(static function ($inv) {
+            $jenisInventory = (string) ($inv->jenis_inventory ?? '');
+            $kategoriGudang = match ($jenisInventory) {
+                'FARMASI' => 'FARMASI',
+                'ASET' => 'ASET',
+                default => 'PERSEDIAAN',
+            };
+
+            return [
+                'id_inventory' => (int) $inv->id_inventory,
+                'id_data_barang' => (int) $inv->id_data_barang,
+                'nama_barang' => (string) ($inv->dataBarang->nama_barang ?? '-'),
+                'qty_tersedia' => (float) $inv->qty_input,
+                'id_satuan' => (int) ($inv->id_satuan ?? 0),
+                'nama_satuan' => (string) ($inv->satuan->nama_satuan ?? '-'),
+                'id_gudang' => (int) $inv->id_gudang,
+                'nama_gudang' => (string) ($inv->gudang->nama_gudang ?? '-'),
+                'jenis_inventory' => $jenisInventory,
+                'kategori_gudang_pusat' => $kategoriGudang,
+                'label' => ($inv->dataBarang->nama_barang ?? '-').' | Stok: '.(float) $inv->qty_input.' '.($inv->satuan->nama_satuan ?? ''),
+            ];
+        })->values();
     }
 }

@@ -3,16 +3,24 @@
 namespace App\Helpers;
 
 use App\Support\Rbac\StaticRolePermissionMap;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\WildcardPermission;
 
 class PermissionHelper
 {
-    /** TTL cache struktur menu sidebar (jam); invalidasi lewat forget/bump generation */
+    /** TTL cache struktur menu sidebar + nama permission (jam); invalidasi lewat forget/bump generation */
     private const ACCESSIBLE_MENUS_TTL_HOURS = 24;
 
     private const CACHE_KEY_MENU_GENERATION = 'sidebar_accessible_menus_generation';
 
     /** @var array<string, bool> */
     private static array $canAccessMemo = [];
+
+    /** @var array<int, list<string>> */
+    private static array $permissionNamesMemo = [];
+
+    /** @var array<int, array<string, mixed>> */
+    private static array $wildcardIndexMemo = [];
 
     public static function hasEnterpriseBypassRole(mixed $user): bool
     {
@@ -30,8 +38,8 @@ class PermissionHelper
     }
 
     /**
-     * Naikkan versi cache menu global — dipakai saat permission suatu role berubah
-     * sehingga semua user membangun ulang menu di request berikutnya.
+     * Naikkan versi cache menu + permission names global — dipakai saat permission suatu role berubah
+     * sehingga semua user membangun ulang menu/permission di request berikutnya.
      */
     public static function bumpAccessibleMenusCacheGeneration(): void
     {
@@ -41,15 +49,94 @@ class PermissionHelper
             $cache->put($k, 1);
         }
         $cache->increment($k);
+        self::$permissionNamesMemo = [];
+        self::$wildcardIndexMemo = [];
+        self::$canAccessMemo = [];
     }
 
     /**
-     * Hapus cache menu untuk satu user — dipakai saat role/modul user diubah
+     * Hapus cache menu + permission names untuk satu user — dipakai saat role/modul user diubah
      * (tanpa mengubah permission role secara global).
      */
     public static function forgetAccessibleMenusCacheForUser(int $userId): void
     {
-        self::cacheStore()->forget(self::accessibleMenusCacheKey($userId));
+        $cache = self::cacheStore();
+        $cache->forget(self::accessibleMenusCacheKey($userId));
+        $cache->forget(self::permissionNamesCacheKey($userId));
+        unset(self::$permissionNamesMemo[$userId], self::$wildcardIndexMemo[$userId]);
+        foreach (array_keys(self::$canAccessMemo) as $memoKey) {
+            if (str_starts_with($memoKey, $userId.':')) {
+                unset(self::$canAccessMemo[$memoKey]);
+            }
+        }
+    }
+
+    /**
+     * Warm cache nama permission (string) tanpa hydrate model Permission.
+     * Dipanggil dari middleware agar request berikutnya / sidebar tidak memuat ratusan Eloquent.
+     */
+    public static function warmPermissionCache(mixed $user): void
+    {
+        if (! $user || self::hasEnterpriseBypassRole($user)) {
+            return;
+        }
+
+        self::permissionNamesForUser($user);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function permissionNamesForUser(mixed $user): array
+    {
+        $userId = isset($user->id) ? (int) $user->id : 0;
+        if ($userId <= 0) {
+            return [];
+        }
+
+        if (isset(self::$permissionNamesMemo[$userId])) {
+            return self::$permissionNamesMemo[$userId];
+        }
+
+        /** @var list<string> $names */
+        $names = self::cacheStore()->remember(
+            self::permissionNamesCacheKey($userId),
+            date('Y-m-d H:i:s', strtotime('+'.self::ACCESSIBLE_MENUS_TTL_HOURS.' hours')),
+            static function () use ($user): array {
+                return self::loadPermissionNamesFromDatabase($user);
+            }
+        );
+
+        return self::$permissionNamesMemo[$userId] = $names;
+    }
+
+    /**
+     * Cek apakah user punya permission (exact / wildcard Spatie) via cache nama — tanpa Eloquent Permission.
+     */
+    public static function ownsPermission(mixed $user, string $permission): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (self::hasEnterpriseBypassRole($user)) {
+            return true;
+        }
+
+        $names = self::permissionNamesForUser($user);
+        if ($names === []) {
+            return false;
+        }
+
+        if (in_array($permission, $names, true)) {
+            return true;
+        }
+
+        $userId = (int) $user->id;
+        $index = self::$wildcardIndexMemo[$userId] ??= self::buildWildcardIndex($names);
+        $guard = 'web';
+
+        return (new WildcardPermission($user))->implies($permission, $guard, $index);
     }
 
     private static function accessibleMenusCacheKey(int $userId): string
@@ -57,6 +144,93 @@ class PermissionHelper
         $generation = (int) self::cacheStore()->get(self::CACHE_KEY_MENU_GENERATION, 1);
 
         return 'sidebar_accessible_menus:v'.$generation.':u'.$userId;
+    }
+
+    private static function permissionNamesCacheKey(int $userId): string
+    {
+        $generation = (int) self::cacheStore()->get(self::CACHE_KEY_MENU_GENERATION, 1);
+
+        return 'user_permission_names:v'.$generation.':u'.$userId;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function loadPermissionNamesFromDatabase(mixed $user): array
+    {
+        if (! method_exists($user, 'relationLoaded')) {
+            return [];
+        }
+
+        if (! $user->relationLoaded('roles')) {
+            $user->load('roles:id,name,guard_name');
+        }
+
+        $roleIds = $user->roles->pluck('id')->map(fn ($id) => (int) $id)->filter()->values()->all();
+        $names = [];
+
+        if ($roleIds !== []) {
+            $names = DB::table('permissions')
+                ->join('permission_role', 'permissions.id', '=', 'permission_role.permission_id')
+                ->whereIn('permission_role.role_id', $roleIds)
+                ->distinct()
+                ->orderBy('permissions.name')
+                ->pluck('permissions.name')
+                ->all();
+        }
+
+        // Direct permissions (jarang dipakai di SI-MANTIK, tetap didukung)
+        $direct = DB::table('permissions')
+            ->join('model_has_permissions', 'permissions.id', '=', 'model_has_permissions.permission_id')
+            ->where('model_has_permissions.model_id', (int) $user->id)
+            ->where('model_has_permissions.model_type', $user::class)
+            ->distinct()
+            ->pluck('permissions.name')
+            ->all();
+
+        if ($direct !== []) {
+            $names = array_values(array_unique(array_merge($names, $direct)));
+            sort($names);
+        }
+
+        return array_map('strval', $names);
+    }
+
+    /**
+     * Bangun index wildcard Spatie dari daftar nama (tanpa model Permission).
+     *
+     * @param  list<string>  $names
+     * @return array<string, mixed>
+     */
+    private static function buildWildcardIndex(array $names): array
+    {
+        $builder = new class extends WildcardPermission
+        {
+            public function __construct()
+            {
+                // record tidak dipakai untuk buildIndex
+            }
+
+            /**
+             * @param  list<string>  $names
+             * @return array<string, mixed>
+             */
+            public function fromNames(array $names, string $guard): array
+            {
+                $index = [];
+                foreach ($names as $name) {
+                    $index[$guard] = $this->buildIndex(
+                        $index[$guard] ?? [],
+                        explode(self::PART_DELIMITER, $name),
+                        $name,
+                    );
+                }
+
+                return $index;
+            }
+        };
+
+        return $builder->fromNames($names, 'web');
     }
 
     /**
@@ -71,7 +245,7 @@ class PermissionHelper
 
 
     /**
-     * Cek akses permission — sumber utama: database (Spatie + wildcard native).
+     * Cek akses permission — sumber utama: database (Spatie + wildcard native) via cache nama.
      */
     public static function canAccess(mixed $user, string $permission): bool
     {
@@ -90,12 +264,12 @@ class PermissionHelper
         }
 
         foreach (self::derivedPermissionParents($permission) as $parent) {
-            if ($user->hasPermission($parent)) {
+            if (self::ownsPermission($user, $parent)) {
                 return self::$canAccessMemo[$memoKey] = true;
             }
         }
 
-        return self::$canAccessMemo[$memoKey] = $user->hasPermission($permission);
+        return self::$canAccessMemo[$memoKey] = self::ownsPermission($user, $permission);
     }
 
     /**

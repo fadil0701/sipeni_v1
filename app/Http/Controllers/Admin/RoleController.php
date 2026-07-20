@@ -666,6 +666,7 @@ class RoleController extends Controller
 
         $role->delete();
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+        PermissionHelper::bumpAccessibleMenusCacheGeneration();
 
         return redirect()->route('admin.roles.index')
             ->with('success', 'Role berhasil dihapus.');

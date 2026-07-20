@@ -115,8 +115,9 @@ class ReturBarangController extends Controller
 
         $satuans = MasterSatuan::all();
         $jenisReturOptions = ReturBarang::jenisReturOptions();
+        $gudangPusatByKategori = $this->gudangPusatByKategoriMap();
 
-        return view('transaction.retur-barang.create', compact('unitKerjas', 'gudangs', 'pegawais', 'satuans', 'jenisReturOptions'));
+        return view('transaction.retur-barang.create', compact('unitKerjas', 'gudangs', 'pegawais', 'satuans', 'jenisReturOptions', 'gudangPusatByKategori'));
     }
 
     public function store(Request $request)
@@ -127,15 +128,24 @@ class ReturBarangController extends Controller
             'id_gudang_asal' => 'required|exists:master_gudang,id_gudang',
             'id_gudang_tujuan' => 'required|exists:master_gudang,id_gudang',
             'id_pegawai_pengirim' => 'required|exists:master_pegawai,id',
-            'status_retur' => 'required|in:DRAFT,DIAJUKAN',
+            'submit_action' => 'nullable|in:draft,ajukan',
             'jenis_retur' => 'required|in:RUSAK,SISA,LAINNYA',
             'alasan_retur' => 'nullable|string',
             'detail' => 'required|array|min:1',
             'detail.*.id_inventory' => 'required|exists:data_inventory,id_inventory',
-            'detail.*.qty_retur' => 'required|numeric|min:0',
+            'detail.*.qty_retur' => 'required|numeric|min:0.01',
             'detail.*.id_satuan' => 'required|exists:master_satuan,id_satuan',
             'detail.*.alasan_retur_item' => 'nullable|string',
         ]);
+
+        /** @var User $user */
+        $user = Auth::user();
+        if (UserScope::mustScopeToUnitKerja($user)) {
+            $pegawaiScope = MasterPegawai::where('user_id', $user->id)->first();
+            if (! $pegawaiScope || (int) $pegawaiScope->id_unit_kerja !== (int) $validated['id_unit_kerja']) {
+                return back()->withErrors(['id_unit_kerja' => 'Anda hanya dapat membuat retur untuk unit kerja Anda.'])->withInput();
+            }
+        }
 
         if (! $this->isPegawaiInUnit((int) $validated['id_pegawai_pengirim'], (int) $validated['id_unit_kerja'])) {
             return back()->withErrors(['id_pegawai_pengirim' => 'Pegawai pengirim harus berasal dari unit kerja yang dipilih.'])->withInput();
@@ -146,6 +156,17 @@ class ReturBarangController extends Controller
         if (! $this->isGudangPusat((int) $validated['id_gudang_tujuan'])) {
             return back()->withErrors(['id_gudang_tujuan' => 'Gudang tujuan harus gudang PUSAT.'])->withInput();
         }
+
+        $detailErrors = $this->validateReturDetails(
+            $validated['detail'],
+            (int) $validated['id_gudang_asal'],
+            (int) $validated['id_gudang_tujuan']
+        );
+        if ($detailErrors !== []) {
+            return back()->withErrors($detailErrors)->withInput();
+        }
+
+        $statusRetur = $request->input('submit_action') === 'ajukan' ? 'DIAJUKAN' : 'DRAFT';
 
         DB::beginTransaction();
         try {
@@ -173,7 +194,7 @@ class ReturBarangController extends Controller
                 'id_gudang_tujuan' => $validated['id_gudang_tujuan'],
                 'id_pegawai_pengirim' => $validated['id_pegawai_pengirim'],
                 'tanggal_retur' => $validated['tanggal_retur'],
-                'status_retur' => $validated['status_retur'],
+                'status_retur' => $statusRetur,
                 'alasan_retur' => $alasanWithJenis,
             ]);
 
@@ -191,7 +212,9 @@ class ReturBarangController extends Controller
             DB::commit();
 
             return redirect()->route('transaction.retur-barang.index')
-                ->with('success', 'Retur barang berhasil dibuat.');
+                ->with('success', $statusRetur === 'DIAJUKAN'
+                    ? 'Retur barang berhasil diajukan ke Admin Gudang Pusat.'
+                    : 'Retur barang berhasil disimpan sebagai draft.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error creating retur barang: ' . $e->getMessage());
@@ -209,6 +232,8 @@ class ReturBarangController extends Controller
             'detailRetur.inventory.dataBarang',
             'detailRetur.satuan'
         ])->findOrFail($id);
+
+        $this->assertReturUnitAccess($retur);
 
         return view('transaction.retur-barang.show', compact('retur'));
     }
@@ -251,6 +276,8 @@ class ReturBarangController extends Controller
             'detailRetur.inventory.dataBarang',
             'detailRetur.satuan',
         ])->findOrFail($id);
+
+        $this->assertReturUnitAccess($retur);
         
         // Hanya bisa edit jika status DRAFT atau DIAJUKAN
         if (!in_array($retur->status_retur, ['DRAFT', 'DIAJUKAN'])) {
@@ -282,13 +309,16 @@ class ReturBarangController extends Controller
 
         $satuans = MasterSatuan::all();
         $jenisReturOptions = ReturBarang::jenisReturOptions();
+        $gudangPusatByKategori = $this->gudangPusatByKategoriMap();
 
-        return view('transaction.retur-barang.edit', compact('retur', 'unitKerjas', 'gudangs', 'pegawais', 'satuans', 'jenisReturOptions'));
+        return view('transaction.retur-barang.edit', compact('retur', 'unitKerjas', 'gudangs', 'pegawais', 'satuans', 'jenisReturOptions', 'gudangPusatByKategori'));
     }
 
     public function update(Request $request, $id)
     {
         $retur = ReturBarang::findOrFail($id);
+
+        $this->assertReturUnitAccess($retur);
 
         // Hanya bisa update jika status DRAFT atau DIAJUKAN
         if (!in_array($retur->status_retur, ['DRAFT', 'DIAJUKAN'])) {
@@ -302,12 +332,12 @@ class ReturBarangController extends Controller
             'id_gudang_asal' => 'required|exists:master_gudang,id_gudang',
             'id_gudang_tujuan' => 'required|exists:master_gudang,id_gudang',
             'id_pegawai_pengirim' => 'required|exists:master_pegawai,id',
-            'status_retur' => 'required|in:DRAFT,DIAJUKAN',
+            'submit_action' => 'nullable|in:draft,ajukan',
             'jenis_retur' => 'required|in:RUSAK,SISA,LAINNYA',
             'alasan_retur' => 'nullable|string',
             'detail' => 'required|array|min:1',
             'detail.*.id_inventory' => 'required|exists:data_inventory,id_inventory',
-            'detail.*.qty_retur' => 'required|numeric|min:0',
+            'detail.*.qty_retur' => 'required|numeric|min:0.01',
             'detail.*.id_satuan' => 'required|exists:master_satuan,id_satuan',
             'detail.*.alasan_retur_item' => 'nullable|string',
         ]);
@@ -322,6 +352,19 @@ class ReturBarangController extends Controller
             return back()->withErrors(['id_gudang_tujuan' => 'Gudang tujuan harus gudang PUSAT.'])->withInput();
         }
 
+        $detailErrors = $this->validateReturDetails(
+            $validated['detail'],
+            (int) $validated['id_gudang_asal'],
+            (int) $validated['id_gudang_tujuan']
+        );
+        if ($detailErrors !== []) {
+            return back()->withErrors($detailErrors)->withInput();
+        }
+
+        $statusRetur = $retur->status_retur === 'DRAFT' && $request->input('submit_action') === 'ajukan'
+            ? 'DIAJUKAN'
+            : $retur->status_retur;
+
         DB::beginTransaction();
         try {
             // Update retur
@@ -333,7 +376,7 @@ class ReturBarangController extends Controller
                 'id_gudang_asal' => $validated['id_gudang_asal'],
                 'id_gudang_tujuan' => $validated['id_gudang_tujuan'],
                 'id_pegawai_pengirim' => $validated['id_pegawai_pengirim'],
-                'status_retur' => $validated['status_retur'],
+                'status_retur' => $statusRetur,
                 'alasan_retur' => $alasanWithJenis,
             ]);
 
@@ -365,6 +408,8 @@ class ReturBarangController extends Controller
     public function destroy($id)
     {
         $retur = ReturBarang::findOrFail($id);
+
+        $this->assertReturUnitAccess($retur);
 
         // Hanya bisa hapus jika status DRAFT atau DIAJUKAN
         if (!in_array($retur->status_retur, ['DRAFT', 'DIAJUKAN'])) {
@@ -572,6 +617,8 @@ class ReturBarangController extends Controller
     public function ajukan($id)
     {
         $retur = ReturBarang::findOrFail($id);
+
+        $this->assertReturUnitAccess($retur);
         
         // Hanya bisa ajukan jika status DRAFT
         if ($retur->status_retur != 'DRAFT') {
@@ -610,6 +657,78 @@ class ReturBarangController extends Controller
             ->where('id_gudang', $idGudang)
             ->where('jenis_gudang', 'PUSAT')
             ->exists();
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function gudangPusatByKategoriMap(): array
+    {
+        return MasterGudang::query()
+            ->where('jenis_gudang', 'PUSAT')
+            ->whereIn('kategori_gudang', ['PERSEDIAAN', 'FARMASI', 'ASET'])
+            ->get()
+            ->mapWithKeys(fn (MasterGudang $g) => [(string) $g->kategori_gudang => (int) $g->id_gudang])
+            ->all();
+    }
+
+    private function assertReturUnitAccess(ReturBarang $retur): void
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (! UserScope::mustScopeToUnitKerja($user)) {
+            return;
+        }
+
+        $pegawai = MasterPegawai::where('user_id', $user->id)->first();
+        if (! $pegawai || (int) $pegawai->id_unit_kerja !== (int) $retur->id_unit_kerja) {
+            abort(403, 'Anda tidak memiliki akses ke retur unit kerja ini.');
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $details
+     * @return array<string, string>
+     */
+    private function validateReturDetails(array $details, int $idGudangAsal, int $idGudangTujuan): array
+    {
+        $errors = [];
+        $gudangTujuan = MasterGudang::find($idGudangTujuan);
+
+        foreach ($details as $index => $detail) {
+            $qty = (float) ($detail['qty_retur'] ?? 0);
+            if ($qty <= 0) {
+                $errors["detail.{$index}.qty_retur"] = 'Qty retur harus lebih dari 0.';
+                continue;
+            }
+
+            $inventory = DataInventory::with('gudang')->find($detail['id_inventory'] ?? null);
+            if (! $inventory || $inventory->status_inventory !== 'AKTIF') {
+                $errors["detail.{$index}.id_inventory"] = 'Barang tidak valid atau tidak aktif.';
+                continue;
+            }
+
+            if ((int) $inventory->id_gudang !== $idGudangAsal) {
+                $errors["detail.{$index}.id_inventory"] = 'Barang harus berasal dari gudang asal yang dipilih.';
+                continue;
+            }
+
+            if ($qty > (float) $inventory->qty_input) {
+                $errors["detail.{$index}.qty_retur"] = 'Qty retur melebihi stok tersedia ('.number_format((float) $inventory->qty_input, 2, ',', '.').').';
+            }
+
+            $kategoriPusat = match ((string) $inventory->jenis_inventory) {
+                'FARMASI' => 'FARMASI',
+                'ASET' => 'ASET',
+                default => 'PERSEDIAAN',
+            };
+
+            if ($gudangTujuan && (string) $gudangTujuan->kategori_gudang !== $kategoriPusat) {
+                $errors['id_gudang_tujuan'] = 'Gudang tujuan harus sesuai kategori barang ('.$kategoriPusat.').';
+            }
+        }
+
+        return $errors;
     }
 }
 

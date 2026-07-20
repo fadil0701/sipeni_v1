@@ -710,6 +710,10 @@ main .overflow-x-auto {
         0 0 0 1px rgb(0 0 0 / 0.04);
 }
 
+.sipeni-confirm-modal__dialog:focus {
+    outline: none;
+}
+
 .sipeni-confirm-modal__body {
     display: flex;
     align-items: flex-start;

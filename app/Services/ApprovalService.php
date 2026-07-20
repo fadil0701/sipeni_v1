@@ -24,7 +24,7 @@ class ApprovalService
                 throw new \RuntimeException('Approval ini sudah diproses.');
             }
 
-            $pendingLog->loadMissing('approvalFlow');
+            $pendingLog->loadMissing('approvalFlow.role');
             $resultStatus = $this->resolveApprovedStatus($pendingLog);
 
             $pendingLog->update([
@@ -34,7 +34,12 @@ class ApprovalService
                 'user_id' => $actor->id,
             ]);
 
-            $this->createNextPendingLogs($pendingLog);
+            // Step 3 & Kepala Pusat untuk PERMINTAAN_BARANG: next logs dibuat secara selektif
+            // di ApprovalPermintaanService (berdasarkan stok / jalur pengadaan).
+            if (! $this->shouldSkipAutoNextLogs($pendingLog)) {
+                $this->createNextPendingLogs($pendingLog);
+            }
+
             $this->syncPermintaanStatus($pendingLog, true);
 
             return $pendingLog->fresh(['approvalFlow', 'user', 'role']);
@@ -71,9 +76,58 @@ class ApprovalService
             ->get();
     }
 
+    /**
+     * Buat satu approval log MENUNGGU untuk flow tertentu (idempotent).
+     */
+    public function createPendingLog(
+        ApprovalFlowDefinition $flow,
+        string $modulApproval,
+        int $idReferensi,
+        ?string $catatan = null
+    ): ApprovalLog {
+        $log = ApprovalLog::firstOrCreate(
+            [
+                'modul_approval' => $modulApproval,
+                'id_referensi' => $idReferensi,
+                'id_approval_flow' => $flow->id,
+            ],
+            [
+                'user_id' => null,
+                'role_id' => $flow->role_id,
+                'status' => 'MENUNGGU',
+                'catatan' => $catatan,
+                'approved_at' => null,
+            ]
+        );
+
+        if ($log->wasRecentlyCreated) {
+            AppNotificationService::notifyApprovalPending($log);
+        }
+
+        return $log;
+    }
+
+    private function shouldSkipAutoNextLogs(ApprovalLog $pendingLog): bool
+    {
+        if ($pendingLog->modul_approval !== 'PERMINTAAN_BARANG') {
+            return false;
+        }
+
+        $step = (int) ($pendingLog->approvalFlow?->step_order ?? 0);
+        $roleName = $pendingLog->approvalFlow?->role?->name;
+
+        // Setelah verifikasi Kasubbag TU / persetujuan Kepala Pusat: next step dibuat selektif.
+        return $step === 3 || $roleName === 'kepala_pusat';
+    }
+
     private function resolveApprovedStatus(ApprovalLog $pendingLog): string
     {
         $step = (int) ($pendingLog->approvalFlow?->step_order ?? 0);
+        $roleName = $pendingLog->approvalFlow?->role?->name;
+
+        if ($roleName === 'kepala_pusat') {
+            return 'DISETUJUI';
+        }
 
         return match ($step) {
             2 => 'DIKETAHUI',
@@ -102,24 +156,7 @@ class ApprovalService
             ->get();
 
         foreach ($nextFlows as $nextFlow) {
-            $log = ApprovalLog::firstOrCreate(
-                [
-                    'modul_approval' => $currentLog->modul_approval,
-                    'id_referensi' => $currentLog->id_referensi,
-                    'id_approval_flow' => $nextFlow->id,
-                ],
-                [
-                    'user_id' => null,
-                    'role_id' => $nextFlow->role_id,
-                    'status' => 'MENUNGGU',
-                    'catatan' => null,
-                    'approved_at' => null,
-                ]
-            );
-
-            if ($log->wasRecentlyCreated) {
-                AppNotificationService::notifyApprovalPending($log);
-            }
+            $this->createPendingLog($nextFlow, $currentLog->modul_approval, (int) $currentLog->id_referensi);
         }
     }
 
@@ -136,10 +173,18 @@ class ApprovalService
 
         if (! $approved) {
             $this->permintaanStatusService->setStatus($permintaan, PermintaanBarangStatus::Ditolak);
+
             return;
         }
 
         $step = (int) ($log->approvalFlow?->step_order ?? 0);
+        $roleName = $log->approvalFlow?->role?->name;
+
+        // Status akhir setelah Kepala Pusat / disposisi gudang diatur di ApprovalPermintaanService.
+        if ($roleName === 'kepala_pusat') {
+            return;
+        }
+
         $status = match ($step) {
             2 => PermintaanBarangStatus::Diajukan,
             3 => PermintaanBarangStatus::Diverifikasi,
@@ -148,5 +193,4 @@ class ApprovalService
 
         $this->permintaanStatusService->setStatus($permintaan, $status);
     }
-
 }

@@ -223,10 +223,26 @@ class InventoryDataImportController extends Controller
                         }
                     }
 
+                    // id_data_barang boleh diisi kode_data_barang (KOBAR) — resolve dulu sebelum cast integer.
+                    $input['id_data_barang'] = $this->resolveDataBarangId(
+                        $input['id_data_barang'],
+                        $excelRowNumber
+                    );
+
                     // Excel sering membaca angka ID/tahun sebagai float (mis: 2026.0) sehingga rule `integer` bisa gagal.
                     foreach (['id_data_barang', 'id_gudang', 'id_anggaran', 'id_sub_kegiatan', 'tahun_anggaran', 'id_satuan', 'tahun_produksi'] as $intKey) {
                         if (array_key_exists($intKey, $input) && $input[$intKey] !== null && is_numeric($input[$intKey])) {
                             $input[$intKey] = (int) $input[$intKey];
+                        }
+                    }
+
+                    // Data KIB sering punya tahun perolehan < 2000. Simpan ke tahun_produksi, anggaran pakai tahun valid.
+                    if (isset($input['tahun_anggaran']) && is_int($input['tahun_anggaran'])) {
+                        if ($input['tahun_anggaran'] < 2000 || $input['tahun_anggaran'] > 2100) {
+                            if (empty($input['tahun_produksi']) && $input['tahun_anggaran'] >= 1900 && $input['tahun_anggaran'] <= 2100) {
+                                $input['tahun_produksi'] = $input['tahun_anggaran'];
+                            }
+                            $input['tahun_anggaran'] = (int) date('Y');
                         }
                     }
 
@@ -350,6 +366,50 @@ class InventoryDataImportController extends Controller
         return redirect()
             ->route('inventory.data-inventory.import.index')
             ->with('success', 'Import berhasil. ASET: '.$counters['ASET'].', PERSEDIAAN: '.$counters['PERSEDIAAN'].', FARMASI: '.$counters['FARMASI'].'.');
+    }
+
+    /**
+     * Terima id numerik atau kode_data_barang (KOBAR 8–12 digit).
+     */
+    private function resolveDataBarangId(mixed $value, int $excelRowNumber): mixed
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $value = trim($value);
+            if ($value === '') {
+                return null;
+            }
+        }
+
+        $digits = preg_replace('/\D+/', '', (string) $value) ?? '';
+
+        // Kode barang Kemendagri biasanya 8–14 digit; id PK biasanya jauh lebih kecil.
+        if ($digits !== '' && strlen($digits) >= 8) {
+            $id = MasterDataBarang::query()
+                ->where('kode_data_barang', $digits)
+                ->value('id_data_barang');
+
+            if (! $id) {
+                throw new \RuntimeException(
+                    "Baris {$excelRowNumber}: Kode barang '{$digits}' tidak ditemukan di master data barang. ".
+                    'Import struktur barang (Kemendagri) terlebih dahulu.'
+                );
+            }
+
+            return (int) $id;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        throw new \RuntimeException(
+            "Baris {$excelRowNumber}: id_data_barang tidak valid ('{$value}'). ".
+            'Isi ID numerik atau kode barang (KOBAR).'
+        );
     }
 
     private function normalizeDateCell(mixed $value): ?string

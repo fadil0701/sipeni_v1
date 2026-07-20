@@ -102,7 +102,7 @@ function initLoadingAndConfirm() {
         wrapper.setAttribute('aria-hidden', 'true');
         wrapper.innerHTML = ''
             + '<div data-confirm-backdrop class="sipeni-confirm-modal__backdrop"></div>'
-            + '<div class="sipeni-confirm-modal__dialog" data-confirm-dialog>'
+            + '<div class="sipeni-confirm-modal__dialog" data-confirm-dialog tabindex="-1">'
             + '  <div class="sipeni-confirm-modal__body">'
             + '    <div class="sipeni-confirm-modal__icon" aria-hidden="true">'
             + '      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">'
@@ -150,10 +150,17 @@ function initLoadingAndConfirm() {
         var okBtn = modal.querySelector('[data-confirm-ok]');
         var cancelBtn = modal.querySelector('[data-confirm-cancel]');
         var backdrop = modal.querySelector('[data-confirm-backdrop]');
+        var dialog = modal.querySelector('[data-confirm-dialog]');
 
         if (messageEl) messageEl.textContent = message || 'Apakah Anda yakin ingin melanjutkan?';
         openConfirmModal(modal);
-        if (cancelBtn) cancelBtn.focus();
+        // Jangan fokuskan Batal/Ya sebagai default — fokus ke dialog saja (tanpa ring tombol).
+        if (dialog) {
+            if (!dialog.hasAttribute('tabindex')) dialog.setAttribute('tabindex', '-1');
+            dialog.focus({ preventScroll: true });
+        } else if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
+        }
 
         function cleanup() {
             closeConfirmModal(modal);
@@ -738,7 +745,10 @@ function initTableEnhancer() {
             table.tHead.rows[0].insertBefore(th, table.tHead.rows[0].firstChild);
         }
 
-        table.classList.add('w-full', 'text-sm', 'table-auto');
+        table.classList.add('w-full', 'text-sm');
+        if (!table.classList.contains('table-fixed')) {
+            table.classList.add('table-auto');
+        }
         if (table.tHead) table.tHead.classList.add('bg-gray-50');
         allRows.forEach(function (row) {
             row.classList.add('hover:bg-gray-50', 'transition-colors');
@@ -760,6 +770,18 @@ function initTableEnhancer() {
         var sortDir = 'asc';
         headers.forEach(function (th, idx) {
             var headerText = (th.textContent || '').trim().toLowerCase();
+            if (headerText === 'no') {
+                th.style.width = '1%';
+                th.style.whiteSpace = 'nowrap';
+                th.classList.add('text-center');
+                Array.from(tbody.rows || []).forEach(function (row) {
+                    var td = row.cells[idx];
+                    if (!td) return;
+                    td.style.width = '1%';
+                    td.style.whiteSpace = 'nowrap';
+                    td.classList.add('text-center', 'px-2');
+                });
+            }
             if (headerText === 'aksi' || headerText === 'action' || headerText === 'opsi') {
                 th.classList.add('no-sort');
                 th.style.width = '1%';

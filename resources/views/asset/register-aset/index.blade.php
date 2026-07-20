@@ -123,17 +123,34 @@
     @endforelse
 </div>
 
-@if($gudangUnits->isEmpty() && (!$gudangPusatData || $gudangPusatData['total_aset'] == 0))
-<div class="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
-    <div class="w-16 h-16 mx-auto rounded-full bg-amber-100 flex items-center justify-center mb-4">
-        <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+@if(!$gudangPusatData && $gudangUnits->isEmpty())
+<div class="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-6 py-10 text-center">
+    <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+        <svg class="h-8 w-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
     </div>
-    <p class="text-amber-800 font-medium">Belum ada data register aset</p>
-    <p class="text-sm text-amber-700 mt-1 max-w-md mx-auto">Pilih "Tambah Register Aset" untuk mendaftarkan aset, atau pastikan sudah ada penerimaan barang ke gudang unit.</p>
+    <h2 class="text-base font-semibold text-amber-950">Belum ada data register aset</h2>
+    {{-- Jangan pakai max-w-md: di tema ini --spacing-md=1rem sehingga max-w-md = 1rem --}}
+    <p class="mx-auto mt-2 w-full max-w-xl text-sm leading-relaxed text-amber-800">
+        Pilih <span class="font-medium">Tambah Register Aset</span> untuk mendaftarkan aset,
+        atau pastikan sudah ada penerimaan barang ke gudang unit.
+    </p>
+    @if(PermissionHelper::canAccess($user, 'asset.register-aset.create'))
+    <a
+        href="{{ route('asset.register-aset.create') }}"
+        class="mt-5 inline-flex items-center rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+    >
+        <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Tambah Register Aset
+    </a>
+    @endif
 </div>
 @elseif($gudangUnits->isEmpty() && $gudangPusatData)
-<p class="mt-4 text-sm text-gray-500 text-center">Belum ada gudang unit dengan aset. Data di atas hanya menampilkan gudang pusat.</p>
+<p class="mt-6 text-center text-sm text-gray-500">
+    Belum ada gudang unit dengan aset. Kartu di atas menampilkan gudang pusat (KIB).
+</p>
 @endif
 @endsection

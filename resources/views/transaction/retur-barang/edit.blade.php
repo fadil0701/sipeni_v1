@@ -143,22 +143,9 @@
                     </div>
 
                     <div>
-                        <label for="status_retur" class="block text-sm font-medium text-gray-700 mb-2">
-                            Status Retur <span class="text-red-500">*</span>
-                        </label>
-                        <select
-                            id="status_retur"
-                            name="status_retur"
-                            required
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('status_retur') border-red-500 @enderror"
-                        >
-                            <option value="">Pilih Status</option>
-                            <option value="DRAFT" {{ old('status_retur', $retur->status_retur) == 'DRAFT' ? 'selected' : '' }}>Draft</option>
-                            <option value="DIAJUKAN" {{ old('status_retur', $retur->status_retur) == 'DIAJUKAN' ? 'selected' : '' }}>Diajukan</option>
-                        </select>
-                        @error('status_retur')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
+                        <span class="block text-sm font-medium text-gray-700 mb-2">Status Retur</span>
+                        @php $statusColor = \App\Support\UiColor::badgeForStatus($retur->status_retur); @endphp
+                        <span class="inline-flex px-2.5 py-1 text-xs font-medium rounded-full {{ $statusColor }}">{{ $retur->status_retur }}</span>
                     </div>
 
                     <div class="sm:col-span-2">
@@ -242,12 +229,33 @@
             >
                 Batal
             </a>
+            @if($retur->status_retur === 'DRAFT')
             <button
                 type="submit"
+                name="submit_action"
+                value="draft"
+                class="px-5 py-2.5 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+                Simpan Draft
+            </button>
+            <button
+                type="submit"
+                name="submit_action"
+                value="ajukan"
+                class="px-5 py-2.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+                Ajukan Retur
+            </button>
+            @else
+            <button
+                type="submit"
+                name="submit_action"
+                value="draft"
                 class="px-5 py-2.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
                 Perbarui
             </button>
+            @endif
         </div>
     </form>
 </div>
@@ -275,7 +283,7 @@
                 type="number"
                 name="detail[INDEX][qty_retur]"
                 required
-                min="0"
+                min="0.01"
                 step="0.01"
                 placeholder="0"
                 class="qty-retur-input block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
@@ -315,193 +323,16 @@
     </tr>
 </template>
 
-@push('scripts')
-<script>
-let inventoryOptions = [];
-const editPrefillDetails = @json($editPrefillDetails);
-const urlPegawaiByUnit = @json(url('/api/master/pegawai-by-unit'));
-const urlGudangByUnit = @json(url('/api/master/gudang-by-unit'));
-const urlInventoryByUnit = @json(url('/api/master/inventory-by-unit'));
-const oldGudangAsal = @json(old('id_gudang_asal', $retur->id_gudang_asal));
-const oldPegawai = @json(old('id_pegawai_pengirim', $retur->id_pegawai_pengirim));
-
-function loadByUnitKerja(unitId) {
-    const asalSel = document.getElementById('id_gudang_asal');
-    const pegawaiSel = document.getElementById('id_pegawai_pengirim');
-    if (!unitId) {
-        asalSel.innerHTML = '<option value="">Pilih Gudang Asal</option>';
-        pegawaiSel.innerHTML = '<option value="">Pilih Pegawai Pengirim</option>';
-        return;
-    }
-
-    asalSel.innerHTML = '<option value="">Memuat Gudang...</option>';
-    fetch(`${urlGudangByUnit}/${unitId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
-        .then(r => r.json())
-        .then(data => {
-            asalSel.innerHTML = '<option value="">Pilih Gudang Asal</option>';
-            (data.data || []).forEach(g => {
-                if (g.jenis_gudang !== 'UNIT') return;
-                const opt = document.createElement('option');
-                opt.value = g.id_gudang;
-                opt.textContent = g.label;
-                asalSel.appendChild(opt);
-            });
-            if (oldGudangAsal) asalSel.value = String(oldGudangAsal);
-        });
-
-    pegawaiSel.innerHTML = '<option value="">Memuat Pegawai...</option>';
-    fetch(`${urlPegawaiByUnit}/${unitId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
-        .then(r => r.json())
-        .then(data => {
-            pegawaiSel.innerHTML = '<option value="">Pilih Pegawai Pengirim</option>';
-            (data.data || []).forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.id;
-                opt.textContent = p.label;
-                pegawaiSel.appendChild(opt);
-            });
-            if (oldPegawai) pegawaiSel.value = String(oldPegawai);
-        });
-
-    fetch(`${urlInventoryByUnit}/${unitId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
-        .then(r => r.json())
-        .then(data => {
-            inventoryOptions = data.data || [];
-            document.getElementById('detailContainer').innerHTML = '';
-            detailRowIndex = 0;
-            if (editPrefillDetails && editPrefillDetails.length > 0) {
-                editPrefillDetails.forEach(function (prefill) {
-                    const row = createDetailRow(prefill);
-                    if (row) document.getElementById('detailContainer').appendChild(row);
-                });
-            } else if (inventoryOptions.length > 0) {
-                const row = createDetailRow();
-                if (row) document.getElementById('detailContainer').appendChild(row);
-            }
-        });
-}
-
-let detailRowIndex = 0;
-
-function createDetailRow(prefill = {}) {
-    const template = document.getElementById('itemTemplate');
-    if (!template) return null;
-
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = template.innerHTML.replace(/INDEX/g, detailRowIndex++);
-    const row = tempDiv.firstElementChild;
-    if (!row) return null;
-
-    const barangSelect = row.querySelector('.select-barang');
-    const qtyDiterimaInput = row.querySelector('.qty-diterima');
-    const qtyReturInput = row.querySelector('.qty-retur-input');
-    const satuanSelect = row.querySelector('.select-satuan');
-
-    if (barangSelect) {
-        inventoryOptions.forEach((detail) => {
-            const opt = document.createElement('option');
-            opt.value = String(detail.id_inventory);
-            opt.textContent = detail.label || detail.nama_barang;
-            barangSelect.appendChild(opt);
-        });
-    }
-
-    const syncRowByInventory = (idInventory) => {
-        const selected = inventoryOptions.find((d) => String(d.id_inventory) === String(idInventory));
-        if (!selected) {
-            qtyDiterimaInput.value = '';
-            qtyReturInput.max = '';
-            if (!prefill.id_satuan) satuanSelect.value = '';
-            return;
-        }
-
-        qtyDiterimaInput.value = selected.qty_tersedia ?? '0';
-        qtyReturInput.max = selected.qty_tersedia ?? '0';
-        if (!prefill.id_satuan) satuanSelect.value = selected.id_satuan ?? '';
-    };
-
-    barangSelect?.addEventListener('change', function () {
-        syncRowByInventory(this.value);
-    });
-
-    row.querySelector('.remove-row')?.addEventListener('click', function () {
-        row.remove();
-    });
-
-    if (prefill.id_inventory && barangSelect) {
-        barangSelect.value = String(prefill.id_inventory);
-        syncRowByInventory(prefill.id_inventory);
-    }
-    if (prefill.qty_retur != null && prefill.qty_retur !== '' && qtyReturInput) {
-        qtyReturInput.value = prefill.qty_retur;
-    }
-    if (prefill.id_satuan && satuanSelect) satuanSelect.value = String(prefill.id_satuan);
-    const alasanInput = row.querySelector('[name*="[alasan_retur_item]"]');
-    if (prefill.alasan_retur_item != null && prefill.alasan_retur_item !== '' && alasanInput) {
-        alasanInput.value = prefill.alasan_retur_item;
-    }
-
-    return row;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const unitId = document.getElementById('id_unit_kerja').value;
-    if (unitId) loadByUnitKerja(unitId);
-
-    document.getElementById('addDetailRowBtn')?.addEventListener('click', function () {
-        if (!inventoryOptions.length) {
-            alert('Pilih unit kerja terlebih dahulu.');
-            return;
-        }
-        const row = createDetailRow();
-        if (row) document.getElementById('detailContainer').appendChild(row);
-    });
-
-    const formRetur = document.getElementById('formRetur');
-    if (formRetur) {
-        formRetur.addEventListener('submit', function(e) {
-            const detailContainer = document.getElementById('detailContainer');
-            const detailRows = detailContainer.querySelectorAll('.item-row');
-
-            if (detailRows.length === 0) {
-                e.preventDefault();
-                alert('Detail retur belum diisi. Tambahkan minimal 1 baris item.');
-                return false;
-            }
-
-            let isValid = true;
-            const emptyFields = [];
-            detailRows.forEach((row, index) => {
-                const idInventory = row.querySelector('[name*="[id_inventory]"]');
-                const qtyRetur = row.querySelector('[name*="[qty_retur]"]');
-                const idSatuan = row.querySelector('[name*="[id_satuan]"]');
-                const qtyDiterima = parseFloat(row.querySelector('.qty-diterima').value || 0);
-
-                if (!idInventory || !idInventory.value) {
-                    isValid = false;
-                    emptyFields.push(`Item ${index + 1}: Inventory`);
-                }
-                if (!qtyRetur || !qtyRetur.value || parseFloat(qtyRetur.value) <= 0) {
-                    isValid = false;
-                    emptyFields.push(`Item ${index + 1}: Qty Retur`);
-                } else if (parseFloat(qtyRetur.value) > qtyDiterima) {
-                    isValid = false;
-                    emptyFields.push(`Item ${index + 1}: Qty Retur tidak boleh lebih dari qty tersedia (${qtyDiterima})`);
-                }
-                if (!idSatuan || !idSatuan.value) {
-                    isValid = false;
-                    emptyFields.push(`Item ${index + 1}: Satuan`);
-                }
-            });
-
-            if (!isValid) {
-                e.preventDefault();
-                alert('Mohon lengkapi semua field yang wajib diisi:\n' + emptyFields.join('\n'));
-                return false;
-            }
-        });
-    }
-});
-</script>
-@endpush
+@include('transaction.retur-barang._form-scripts', [
+    'editPrefillDetails' => old('detail')
+        ? collect(old('detail'))->map(fn ($d) => [
+            'id_inventory' => $d['id_inventory'] ?? null,
+            'qty_retur' => $d['qty_retur'] ?? null,
+            'id_satuan' => $d['id_satuan'] ?? null,
+            'alasan_retur_item' => $d['alasan_retur_item'] ?? '',
+        ])->filter(fn ($d) => ! empty($d['id_inventory']))->values()
+        : $editPrefillDetails,
+    'initialGudangAsal' => old('id_gudang_asal', $retur->id_gudang_asal),
+    'initialPegawai' => old('id_pegawai_pengirim', $retur->id_pegawai_pengirim),
+])
 @endsection

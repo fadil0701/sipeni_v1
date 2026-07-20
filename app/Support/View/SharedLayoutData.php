@@ -33,7 +33,7 @@ final class SharedLayoutData
         }
 
         if (! $user->relationLoaded('roles')) {
-            $user->load('roles');
+            $user->load('roles:id,name,guard_name');
         }
 
         $roles = $user->roles;

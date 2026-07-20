@@ -138,8 +138,10 @@
             <!-- Foto Barang -->
             <div>
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Foto Barang</h3>
-                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <div>
+                @php($fotoUrl = $inventoryItem->fotoBarangPublicUrl())
+
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+                    <div class="rounded-md border border-gray-200 bg-white p-3 sm:p-4">
                         <label for="foto_barang_file" class="block text-sm font-medium text-gray-700 mb-2">Upload Foto</label>
                         <input
                             type="file"
@@ -151,34 +153,59 @@
                         @error('foto_barang_file')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
-                        <p class="mt-1 text-xs text-gray-500">Format: JPG/PNG, maksimal 10MB.</p>
+                        <p class="mt-1 text-xs text-gray-500">Format JPG/PNG, maksimal 10MB.</p>
                     </div>
 
-                    <div>
+                    <div class="rounded-md border border-gray-200 bg-white p-3 sm:p-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Ambil dari Kamera</label>
-                        <div class="flex gap-2">
-                            <button type="button" id="start-camera-btn" class="px-3 py-2 border border-blue-300 rounded-md text-sm text-blue-700 bg-blue-50 hover:bg-blue-100">Buka Kamera</button>
-                            <button type="button" id="capture-photo-btn" class="px-3 py-2 border border-green-300 rounded-md text-sm text-green-700 bg-green-50 hover:bg-green-100" disabled>Ambil Foto</button>
-                        </div>
+                        <button type="button" id="start-camera-btn" class="w-full sm:w-auto px-3 py-2.5 sm:py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100">Buka Kamera</button>
+                        <p id="camera-help" class="mt-1 text-xs text-gray-500">Klik "Buka Kamera" untuk mulai memotret.</p>
                         <input type="hidden" id="foto_barang_capture" name="foto_barang_capture" value="">
                     </div>
                 </div>
 
-                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="border border-gray-200 rounded-md p-3 bg-gray-50">
+                {{-- Preview kamera: hanya saat kamera aktif --}}
+                <div id="panel-preview-kamera" class="mt-4 hidden">
+                    <div class="border border-gray-200 rounded-md p-3 sm:p-4 bg-white w-full" style="max-width: 22rem;">
                         <p class="text-xs font-medium text-gray-600 mb-2">Preview Kamera</p>
-                        <video id="camera-preview" autoplay playsinline class="w-full rounded-md bg-black hidden"></video>
-                        <p id="camera-help" class="text-xs text-gray-500">Klik "Buka Kamera" untuk mulai memotret.</p>
+                        <div class="rounded-md bg-black overflow-hidden mx-auto" style="width: min(100%, 280px); aspect-ratio: 9 / 16; max-height: 70vh;">
+                            <video
+                                id="camera-preview"
+                                autoplay
+                                playsinline
+                                muted
+                                class="block w-full h-full bg-black"
+                                style="width: 100%; height: 100%; object-fit: cover;"
+                            ></video>
+                        </div>
+                        <button
+                            type="button"
+                            id="capture-photo-btn"
+                            class="mt-3 w-full px-3 py-2.5 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100"
+                        >Ambil Foto</button>
                     </div>
-                    <div class="border border-gray-200 rounded-md p-3 bg-gray-50">
-                        <p class="text-xs font-medium text-gray-600 mb-2">Foto Tersimpan / Hasil Capture</p>
-                        <img
-                            id="foto-preview"
-                            src="{{ $inventoryItem->fotoBarangPublicUrl() ?? '#' }}"
-                            alt="Preview Foto Barang"
-                            class="w-full max-h-64 object-contain rounded-md {{ $inventoryItem->fotoBarangPublicUrl() ? '' : 'hidden' }}"
-                        >
-                        <p id="foto-empty-text" class="text-xs text-gray-500 {{ $inventoryItem->fotoBarangPublicUrl() ? 'hidden' : '' }}">Belum ada foto barang.</p>
+                </div>
+
+                {{-- Hasil: hanya tampil jika sudah ada foto tersimpan / baru di-capture / di-upload --}}
+                <div id="panel-hasil-foto" class="mt-4 {{ $fotoUrl ? '' : 'hidden' }}">
+                    <div class="border border-green-200 rounded-md p-3 sm:p-4 bg-white w-full" style="max-width: 22rem;">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <p class="text-xs font-medium text-gray-600">Hasil foto</p>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" id="btn-buka-foto" class="px-2 py-1 border border-blue-300 rounded text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 {{ $fotoUrl ? '' : 'hidden' }}">Buka foto</button>
+                                <button type="button" id="btn-ambil-ulang-foto" class="px-2 py-1 border border-amber-300 rounded text-xs font-medium text-amber-800 bg-amber-50 hover:bg-amber-100">Ambil ulang foto</button>
+                            </div>
+                        </div>
+                        <div class="rounded-md overflow-hidden mx-auto border border-gray-100 bg-black" style="width: min(100%, 280px); aspect-ratio: 9 / 16; max-height: 70vh;">
+                            <img
+                                id="foto-preview"
+                                src="{{ $fotoUrl ?? '' }}"
+                                alt="Preview Foto Barang"
+                                class="block w-full h-full {{ $fotoUrl ? '' : 'hidden' }}"
+                                style="width: 100%; height: 100%; object-fit: cover;"
+                            >
+                        </div>
+                        <p id="foto-empty-text" class="mt-2 text-xs text-gray-500 {{ $fotoUrl ? 'hidden' : '' }}">Belum ada foto barang.</p>
                     </div>
                 </div>
             </div>
@@ -244,25 +271,93 @@
     const fotoPreview = document.getElementById('foto-preview');
     const fotoEmptyText = document.getElementById('foto-empty-text');
     const fotoFileInput = document.getElementById('foto_barang_file');
+    const panelPreviewKamera = document.getElementById('panel-preview-kamera');
+    const panelHasilFoto = document.getElementById('panel-hasil-foto');
+    const btnAmbilUlang = document.getElementById('btn-ambil-ulang-foto');
+    const btnBukaFoto = document.getElementById('btn-buka-foto');
 
-    startCameraBtn?.addEventListener('click', async function () {
-        try {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-                cameraStream = null;
-            }
-            cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-            cameraPreview.srcObject = cameraStream;
-            cameraPreview.classList.remove('hidden');
-            capturePhotoBtn.disabled = false;
-            cameraHelp.textContent = 'Kamera aktif. Klik "Ambil Foto".';
-        } catch (error) {
-            cameraHelp.textContent = 'Gagal mengakses kamera. Pastikan izin kamera sudah diaktifkan.';
+    function stopKamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(function (track) { track.stop(); });
+            cameraStream = null;
         }
+        if (cameraPreview) {
+            cameraPreview.srcObject = null;
+        }
+    }
+
+    function showKameraPreview() {
+        panelHasilFoto?.classList.add('hidden');
+        panelPreviewKamera?.classList.remove('hidden');
+        startCameraBtn?.classList.add('hidden');
+        if (cameraHelp) cameraHelp.textContent = 'Kamera aktif. Klik "Ambil Foto" di bawah preview.';
+    }
+
+    function hideKameraPreview() {
+        panelPreviewKamera?.classList.add('hidden');
+        startCameraBtn?.classList.remove('hidden');
+        if (cameraHelp) cameraHelp.textContent = 'Klik "Buka Kamera" untuk mulai memotret.';
+    }
+
+    function showHasil(src) {
+        hideKameraPreview();
+        stopKamera();
+        if (fotoPreview && src) {
+            fotoPreview.src = src;
+            fotoPreview.classList.remove('hidden');
+        }
+        fotoEmptyText?.classList.add('hidden');
+        panelHasilFoto?.classList.remove('hidden');
+        if (btnBukaFoto) {
+            btnBukaFoto.classList.toggle('hidden', !src);
+        }
+        if (cameraHelp) cameraHelp.textContent = 'Foto siap. Jika kurang sesuai, klik "Ambil ulang foto".';
+    }
+
+    async function openKamera() {
+        if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            alert('Kamera membutuhkan HTTPS atau localhost.');
+            return;
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Browser tidak mendukung kamera. Gunakan upload foto.');
+            return;
+        }
+
+        try {
+            stopKamera();
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } },
+                audio: false
+            });
+            if (cameraPreview) {
+                cameraPreview.srcObject = cameraStream;
+                await cameraPreview.play();
+            }
+            showKameraPreview();
+        } catch (error) {
+            hideKameraPreview();
+            if (cameraHelp) cameraHelp.textContent = 'Gagal mengakses kamera. Pastikan izin kamera sudah diaktifkan.';
+        }
+    }
+
+    startCameraBtn?.addEventListener('click', function () {
+        openKamera();
+    });
+
+    btnAmbilUlang?.addEventListener('click', function () {
+        if (fotoFileInput) fotoFileInput.value = '';
+        if (fotoCaptureInput) fotoCaptureInput.value = '';
+        openKamera();
+    });
+
+    btnBukaFoto?.addEventListener('click', function () {
+        const src = fotoPreview?.getAttribute('src');
+        if (src) window.open(src, '_blank', 'noopener');
     });
 
     capturePhotoBtn?.addEventListener('click', function () {
-        if (!cameraStream) return;
+        if (!cameraStream || !cameraPreview) return;
         const maxWidth = 1280;
         const srcW = cameraPreview.videoWidth || 1280;
         const srcH = cameraPreview.videoHeight || 720;
@@ -273,15 +368,9 @@
         const ctx = canvas.getContext('2d');
         ctx.drawImage(cameraPreview, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        fotoCaptureInput.value = dataUrl;
-        fotoPreview.src = dataUrl;
-        fotoPreview.classList.remove('hidden');
-        fotoEmptyText.classList.add('hidden');
-        cameraHelp.textContent = 'Foto berhasil di-capture. Klik Simpan untuk menyimpan.';
-        // Prioritaskan hasil capture, kosongkan file upload manual.
-        if (fotoFileInput) {
-            fotoFileInput.value = '';
-        }
+        if (fotoCaptureInput) fotoCaptureInput.value = dataUrl;
+        if (fotoFileInput) fotoFileInput.value = '';
+        showHasil(dataUrl);
     });
 
     fotoFileInput?.addEventListener('change', function (event) {
@@ -289,19 +378,14 @@
         if (!file) return;
         const reader = new FileReader();
         reader.onload = function (e) {
-            fotoPreview.src = e.target?.result;
-            fotoPreview.classList.remove('hidden');
-            fotoEmptyText.classList.add('hidden');
-            // Jika user pilih upload file, kosongkan capture base64 agar tidak konflik.
-            fotoCaptureInput.value = '';
+            if (fotoCaptureInput) fotoCaptureInput.value = '';
+            showHasil(e.target?.result);
         };
         reader.readAsDataURL(file);
     });
 
     window.addEventListener('beforeunload', function () {
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(track => track.stop());
-        }
+        stopKamera();
     });
 
     document.getElementById('id_gudang').addEventListener('change', function() {

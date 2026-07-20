@@ -331,7 +331,7 @@
                             </div>
                             <div class="ml-3">
                                 <p class="text-sm text-blue-700">
-                                    <strong>Koreksi Jumlah:</strong> Anda dapat mengoreksi jumlah permintaan jika diperlukan. Untuk barang dari master, pastikan jumlah yang dikoreksi tidak melebihi stock tersedia. Barang tanpa stock (permintaan lainnya) atau stock 0 tetap dapat didisposisikan.
+                                    <strong>Koreksi Jumlah:</strong> Anda dapat mengoreksi jumlah permintaan jika diperlukan. Untuk barang dari master, pastikan jumlah yang dikoreksi tidak melebihi stock tersedia. Jika stok kosong, permintaan akan diteruskan ke Kepala Pusat sebelum pengadaan.
                                 </p>
                             </div>
                         </div>
@@ -386,6 +386,62 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                             Kembalikan
+                        </button>
+                    </form>
+                </div>
+
+            {{-- Kepala Pusat - Setujui/Tolak pengadaan (Step 4) --}}
+            @elseif($stepOrder == 4 && ($currentFlow?->role?->name === 'kepala_pusat') && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.approval.approve'))
+                <div class="space-y-4">
+                    <div class="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+                        <p class="text-sm text-amber-800">
+                            Stok tidak tersedia. Setujui untuk meneruskan ke proses <strong>Pengadaan</strong>, atau tolak permintaan ini.
+                        </p>
+                    </div>
+                    <form method="POST" action="{{ route('transaction.approval.approve', $approval->id) }}" class="space-y-4" data-confirm="Setujui permintaan ini untuk dilanjutkan ke pengadaan?">
+                        @csrf
+                        <div>
+                            <label for="catatan_approve" class="block text-sm font-medium text-gray-700 mb-2">Catatan (Opsional)</label>
+                            <textarea
+                                id="catatan_approve"
+                                name="catatan"
+                                rows="3"
+                                placeholder="Masukkan catatan persetujuan..."
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            ></textarea>
+                        </div>
+                        <button
+                            type="submit"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        >
+                            Setujui untuk Pengadaan
+                        </button>
+                    </form>
+
+                    <form method="POST" action="{{ route('transaction.approval.reject', $approval->id) }}" class="space-y-4" data-confirm="Tolak permintaan ini?">
+                        @csrf
+                        <div>
+                            <label for="catatan_reject" class="block text-sm font-medium text-gray-700 mb-2">
+                                Catatan Penolakan <span class="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                id="catatan_reject"
+                                name="catatan"
+                                rows="3"
+                                required
+                                minlength="10"
+                                placeholder="Masukkan alasan penolakan (minimal 10 karakter)..."
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm @error('catatan') border-red-500 @enderror"
+                            >{{ old('catatan') }}</textarea>
+                            @error('catatan')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <button
+                            type="submit"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                            Tolak
                         </button>
                     </form>
                 </div>
