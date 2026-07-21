@@ -8,6 +8,14 @@ File kerja utama (sudah digabung):
   - basis Sheet6 objek terfilter
   - + hierarki **Aset Lancar** dari `bmd_aset_lancar_lengkap.xlsx`
   - + data barang existing dari `KIB B.xlsx` (KOBAR yang belum ada di master)
+  - + item **Persediaan** ATK / Kertas / Tinta / Cetakan / ART dari `Stock Opname ATK CETAKAN ART 2026 (5).xlsx`
+  - + hierarki **Farmasi** (Obat Umum/Resep/Generik, Vaksin, BMHP) sampai kode data barang (placeholder siap diisi detail obat)
+
+Enrich ulang Persediaan/Farmasi:
+```bash
+py scripts/enrich_kemendagri_persediaan_farmasi.py
+py scripts/enrich_kemendagri_persediaan_farmasi.py --target "database/seeders/data/kemendagri_import_sheet6_objek_filtered_v2.xlsx"
+```
 
 Import inventory ASET dari KIB B:
 - `import_inventory_aset_kib_b.xlsx` — siap diunggah di **Inventory → Import Data Inventory**
