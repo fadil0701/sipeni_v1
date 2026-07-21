@@ -229,6 +229,14 @@ class InventoryDataImportController extends Controller
                         $excelRowNumber
                     );
 
+                    // id_gudang: jika ID dari Excel tidak ada di DB (beda antar environment),
+                    // pakai gudang PUSAT sesuai kategori jenis_inventory.
+                    $input['id_gudang'] = $this->resolveGudangId(
+                        $input['id_gudang'],
+                        (string) ($input['jenis_inventory'] ?? ''),
+                        $excelRowNumber
+                    );
+
                     // Excel sering membaca angka ID/tahun sebagai float (mis: 2026.0) sehingga rule `integer` bisa gagal.
                     foreach (['id_data_barang', 'id_gudang', 'id_anggaran', 'id_sub_kegiatan', 'tahun_anggaran', 'id_satuan', 'tahun_produksi'] as $intKey) {
                         if (array_key_exists($intKey, $input) && $input[$intKey] !== null && is_numeric($input[$intKey])) {
@@ -279,8 +287,17 @@ class InventoryDataImportController extends Controller
 
                     $validator = Validator::make($input, $rules);
                     if ($validator->fails()) {
-                        $first = $validator->errors()->first();
-                        throw new \RuntimeException("Baris {$excelRowNumber}: {$first}");
+                        $parts = [];
+                        foreach ($validator->errors()->messages() as $attr => $messages) {
+                            $val = $input[$attr] ?? null;
+                            $valLabel = is_scalar($val) || $val === null
+                                ? var_export($val, true)
+                                : gettype($val);
+                            $parts[] = "{$attr}={$valLabel} (".implode('; ', $messages).')';
+                        }
+                        throw new \RuntimeException(
+                            "Baris {$excelRowNumber}: referensi tidak valid — ".implode(' | ', $parts)
+                        );
                     }
 
                     if (($input['jenis_inventory'] ?? '') === 'ASET' && empty($input['id_data_barang'])) {
@@ -301,7 +318,7 @@ class InventoryDataImportController extends Controller
                     $jenisBarangByJenis = [
                         'ASET' => ['ALKES', 'NON ALKES'],
                         'FARMASI' => ['OBAT', 'Vaksin', 'BHP', 'BMHP', 'REAGEN', 'ALKES'],
-                        'PERSEDIAAN' => ['ATK', 'ART', 'CETAKAN UMUM', 'CETAK KHUSUS'],
+                        'PERSEDIAAN' => ['ATK', 'ART', 'CETAKAN UMUM', 'CETAK KHUSUS', 'CETAKAN KHUSUS'],
                     ];
                     $allowedJenisBarang = $jenisBarangByJenis[$input['jenis_inventory']] ?? [];
                     if (! in_array((string) $input['jenis_barang'], $allowedJenisBarang, true)) {
@@ -409,6 +426,56 @@ class InventoryDataImportController extends Controller
         throw new \RuntimeException(
             "Baris {$excelRowNumber}: id_data_barang tidak valid ('{$value}'). ".
             'Isi ID numerik atau kode barang (KOBAR).'
+        );
+    }
+
+    /**
+     * Resolve id_gudang: pakai ID Excel jika gudang PUSAT valid;
+     * jika tidak (beda ID antar local/production), pilih gudang PUSAT berdasar kategori.
+     */
+    private function resolveGudangId(mixed $value, string $jenisInventory, int $excelRowNumber): int
+    {
+        $jenis = strtoupper(trim($jenisInventory));
+        $kategori = match ($jenis) {
+            'ASET' => 'ASET',
+            'FARMASI' => 'FARMASI',
+            'PERSEDIAAN' => 'PERSEDIAAN',
+            default => null,
+        };
+
+        if ($value !== null && $value !== '' && is_numeric($value)) {
+            $gudang = MasterGudang::query()->find((int) $value);
+            if ($gudang && $gudang->jenis_gudang === 'PUSAT') {
+                if ($kategori === null || $gudang->kategori_gudang === $kategori || $gudang->kategori_gudang === null) {
+                    return (int) $gudang->id_gudang;
+                }
+            }
+        }
+
+        $query = MasterGudang::query()->where('jenis_gudang', 'PUSAT');
+        if ($kategori !== null) {
+            $query->where('kategori_gudang', $kategori);
+        }
+
+        $resolvedId = $query->orderBy('id_gudang')->value('id_gudang');
+        if ($resolvedId) {
+            return (int) $resolvedId;
+        }
+
+        // Fallback: sembarang gudang PUSAT
+        $anyPusat = MasterGudang::query()
+            ->where('jenis_gudang', 'PUSAT')
+            ->orderBy('id_gudang')
+            ->value('id_gudang');
+
+        if ($anyPusat) {
+            return (int) $anyPusat;
+        }
+
+        throw new \RuntimeException(
+            "Baris {$excelRowNumber}: Gudang PUSAT tidak ditemukan".
+            ($kategori ? " untuk kategori {$kategori}" : '').
+            '. Seed master gudang terlebih dahulu.'
         );
     }
 

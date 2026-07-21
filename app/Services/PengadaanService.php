@@ -23,7 +23,8 @@ class PengadaanService
                 ->first();
 
             if ($existing) {
-                $this->permintaanStatusService->setStatus($permintaan, PermintaanBarangStatus::MenungguPengadaan);
+                $this->syncProcurementStatus($permintaan);
+
                 return $existing;
             }
 
@@ -50,9 +51,23 @@ class PengadaanService
                 'keterangan' => $catatan,
             ]);
 
-            $this->permintaanStatusService->setStatus($permintaan, PermintaanBarangStatus::MenungguPengadaan);
+            $this->syncProcurementStatus($permintaan);
+
             return $paket;
         });
+    }
+
+    /**
+     * Pada permintaan campuran (master + permintaan lainnya), distribusi bisa berjalan paralel.
+     * Jangan turunkan status proses_distribusi hanya karena ada jalur pengadaan.
+     */
+    private function syncProcurementStatus(PermintaanBarang $permintaan): void
+    {
+        if ($permintaan->status === PermintaanBarangStatus::ProsesDistribusi) {
+            return;
+        }
+
+        $this->permintaanStatusService->setStatus($permintaan, PermintaanBarangStatus::MenungguPengadaan);
     }
 
     public function processProcurement(PengadaanPaket $paket): void
@@ -85,6 +100,10 @@ class PengadaanService
      */
     public function resumeToDistribusi(PermintaanBarang $permintaan): void
     {
+        if ($permintaan->status === PermintaanBarangStatus::ProsesDistribusi) {
+            return;
+        }
+
         if ($permintaan->status !== PermintaanBarangStatus::BarangTersedia) {
             return;
         }

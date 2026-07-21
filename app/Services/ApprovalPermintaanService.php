@@ -110,17 +110,23 @@ class ApprovalPermintaanService
             $this->approvalService->approve($approval, $user, $validated['catatan'] ?? null);
 
             $permintaan->refresh()->load('detailPermintaan');
-            $adaItemTanpaStock = $this->hasItemsNeedingProcurement($permintaan);
+            $needsProcurement = $this->hasItemsNeedingProcurement($permintaan);
+            $canDistribusi = $this->hasItemsReadyForDistribusi($permintaan);
 
-            if ($adaItemTanpaStock) {
-                // Stok kosong → wajib persetujuan Kepala Pusat dulu, baru disposisi pengadaan.
-                $this->createKepalaPusatPendingLog($permintaan);
-                $this->permintaanBarangStatus->setStatus($permintaan, PermintaanBarangStatus::Diverifikasi);
-            } else {
-                // Stok tersedia → disposisi ke gudang sesuai kategori, tanpa jalur pengadaan.
+            if ($canDistribusi) {
+                // Item master dengan stok cukup → disposisi ke admin gudang (distribusi).
                 $this->createGudangDisposisiLogs($permintaan);
-                $this->permintaanBarangStatus->setStatus($permintaan, PermintaanBarangStatus::ProsesDistribusi);
             }
+
+            if ($needsProcurement) {
+                // Permintaan lainnya / stok tidak cukup → persetujuan Kepala Pusat lalu pengadaan.
+                $this->createKepalaPusatPendingLog($permintaan);
+            }
+
+            $status = $canDistribusi
+                ? PermintaanBarangStatus::ProsesDistribusi
+                : PermintaanBarangStatus::Diverifikasi;
+            $this->permintaanBarangStatus->setStatus($permintaan, $status);
         });
     }
 
@@ -198,32 +204,50 @@ class ApprovalPermintaanService
     }
 
     /**
-     * True jika ada item tanpa master barang, stok efektif <= 0, atau qty melebihi stok.
+     * True jika ada item permintaan lainnya, stok efektif <= 0, atau qty melebihi stok.
      * Logika selaras dengan tampilan stok di halaman approval (PermintaanBarangStock).
      */
     public function hasItemsNeedingProcurement(PermintaanBarang $permintaan): bool
     {
-        $permintaan->loadMissing('detailPermintaan');
-        $stockData = PermintaanBarangStock::stockDataForDetails($permintaan);
-
-        foreach ($permintaan->detailPermintaan as $detail) {
-            if (! $detail->id_data_barang) {
-                return true;
-            }
-
-            $available = (float) ($stockData[$detail->id_detail_permintaan]['total'] ?? 0);
-            $requested = (float) ($detail->qty_disetujui ?? $detail->qty_diminta ?? 0);
-
-            if ($available <= 0 || $requested > $available) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->linesNeedingProcurement($permintaan)->isNotEmpty();
     }
 
     /**
-     * Perbaiki permintaan yang salah diarahkan ke Kepala Pusat padahal stok tersedia.
+     * True jika ada item dari master barang dengan stok mencukupi untuk distribusi.
+     */
+    public function hasItemsReadyForDistribusi(PermintaanBarang $permintaan): bool
+    {
+        return $this->linesReadyForDistribusi($permintaan)->isNotEmpty();
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, DetailPermintaanBarang>
+     */
+    public function linesNeedingProcurement(PermintaanBarang $permintaan): \Illuminate\Support\Collection
+    {
+        $permintaan->loadMissing('detailPermintaan');
+        $stockData = PermintaanBarangStock::stockDataForDetails($permintaan);
+
+        return $permintaan->detailPermintaan->filter(
+            fn (DetailPermintaanBarang $detail) => PermintaanBarangStock::detailNeedsProcurement($detail, $stockData)
+        );
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, DetailPermintaanBarang>
+     */
+    public function linesReadyForDistribusi(PermintaanBarang $permintaan): \Illuminate\Support\Collection
+    {
+        $permintaan->loadMissing('detailPermintaan');
+        $stockData = PermintaanBarangStock::stockDataForDetails($permintaan);
+
+        return $permintaan->detailPermintaan->filter(
+            fn (DetailPermintaanBarang $detail) => PermintaanBarangStock::detailReadyForDistribusi($detail, $stockData)
+        );
+    }
+
+    /**
+     * Perbaiki permintaan yang salah diarahkan ke Kepala Pusat padahal semua item bisa distribusi.
      */
     public function repairMisroutedKepalaPusat(PermintaanBarang $permintaan): bool
     {
@@ -263,6 +287,49 @@ class ApprovalPermintaanService
         });
 
         return true;
+    }
+
+    /**
+     * Perbaiki permintaan campuran yang hanya masuk pengadaan padahal ada item master siap distribusi.
+     */
+    public function repairMissingGudangDisposisi(PermintaanBarang $permintaan): bool
+    {
+        if (! $this->hasItemsReadyForDistribusi($permintaan)) {
+            return false;
+        }
+
+        if ($this->hasPendingOrCompletedGudangDisposisi($permintaan)) {
+            return false;
+        }
+
+        DB::transaction(function () use ($permintaan): void {
+            $this->createGudangDisposisiLogs($permintaan);
+
+            if (in_array($permintaan->status, [
+                PermintaanBarangStatus::Diverifikasi,
+                PermintaanBarangStatus::MenungguPengadaan,
+                PermintaanBarangStatus::ProsesPengadaan,
+                PermintaanBarangStatus::BarangTersedia,
+            ], true)) {
+                $this->permintaanBarangStatus->setStatus($permintaan, PermintaanBarangStatus::ProsesDistribusi);
+            }
+        });
+
+        return true;
+    }
+
+    private function hasPendingOrCompletedGudangDisposisi(PermintaanBarang $permintaan): bool
+    {
+        $gudangRoleNames = array_values(self::GUDANG_ROLE_BY_KATEGORI);
+
+        return ApprovalLog::query()
+            ->where('modul_approval', 'PERMINTAAN_BARANG')
+            ->where('id_referensi', $permintaan->id_permintaan)
+            ->whereIn('status', ['MENUNGGU', 'DIPROSES', 'SELESAI'])
+            ->whereHas('approvalFlow', fn ($q) => $q
+                ->where('step_order', 4)
+                ->whereHas('role', fn ($rq) => $rq->whereIn('name', $gudangRoleNames)))
+            ->exists();
     }
 
     private function createKepalaPusatPendingLog(PermintaanBarang $permintaan): void

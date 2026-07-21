@@ -17,6 +17,7 @@ use App\Models\PrintTemplate;
 use App\Models\TransaksiDistribusi;
 use App\Models\User;
 use App\Services\DistribusiService;
+use App\Support\PermintaanBarangStock;
 use App\Services\PrintTemplateRenderer;
 use App\Services\SbbkPrintTemplateData;
 use App\Support\Http\SafeUserMessage;
@@ -527,12 +528,18 @@ class DistribusiController extends Controller
     {
         $permintaan = PermintaanBarang::with(['detailPermintaan.dataBarang', 'detailPermintaan.satuan'])->findOrFail($id);
         UserScope::assertCanAccessPermintaan(Auth::user(), $permintaan);
-        $details = $permintaan->detailPermintaan->map(fn ($detail) => [
+
+        $stockData = PermintaanBarangStock::stockDataForDetails($permintaan);
+        $eligibleDetails = $permintaan->detailPermintaan->filter(
+            fn ($detail) => PermintaanBarangStock::detailReadyForDistribusi($detail, $stockData)
+        );
+
+        $details = $eligibleDetails->map(fn ($detail) => [
             'nama_barang' => $detail->dataBarang->nama_barang ?? '-',
             'qty_diminta' => number_format((float) ($detail->qty_diminta_awal ?? $detail->qty_diminta), 2),
             'qty_disetujui' => number_format((float) ($detail->qty_disetujui ?? $detail->qty_diminta), 2),
             'satuan' => $detail->satuan->nama_satuan ?? '-',
-        ]);
+        ])->values();
 
         return response()->json(['success' => true, 'details' => $details]);
     }

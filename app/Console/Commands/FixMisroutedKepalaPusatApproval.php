@@ -13,7 +13,7 @@ class FixMisroutedKepalaPusatApproval extends Command
 {
     protected $signature = 'approval:fix-misrouted-kepala-pusat {--id= : ID permintaan tertentu}';
 
-    protected $description = 'Perbaiki permintaan yang salah menunggu Kepala Pusat padahal stok tersedia';
+    protected $description = 'Perbaiki routing approval: hapus Kepala Pusat yang tidak perlu, tambah disposisi gudang untuk item master';
 
     public function handle(ApprovalPermintaanService $service): int
     {
@@ -40,7 +40,7 @@ class FixMisroutedKepalaPusatApproval extends Command
         }
 
         $permintaanIds = $query->pluck('id_referensi')->unique()->values();
-        $fixed = 0;
+        $fixedKepala = 0;
 
         foreach ($permintaanIds as $idPermintaan) {
             $permintaan = PermintaanBarang::with('detailPermintaan')->find($idPermintaan);
@@ -49,13 +49,35 @@ class FixMisroutedKepalaPusatApproval extends Command
             }
 
             if ($service->repairMisroutedKepalaPusat($permintaan)) {
-                $fixed++;
-                $this->info("✓ Permintaan #{$idPermintaan} dialihkan ke disposisi gudang.");
+                $fixedKepala++;
+                $this->info("✓ Permintaan #{$idPermintaan} dialihkan ke disposisi gudang (hapus Kepala Pusat).");
             }
         }
 
-        $this->info($fixed > 0
-            ? "Selesai. {$fixed} permintaan diperbaiki."
+        $mixedQuery = PermintaanBarang::query()->with('detailPermintaan');
+        if ($id = $this->option('id')) {
+            $mixedQuery->where('id_permintaan', (int) $id);
+        } else {
+            $mixedQuery->whereIn('status', [
+                'diverifikasi',
+                'menunggu_pengadaan',
+                'proses_pengadaan',
+                'barang_tersedia',
+                'proses_distribusi',
+            ]);
+        }
+
+        $fixedGudang = 0;
+        foreach ($mixedQuery->get() as $permintaan) {
+            if ($service->repairMissingGudangDisposisi($permintaan)) {
+                $fixedGudang++;
+                $this->info("✓ Permintaan #{$permintaan->id_permintaan} ditambahkan disposisi gudang untuk item master.");
+            }
+        }
+
+        $total = $fixedKepala + $fixedGudang;
+        $this->info($total > 0
+            ? "Selesai. {$fixedKepala} diperbaiki (Kepala Pusat), {$fixedGudang} ditambah disposisi gudang."
             : 'Tidak ada permintaan yang perlu diperbaiki.');
 
         return self::SUCCESS;

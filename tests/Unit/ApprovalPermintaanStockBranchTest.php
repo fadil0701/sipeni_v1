@@ -73,6 +73,102 @@ class ApprovalPermintaanStockBranchTest extends TestCase
         $this->assertNotContains('kepala_pusat', $afterApproveRoles);
     }
 
+    public function test_verifikasi_mixed_master_and_lainnya_splits_distribusi_and_pengadaan(): void
+    {
+        $admin = User::query()->where('email', 'pusdatinppkp@gmail.com')->firstOrFail();
+        $permintaan = $this->createMixedSubmittedPermintaan($admin);
+
+        $step3 = $this->pendingStep($permintaan->id_permintaan, 3);
+        app(ApprovalPermintaanService::class)->verifikasi($step3->id, $admin, []);
+
+        $permintaan->refresh();
+        $this->assertSame(PermintaanBarangStatus::ProsesDistribusi, $permintaan->status);
+
+        $roleNames = $this->pendingStep4RoleNames($permintaan->id_permintaan);
+        $this->assertContains('admin_gudang_persediaan', $roleNames);
+        $this->assertContains('kepala_pusat', $roleNames);
+        $this->assertNotContains('pengadaan', $roleNames);
+
+        $kepalaLog = ApprovalLog::query()
+            ->where('modul_approval', 'PERMINTAAN_BARANG')
+            ->where('id_referensi', $permintaan->id_permintaan)
+            ->where('status', 'MENUNGGU')
+            ->whereHas('approvalFlow.role', fn ($q) => $q->where('name', 'kepala_pusat'))
+            ->firstOrFail();
+
+        app(ApprovalPermintaanService::class)->approve($kepalaLog->id, $admin, 'OK pengadaan item lainnya');
+
+        $permintaan->refresh();
+        $this->assertSame(PermintaanBarangStatus::ProsesDistribusi, $permintaan->status);
+
+        $afterApproveRoles = $this->pendingStep4RoleNames($permintaan->id_permintaan);
+        $this->assertContains('pengadaan', $afterApproveRoles);
+        $this->assertContains('admin_gudang_persediaan', $afterApproveRoles);
+    }
+
+    private function createMixedSubmittedPermintaan(User $admin): PermintaanBarang
+    {
+        $unitId = (int) DB::table('master_unit_kerja')->value('id_unit_kerja');
+        $pegawaiId = (int) DB::table('master_pegawai')->where('id_unit_kerja', $unitId)->value('id')
+            ?: (int) DB::table('master_pegawai')->value('id');
+        $barangId = (int) DB::table('master_data_barang')->where('kode_data_barang', 'BRG-DMY-001')->value('id_data_barang')
+            ?: (int) DB::table('master_data_barang')->value('id_data_barang');
+        $satuanId = (int) DB::table('master_satuan')->value('id_satuan');
+        $gudangPusatId = (int) DB::table('master_gudang')
+            ->where('jenis_gudang', 'PUSAT')
+            ->where('kategori_gudang', 'PERSEDIAAN')
+            ->value('id_gudang');
+
+        $now = now();
+        if ($barangId > 0 && $gudangPusatId > 0) {
+            DB::table('data_stock')->updateOrInsert(
+                ['id_data_barang' => $barangId, 'id_gudang' => $gudangPusatId],
+                [
+                    'qty_awal' => 50,
+                    'qty_masuk' => 0,
+                    'qty_keluar' => 0,
+                    'qty_akhir' => 50,
+                    'id_satuan' => $satuanId,
+                    'last_updated' => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]
+            );
+        }
+
+        $this->actingAs($admin)->post(route('transaction.permintaan-barang.store'), [
+            'id_unit_kerja' => $unitId,
+            'id_pemohon' => $pegawaiId,
+            'tanggal_permintaan' => now()->toDateString(),
+            'tipe_permintaan' => 'RUTIN',
+            'jenis_permintaan' => ['PERSEDIAAN'],
+            'keterangan' => 'Mixed master + lainnya test',
+            'detail' => [
+                [
+                    'id_data_barang' => $barangId,
+                    'qty_diminta' => 1,
+                    'id_satuan' => $satuanId,
+                ],
+                [
+                    'deskripsi_barang' => 'BAJU OPERASI',
+                    'qty_diminta' => 10,
+                    'id_satuan' => $satuanId,
+                ],
+            ],
+        ])->assertRedirect();
+
+        $permintaan = PermintaanBarang::query()->latest('id_permintaan')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->post(route('transaction.permintaan-barang.ajukan', $permintaan->id_permintaan))
+            ->assertRedirect();
+
+        $step2 = $this->pendingStep($permintaan->id_permintaan, 2);
+        app(ApprovalPermintaanService::class)->mengetahui($step2->id, $admin, null);
+
+        return $permintaan->fresh();
+    }
+
     private function createSubmittedPermintaan(User $admin, bool $withStock): PermintaanBarang
     {
         $unitId = (int) DB::table('master_unit_kerja')->value('id_unit_kerja');

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\DataStock;
+use App\Models\DetailPermintaanBarang;
 use App\Models\PermintaanBarang;
 
 /**
@@ -67,5 +68,32 @@ final class PermintaanBarangStock
         }
 
         return $stockData;
+    }
+
+    /**
+     * Baris permintaan lainnya (tanpa master) atau stok tidak mencukupi → jalur pengadaan.
+     */
+    public static function detailNeedsProcurement(DetailPermintaanBarang $detail, array $stockData): bool
+    {
+        if (! $detail->id_data_barang) {
+            return true;
+        }
+
+        $available = (float) ($stockData[$detail->id_detail_permintaan]['total'] ?? 0);
+        $requested = (float) ($detail->qty_disetujui ?? $detail->qty_diminta ?? 0);
+
+        return $available <= 0 || $requested > $available;
+    }
+
+    /**
+     * Baris dari master dengan stok mencukupi → jalur distribusi (SBBK).
+     */
+    public static function detailReadyForDistribusi(DetailPermintaanBarang $detail, array $stockData): bool
+    {
+        if (! $detail->id_data_barang) {
+            return false;
+        }
+
+        return ! self::detailNeedsProcurement($detail, $stockData);
     }
 }
