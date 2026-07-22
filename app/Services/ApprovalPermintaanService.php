@@ -25,7 +25,8 @@ class ApprovalPermintaanService
     public function __construct(
         private readonly ApprovalService $approvalService,
         private readonly PermintaanBarangStatusService $permintaanBarangStatus,
-        private readonly PengadaanService $pengadaanService
+        private readonly PengadaanService $pengadaanService,
+        private readonly PemeliharaanWorkflowService $pemeliharaanWorkflow
     ) {}
 
     public function processAction(string $action, int $id, User $user, array $payload = []): int
@@ -59,6 +60,11 @@ class ApprovalPermintaanService
                 return $id;
             })(),
             'disposisi' => $this->disposisi($id, $user),
+            'disposisi_pemeliharaan' => (function () use ($id, $user, $payload) {
+                $this->pemeliharaanWorkflow->disposisiPelaksana($id, $user, $payload);
+
+                return $id;
+            })(),
             default => throw new \RuntimeException('Action approval tidak dikenali.'),
         };
     }
@@ -75,6 +81,16 @@ class ApprovalPermintaanService
     public function verifikasi(int $approvalId, User $user, array $validated): void
     {
         $approval = ApprovalLog::with('approvalFlow')->findOrFail($approvalId);
+
+        if ($approval->modul_approval === 'PERMINTAAN_PEMELIHARAAN') {
+            if ($approval->status !== 'MENUNGGU') {
+                throw new \RuntimeException('Approval ini sudah diproses.');
+            }
+            $this->approvalService->approve($approval, $user, $validated['catatan'] ?? null);
+
+            return;
+        }
+
         $permintaan = PermintaanBarang::with('detailPermintaan')->find($approval->id_referensi);
         if (! $permintaan) {
             throw new \RuntimeException('Permintaan tidak ditemukan.');
@@ -144,8 +160,8 @@ class ApprovalPermintaanService
         DB::transaction(function () use ($approval, $user, $catatan, $roleName): void {
             $this->approvalService->approve($approval, $user, $catatan);
 
-            // Setelah Kepala Pusat menyetujui → baru muncul disposisi pengadaan + paket pengadaan.
-            if ($roleName === 'kepala_pusat') {
+            // Setelah Kepala Pusat menyetujui permintaan barang → disposisi pengadaan + paket pengadaan.
+            if ($approval->modul_approval === 'PERMINTAAN_BARANG' && $roleName === 'kepala_pusat') {
                 $permintaan = PermintaanBarang::find($approval->id_referensi);
                 if (! $permintaan) {
                     throw new \RuntimeException('Permintaan tidak ditemukan.');
@@ -454,6 +470,7 @@ class ApprovalPermintaanService
             'approve' => 'transaction.approval.approve',
             'reject' => 'transaction.approval.reject',
             'disposisi' => 'transaction.approval.disposisi',
+            'disposisi_pemeliharaan' => 'transaction.approval.disposisi',
         ];
 
         $permission = $permissionMap[$action] ?? null;

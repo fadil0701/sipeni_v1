@@ -6,6 +6,7 @@ use App\Enums\PermintaanBarangStatus;
 use App\Models\ApprovalFlowDefinition;
 use App\Models\ApprovalLog;
 use App\Models\PermintaanBarang;
+use App\Models\PermintaanPemeliharaan;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -109,12 +110,19 @@ class ApprovalService
 
     private function shouldSkipAutoNextLogs(ApprovalLog $pendingLog): bool
     {
+        $step = (int) ($pendingLog->approvalFlow?->step_order ?? 0);
+        $roleName = $pendingLog->approvalFlow?->role?->name;
+
+        if ($pendingLog->modul_approval === 'PERMINTAAN_PEMELIHARAAN') {
+            // Step 4 disposisi: next (SR diketahui) dibuat saat Service Report selesai.
+            // Step 8 diketahui KP: cabang rekomendasi (selesai / pengadaan / kembalikan).
+            // Step 9 pembelian: disposisi pengadaan dibuat manual.
+            return in_array($step, [4, 8, 9], true);
+        }
+
         if ($pendingLog->modul_approval !== 'PERMINTAAN_BARANG') {
             return false;
         }
-
-        $step = (int) ($pendingLog->approvalFlow?->step_order ?? 0);
-        $roleName = $pendingLog->approvalFlow?->role?->name;
 
         // Setelah verifikasi Kasubbag TU / persetujuan Kepala Pusat: next step dibuat selektif.
         return $step === 3 || $roleName === 'kepala_pusat';
@@ -124,6 +132,17 @@ class ApprovalService
     {
         $step = (int) ($pendingLog->approvalFlow?->step_order ?? 0);
         $roleName = $pendingLog->approvalFlow?->role?->name;
+        $modul = $pendingLog->modul_approval;
+
+        if ($modul === 'PERMINTAAN_PEMELIHARAAN') {
+            return match ($step) {
+                2, 6, 7, 8 => 'DIKETAHUI',
+                3, 9 => 'DISETUJUI',
+                4 => 'DIDISPOSISIKAN',
+                10 => 'DIDISPOSISIKAN',
+                default => 'DISETUJUI',
+            };
+        }
 
         if ($roleName === 'kepala_pusat') {
             return 'DISETUJUI';
@@ -162,6 +181,12 @@ class ApprovalService
 
     private function syncPermintaanStatus(ApprovalLog $log, bool $approved): void
     {
+        if ($log->modul_approval === 'PERMINTAAN_PEMELIHARAAN') {
+            $this->syncPemeliharaanStatus($log, $approved);
+
+            return;
+        }
+
         if ($log->modul_approval !== 'PERMINTAAN_BARANG') {
             return;
         }
@@ -192,5 +217,44 @@ class ApprovalService
         };
 
         $this->permintaanStatusService->setStatus($permintaan, $status);
+    }
+
+    private function syncPemeliharaanStatus(ApprovalLog $log, bool $approved): void
+    {
+        $permintaan = PermintaanPemeliharaan::find($log->id_referensi);
+        if (! $permintaan) {
+            return;
+        }
+
+        if (! $approved) {
+            $permintaan->update(['status_permintaan' => 'DITOLAK']);
+
+            return;
+        }
+
+        $stepOrder = (int) ($log->approvalFlow?->step_order ?? 0);
+
+        // Setelah Kepala Pusat menyetujui pengajuan → menunggu disposisi Pengurus Barang.
+        if ($stepOrder === 3) {
+            $permintaan->update(['status_permintaan' => 'DISETUJUI']);
+
+            return;
+        }
+
+        // Setelah diketahui SR Kepala Pusat → cabang rekomendasi.
+        if ($stepOrder === 8) {
+            app(PemeliharaanWorkflowService::class)->resolveAfterServiceReportKnown($permintaan->fresh());
+
+            return;
+        }
+
+        // Setelah setujui pembelian → disposisi pengadaan.
+        if ($stepOrder === 9) {
+            app(PemeliharaanWorkflowService::class)->createPengadaanDisposisi(
+                $permintaan->fresh(),
+                $log->user ?? \App\Models\User::find($log->user_id) ?? auth()->user(),
+                $log->catatan
+            );
+        }
     }
 }

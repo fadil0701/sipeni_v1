@@ -4,12 +4,12 @@
 <!-- Page Header -->
 <div class="mb-6 flex justify-between items-center">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">Persetujuan Permintaan Barang</h1>
+        <h1 class="text-2xl font-bold text-gray-900">Persetujuan Permintaan</h1>
         <p class="mt-1 text-sm text-gray-600">
             @if(($viewType ?? 'aktif') === 'riwayat')
-                Riwayat permintaan yang sudah disetujui, ditolak, atau selesai diproses
+                Riwayat permintaan barang & pemeliharaan yang sudah disetujui, ditolak, atau selesai diproses
             @else
-                Daftar permintaan barang yang menunggu persetujuan Anda
+                Daftar permintaan barang & pemeliharaan yang menunggu persetujuan Anda
             @endif
         </p>
     </div>
@@ -119,9 +119,10 @@
             <thead class="bg-gray-50">
                 <tr>
                     <x-table.num-th />
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modul</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Permintaan</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Kerja</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang Unit</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang / Aset</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pemohon</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Step Approval</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -133,9 +134,14 @@
                 @forelse($paginator as $item)
                     @php
                         $permintaan = $item['permintaan'];
+                        $modulApproval = $item['modul_approval'] ?? 'PERMINTAAN_BARANG';
+                        $isPemeliharaan = $modulApproval === 'PERMINTAAN_PEMELIHARAAN';
                         $currentStep = $item['current_step'];
                         $currentStatus = $item['current_status'];
                         $lastCompletedStep = $item['last_completed_step'];
+                        $noPermintaan = $isPemeliharaan
+                            ? ($permintaan->no_permintaan_pemeliharaan ?? '-')
+                            : ($permintaan->no_permintaan ?? '-');
                         
                         // Tentukan warna baris berdasarkan progress approval
                         // Step 2: DIKETAHUI (Kepala Unit) - Biru muda
@@ -184,8 +190,15 @@
                     <tr class="hover:bg-opacity-80 transition-colors {{ $rowBgColor }} {{ $rowBorderColor }}">
                         <x-table.num-td :paginator="$paginator" />
                         <td class="px-6 py-4 whitespace-nowrap">
+                            @if($isPemeliharaan)
+                                <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Pemeliharaan</span>
+                            @else
+                                <span class="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800">Barang</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">
-                                {{ $permintaan->no_permintaan }}
+                                {{ $noPermintaan }}
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -195,21 +208,16 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">
-                                @if($permintaan->unitKerja && $permintaan->unitKerja->gudang)
+                                @if($isPemeliharaan)
+                                    {{ $permintaan->registerAset->nomor_register ?? '-' }}
+                                    <div class="text-xs text-gray-500">{{ $permintaan->registerAset->inventory->dataBarang->nama_barang ?? '' }}</div>
+                                @elseif($permintaan->unitKerja && $permintaan->unitKerja->gudang)
                                     @php
-                                        $gudangUnits = $permintaan->unitKerja->gudang->where('jenis_gudang', 'UNIT');
+                                        $gudangUnit = $permintaan->unitKerja->gudang;
                                     @endphp
-                                    @if($gudangUnits->count() > 0)
-                                        @foreach($gudangUnits as $gudang)
-                                            <span class="inline-block px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-900 mr-1">
-                                                {{ $gudang->nama_gudang }}
-                                            </span>
-                                        @endforeach
-                                    @else
-                                        <span class="text-gray-400">-</span>
-                                    @endif
+                                    {{ is_iterable($gudangUnit) ? ($gudangUnit->first()->nama_gudang ?? '-') : ($gudangUnit->nama_gudang ?? '-') }}
                                 @else
-                                    <span class="text-gray-400">-</span>
+                                    -
                                 @endif
                             </div>
                         </td>

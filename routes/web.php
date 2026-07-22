@@ -242,6 +242,7 @@ Route::middleware(['auth', 'scope.unit'])->group(function () {
             Route::post('/{id}/reject', [ApprovalPermintaanController::class, 'reject'])->name('reject')->middleware(['role']);
 
             Route::post('/{id}/disposisi', [ApprovalPermintaanController::class, 'disposisi'])->name('disposisi')->middleware(['role']);
+            Route::post('/{id}/disposisi-pemeliharaan', [ApprovalPermintaanController::class, 'disposisiPemeliharaan'])->name('disposisi-pemeliharaan')->middleware(['role']);
         });
 
         // Draft Distribusi

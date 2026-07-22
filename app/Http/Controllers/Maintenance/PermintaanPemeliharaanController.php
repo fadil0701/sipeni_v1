@@ -13,12 +13,18 @@ use App\Models\MasterPegawai;
 use App\Models\MasterUnitKerja;
 use App\Models\PermintaanPemeliharaan;
 use App\Models\RegisterAset;
+use App\Support\Storage\PrivateStorage;
+use App\Services\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PermintaanPemeliharaanController extends Controller
 {
+    public function __construct(
+        private readonly ApprovalService $approvalService
+    ) {}
+
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -83,7 +89,47 @@ class PermintaanPemeliharaanController extends Controller
         $perPage = PaginationHelper::getPerPage($request, 10);
         $permintaans = $query->latest('tanggal_permintaan')->paginate($perPage)->appends($request->query());
 
-        return view('maintenance.permintaan-pemeliharaan.index', compact('permintaans', 'unitKerjas', 'viewType'));
+        $pendingDisposisiApprovalIds = $this->pendingPengurusDisposisiApprovalIds(
+            $permintaans->getCollection()->pluck('id_permintaan_pemeliharaan')->all()
+        );
+
+        return view('maintenance.permintaan-pemeliharaan.index', compact(
+            'permintaans',
+            'unitKerjas',
+            'viewType',
+            'pendingDisposisiApprovalIds'
+        ));
+    }
+
+    /**
+     * Map id_permintaan_pemeliharaan => id approval_log step 4 (MENUNGGU) untuk tombol Proses.
+     *
+     * @param  list<int|string>  $permintaanIds
+     * @return array<int, int>
+     */
+    private function pendingPengurusDisposisiApprovalIds(array $permintaanIds): array
+    {
+        if ($permintaanIds === []) {
+            return [];
+        }
+
+        $step4FlowIds = ApprovalFlowDefinition::query()
+            ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+            ->where('step_order', 4)
+            ->pluck('id');
+
+        if ($step4FlowIds->isEmpty()) {
+            return [];
+        }
+
+        return ApprovalLog::query()
+            ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+            ->whereIn('id_referensi', $permintaanIds)
+            ->whereIn('id_approval_flow', $step4FlowIds)
+            ->where('status', 'MENUNGGU')
+            ->pluck('id', 'id_referensi')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     public function create()
@@ -102,7 +148,7 @@ class PermintaanPemeliharaanController extends Controller
                     ->whereHas('inventory', function ($q) {
                         $q->where('status_inventory', 'AKTIF');
                     })
-                    ->with(['inventory.dataBarang'])
+                    ->with(['inventory.dataBarang', 'inventoryItem'])
                     ->get();
             } else {
                 $unitKerjas = collect([]);
@@ -117,11 +163,27 @@ class PermintaanPemeliharaanController extends Controller
                 ->whereHas('inventory', function ($q) {
                     $q->where('status_inventory', 'AKTIF');
                 })
-                ->with(['inventory.dataBarang'])
+                ->with(['inventory.dataBarang', 'inventoryItem'])
                 ->get();
         }
 
-        return view('maintenance.permintaan-pemeliharaan.create', compact('unitKerjas', 'pegawais', 'registerAsets'));
+        return view('maintenance.permintaan-pemeliharaan.create', [
+            'unitKerjas' => $unitKerjas,
+            'pegawais' => $pegawais,
+            'registerAsets' => $registerAsets,
+            'registerAsetOptions' => $registerAsets->map(function ($aset) {
+                $inv = $aset->inventory;
+                $namaBarang = $inv->dataBarang->nama_barang ?? '-';
+
+                return [
+                    'id' => $aset->id_register_aset,
+                    'label' => ($aset->nomor_register ?: '-').' - '.$namaBarang,
+                    'merk' => $inv->merk ?? '-',
+                    'tipe' => $inv->tipe ?? '-',
+                    'no_seri' => $aset->inventoryItem->no_seri ?? ($inv->no_seri ?? '-'),
+                ];
+            })->values()->all(),
+        ]);
     }
 
     public function store(Request $request)
@@ -137,7 +199,10 @@ class PermintaanPemeliharaanController extends Controller
             'rows.*.jenis_pemeliharaan' => 'required|in:RUTIN,KALIBRASI,PERBAIKAN,PENGGANTIAN_SPAREPART',
             'rows.*.prioritas' => 'required|in:RENDAH,SEDANG,TINGGI,DARURAT',
             'rows.*.deskripsi_kerusakan' => 'nullable|string',
+            'rows.*.foto_kondisi' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
+
+        $uploadedFotoPaths = [];
 
         DB::beginTransaction();
         try {
@@ -152,7 +217,7 @@ class PermintaanPemeliharaanController extends Controller
             $urutan = PermintaanPemeliharaan::nextUrutanNomorUntukTahun($tahun);
             $statusPermintaan = $validated['status_permintaan'] ?? 'DRAFT';
 
-            foreach ($validated['rows'] as $row) {
+            foreach ($validated['rows'] as $index => $row) {
                 $register = RegisterAset::with('kartuInventarisRuangan')->findOrFail($row['id_register_aset']);
 
                 if ((int) $register->id_unit_kerja !== (int) $validated['id_unit_kerja']) {
@@ -160,6 +225,15 @@ class PermintaanPemeliharaanController extends Controller
                 }
                 if ($register->kartuInventarisRuangan()->count() === 0) {
                     throw new \RuntimeException('Aset belum ditempatkan di KIR, silakan lengkapi penempatan terlebih dahulu.');
+                }
+
+                $fotoPath = null;
+                if ($request->hasFile("rows.{$index}.foto_kondisi")) {
+                    $fotoPath = PrivateStorage::storeUploadedFile(
+                        $request->file("rows.{$index}.foto_kondisi"),
+                        'foto-kondisi-pemeliharaan'
+                    );
+                    $uploadedFotoPaths[] = $fotoPath;
                 }
 
                 $noPermintaan = 'PMH/'.$tahun.'/'.str_pad((string) $urutan, 4, '0', STR_PAD_LEFT);
@@ -175,6 +249,7 @@ class PermintaanPemeliharaanController extends Controller
                     'prioritas' => $row['prioritas'],
                     'status_permintaan' => $statusPermintaan,
                     'deskripsi_kerusakan' => $row['deskripsi_kerusakan'] ?? null,
+                    'foto_kondisi' => $fotoPath,
                     'keterangan' => $validated['keterangan'] ?? null,
                 ]);
 
@@ -189,6 +264,9 @@ class PermintaanPemeliharaanController extends Controller
                 ->with('success', 'Permintaan pemeliharaan berhasil dibuat.');
         } catch (\Exception $e) {
             DB::rollBack();
+            foreach ($uploadedFotoPaths as $path) {
+                PrivateStorage::delete($path);
+            }
 
             return back()->withInput()->with('error', 'Gagal membuat permintaan pemeliharaan: '.$e->getMessage());
         }
@@ -200,6 +278,7 @@ class PermintaanPemeliharaanController extends Controller
             'registerAset.inventory.dataBarang',
             'unitKerja',
             'pemohon',
+            'pegawaiPelaksana',
             'serviceReport',
             'kalibrasi',
             'approvalLogs.approvalFlow.role',
@@ -208,7 +287,13 @@ class PermintaanPemeliharaanController extends Controller
 
         $approvalLogs = ApprovalLog::getLogsForReference('PERMINTAAN_PEMELIHARAAN', $id);
 
-        return view('maintenance.permintaan-pemeliharaan.show', compact('permintaan', 'approvalLogs'));
+        $pendingDisposisiApprovalId = $this->pendingPengurusDisposisiApprovalIds([(int) $id])[(int) $id] ?? null;
+
+        return view('maintenance.permintaan-pemeliharaan.show', compact(
+            'permintaan',
+            'approvalLogs',
+            'pendingDisposisiApprovalId'
+        ));
     }
 
     public function edit($id)
@@ -233,7 +318,7 @@ class PermintaanPemeliharaanController extends Controller
                     ->whereHas('inventory', function ($q) {
                         $q->where('status_inventory', 'AKTIF');
                     })
-                    ->with(['inventory.dataBarang'])
+                    ->with(['inventory.dataBarang', 'inventoryItem'])
                     ->get();
             } else {
                 $unitKerjas = collect([]);
@@ -248,7 +333,7 @@ class PermintaanPemeliharaanController extends Controller
                 ->whereHas('inventory', function ($q) {
                     $q->where('status_inventory', 'AKTIF');
                 })
-                ->with(['inventory.dataBarang'])
+                ->with(['inventory.dataBarang', 'inventoryItem'])
                 ->get();
         }
 
@@ -273,8 +358,12 @@ class PermintaanPemeliharaanController extends Controller
             'jenis_pemeliharaan' => 'required|in:RUTIN,KALIBRASI,PERBAIKAN,PENGGANTIAN_SPAREPART',
             'prioritas' => 'required|in:RENDAH,SEDANG,TINGGI,DARURAT',
             'deskripsi_kerusakan' => 'nullable|string',
+            'foto_kondisi' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'hapus_foto_kondisi' => 'nullable|boolean',
             'keterangan' => 'nullable|string',
         ]);
+
+        $newFotoPath = null;
 
         DB::beginTransaction();
         try {
@@ -292,6 +381,20 @@ class PermintaanPemeliharaanController extends Controller
             }
 
             $oldStatus = $permintaan->status_permintaan;
+            $oldFotoPath = $permintaan->foto_kondisi;
+            $fotoPath = $oldFotoPath;
+
+            if ($request->boolean('hapus_foto_kondisi') && ! $request->hasFile('foto_kondisi')) {
+                $fotoPath = null;
+            }
+
+            if ($request->hasFile('foto_kondisi')) {
+                $newFotoPath = PrivateStorage::storeUploadedFile(
+                    $request->file('foto_kondisi'),
+                    'foto-kondisi-pemeliharaan'
+                );
+                $fotoPath = $newFotoPath;
+            }
 
             $permintaan->update([
                 'id_register_aset' => $request->id_register_aset,
@@ -302,6 +405,7 @@ class PermintaanPemeliharaanController extends Controller
                 'prioritas' => $request->prioritas,
                 'status_permintaan' => $request->status_permintaan ?? 'DRAFT',
                 'deskripsi_kerusakan' => $request->deskripsi_kerusakan,
+                'foto_kondisi' => $fotoPath,
                 'keterangan' => $request->keterangan,
             ]);
 
@@ -312,10 +416,15 @@ class PermintaanPemeliharaanController extends Controller
 
             DB::commit();
 
+            if (($newFotoPath || $request->boolean('hapus_foto_kondisi')) && $oldFotoPath && $oldFotoPath !== $fotoPath) {
+                PrivateStorage::delete($oldFotoPath);
+            }
+
             return redirect()->route('maintenance.permintaan-pemeliharaan.index')
                 ->with('success', 'Permintaan pemeliharaan berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();
+            PrivateStorage::delete($newFotoPath);
 
             return back()->withInput()->with('error', 'Gagal memperbarui permintaan pemeliharaan: '.$e->getMessage());
         }
@@ -333,8 +442,10 @@ class PermintaanPemeliharaanController extends Controller
 
         DB::beginTransaction();
         try {
+            $fotoPath = $permintaan->foto_kondisi;
             $permintaan->delete();
             DB::commit();
+            PrivateStorage::delete($fotoPath);
 
             return redirect()->route('maintenance.permintaan-pemeliharaan.index')
                 ->with('success', 'Permintaan pemeliharaan berhasil dihapus.');
@@ -373,26 +484,26 @@ class PermintaanPemeliharaanController extends Controller
     }
 
     /**
-     * Buat approval logs untuk permintaan pemeliharaan
+     * Buat approval log awal (step Kepala Unit) untuk permintaan pemeliharaan.
      */
-    private function createApprovalLogs($idPermintaan)
+    private function createApprovalLogs(int $idPermintaan): void
     {
-        // Ambil approval flow definition untuk PERMINTAAN_PEMELIHARAAN
-        $approvalFlows = ApprovalFlowDefinition::where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
-            ->orderBy('step_order')
-            ->get();
+        $flowStep2 = ApprovalFlowDefinition::query()
+            ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+            ->where('step_order', 2)
+            ->whereNotNull('role_id')
+            ->first();
 
-        foreach ($approvalFlows as $flow) {
-            ApprovalLog::create([
-                'modul_approval' => 'PERMINTAAN_PEMELIHARAAN',
-                'id_referensi' => $idPermintaan,
-                'id_approval_flow' => $flow->id,
-                'user_id' => null, // Akan diisi saat approval
-                'role_id' => $flow->role_id,
-                'status' => 'MENUNGGU',
-                'catatan' => null,
-                'approved_at' => null,
-            ]);
+        if (! $flowStep2) {
+            throw new \RuntimeException(
+                'Konfigurasi approval permintaan pemeliharaan belum ada. Jalankan seeder ApprovalFlowDefinitionSeeder.'
+            );
         }
+
+        $this->approvalService->createPendingLog(
+            $flowStep2,
+            'PERMINTAAN_PEMELIHARAAN',
+            $idPermintaan
+        );
     }
 }

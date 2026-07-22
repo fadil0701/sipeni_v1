@@ -90,6 +90,25 @@ class RolePermissionBaselineSeeder extends Seeder
             'keuangan' => $approvalDisposisi,
             'admin_keuangan' => $approvalDisposisi->merge($byPrefix('finance.')),
 
+            // Pengurus Barang: disposisi permintaan barang + pemeliharaan + mengetahui SR
+            'pengurus_barang' => $explicit([
+                'transaction.approval.index',
+                'transaction.approval.show',
+                'transaction.approval.disposisi',
+                'transaction.approval.disposisi-pemeliharaan',
+                'transaction.approval.mengetahui',
+                'maintenance.permintaan-pemeliharaan.index',
+                'maintenance.permintaan-pemeliharaan.show',
+                'maintenance.service-report.index',
+                'maintenance.service-report.show',
+                'maintenance.service-report.create',
+                'maintenance.service-report.store',
+                'maintenance.service-report.edit',
+                'maintenance.service-report.update',
+            ])->merge($byPrefix('transaction.draft-distribusi.'))
+                ->merge($byPrefix('transaction.compile-distribusi.'))
+                ->merge($byPrefix('transaction.distribusi.')),
+
             // PPTK baseline: monitoring planning/procurement + laporan
             'pptk_apbd' => $byPrefix('planning.')->merge($byPrefix('procurement.'))->merge($byPrefix('reports.')),
             'pptk_blud' => $byPrefix('planning.')->merge($byPrefix('procurement.'))->merge($byPrefix('reports.')),

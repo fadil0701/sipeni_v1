@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Maintenance;
 
 use App\Http\Controllers\Controller;
+use App\Enums\PemeliharaanRekomendasi;
 use Illuminate\Http\Request;
 use App\Models\ServiceReport;
 use App\Models\PermintaanPemeliharaan;
@@ -10,6 +11,7 @@ use App\Models\RegisterAset;
 use App\Models\RiwayatPemeliharaan;
 use App\Models\JadwalMaintenance;
 use App\Models\MasterPegawai;
+use App\Services\PemeliharaanWorkflowService;
 use App\Support\Storage\PrivateStorage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +19,10 @@ use Illuminate\Support\Facades\Storage;
 
 class ServiceReportController extends Controller
 {
+    public function __construct(
+        private readonly PemeliharaanWorkflowService $pemeliharaanWorkflow
+    ) {}
+
     public function index(Request $request)
     {
         $query = ServiceReport::with(['permintaanPemeliharaan', 'registerAset.inventory.dataBarang', 'creator']);
@@ -47,7 +53,7 @@ class ServiceReportController extends Controller
 
     public function create(Request $request)
     {
-        $permintaans = PermintaanPemeliharaan::whereIn('status_permintaan', ['DISETUJUI', 'DIPROSES'])
+        $permintaans = PermintaanPemeliharaan::whereIn('status_permintaan', ['DIPROSES', 'MENUNGGU_PENGADAAN'])
             ->whereDoesntHave('serviceReport')
             ->with(['registerAset.inventory.dataBarang'])
             ->get();
@@ -73,6 +79,7 @@ class ServiceReportController extends Controller
             'tanggal_service' => 'required|date',
             'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_service',
             'jenis_service' => 'required|in:RUTIN,KALIBRASI,PERBAIKAN,PENGGANTIAN_SPAREPART',
+            'status_service' => 'nullable|in:MENUNGGU,DIPROSES,SELESAI,DITOLAK,DIBATALKAN',
             'vendor' => 'nullable|string|max:255',
             'teknisi' => 'nullable|string|max:255',
             'deskripsi_kerja' => 'nullable|string',
@@ -81,10 +88,16 @@ class ServiceReportController extends Controller
             'biaya_service' => 'nullable|numeric|min:0',
             'biaya_sparepart' => 'nullable|numeric|min:0',
             'kondisi_setelah_service' => 'nullable|in:BAIK,RUSAK_RINGAN,RUSAK_BERAT,TIDAK_BISA_DIPERBAIKI',
+            'rekomendasi' => 'nullable|in:'.implode(',', PemeliharaanRekomendasi::values()),
+            'rekomendasi_catatan' => 'nullable|string',
             'file_laporan' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:4096',
             'file_laporan_kamera' => 'nullable|file|mimes:jpg,jpeg,png|max:4096',
             'keterangan' => 'nullable|string',
         ]);
+
+        if (($request->status_service ?? 'MENUNGGU') === 'SELESAI' && ! $request->filled('rekomendasi')) {
+            return back()->withInput()->withErrors(['rekomendasi' => 'Rekomendasi wajib diisi jika Service Report selesai.']);
+        }
 
         DB::beginTransaction();
         try {
@@ -129,13 +142,21 @@ class ServiceReportController extends Controller
                 'biaya_sparepart' => $request->biaya_sparepart ?? 0,
                 'total_biaya' => $totalBiaya,
                 'kondisi_setelah_service' => $request->kondisi_setelah_service,
+                'rekomendasi' => $request->rekomendasi,
+                'rekomendasi_catatan' => $request->rekomendasi_catatan,
                 'file_laporan' => $filePath,
                 'keterangan' => $request->keterangan,
                 'created_by' => Auth::id(),
             ]);
 
-            // Update status permintaan menjadi DIPROSES
-            $permintaan->update(['status_permintaan' => 'DIPROSES']);
+            // Update status permintaan menjadi DIPROSES (pengerjaan)
+            if ($permintaan->status_permintaan !== 'MENUNGGU_DIKETAHUI_SR') {
+                $permintaan->update(['status_permintaan' => 'DIPROSES']);
+            }
+
+            if (($request->status_service ?? 'MENUNGGU') === 'SELESAI') {
+                $this->finalizeServiceWork($serviceReport->fresh(['permintaanPemeliharaan', 'registerAset']), $request);
+            }
 
             DB::commit();
             return redirect()->route('maintenance.service-report.index')
@@ -188,10 +209,16 @@ class ServiceReportController extends Controller
             'biaya_service' => 'nullable|numeric|min:0',
             'biaya_sparepart' => 'nullable|numeric|min:0',
             'kondisi_setelah_service' => 'nullable|in:BAIK,RUSAK_RINGAN,RUSAK_BERAT,TIDAK_BISA_DIPERBAIKI',
+            'rekomendasi' => 'nullable|in:'.implode(',', PemeliharaanRekomendasi::values()),
+            'rekomendasi_catatan' => 'nullable|string',
             'file_laporan' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:4096',
             'file_laporan_kamera' => 'nullable|file|mimes:jpg,jpeg,png|max:4096',
             'keterangan' => 'nullable|string',
         ]);
+
+        if ($request->status_service === 'SELESAI' && ! $request->filled('rekomendasi')) {
+            return back()->withInput()->withErrors(['rekomendasi' => 'Rekomendasi wajib diisi jika Service Report selesai.']);
+        }
 
         $serviceReport = ServiceReport::findOrFail($id);
 
@@ -223,40 +250,15 @@ class ServiceReportController extends Controller
                 'biaya_sparepart' => $request->biaya_sparepart ?? 0,
                 'total_biaya' => $totalBiaya,
                 'kondisi_setelah_service' => $request->kondisi_setelah_service,
+                'rekomendasi' => $request->rekomendasi,
+                'rekomendasi_catatan' => $request->rekomendasi_catatan,
                 'file_laporan' => $filePath,
                 'keterangan' => $request->keterangan,
             ]);
 
-            // Jika status SELESAI, update permintaan dan buat riwayat
+            // Jika status SELESAI pengerjaan: mulai rantai diketahui (jangan langsung SELESAI permintaan).
             if ($request->status_service === 'SELESAI') {
-                $serviceReport->permintaanPemeliharaan->update(['status_permintaan' => 'SELESAI']);
-
-                // Sinkronkan kondisi aset sesuai hasil service.
-                if (!empty($request->kondisi_setelah_service)) {
-                    $serviceReport->registerAset->update([
-                        'kondisi_aset' => $request->kondisi_setelah_service,
-                    ]);
-                }
-
-                RiwayatPemeliharaan::updateOrCreate(
-                    ['id_service_report' => $serviceReport->id_service_report],
-                    [
-                    'id_register_aset' => $serviceReport->id_register_aset,
-                    'id_permintaan_pemeliharaan' => $serviceReport->id_permintaan_pemeliharaan,
-                    'id_service_report' => $serviceReport->id_service_report,
-                    'tanggal_pemeliharaan' => $request->tanggal_selesai ?? $request->tanggal_service,
-                    'jenis_pemeliharaan' => $request->jenis_service,
-                    'status' => 'SELESAI',
-                    'keterangan' => $request->keterangan,
-                    ]
-                );
-
-                // Geser jadwal aktif untuk jenis maintenance terkait aset ini.
-                $this->rollForwardActiveSchedule(
-                    (int) $serviceReport->id_register_aset,
-                    (string) $request->jenis_service,
-                    $request->tanggal_selesai ?? $request->tanggal_service
-                );
+                $this->finalizeServiceWork($serviceReport->fresh(['permintaanPemeliharaan', 'registerAset']), $request);
             }
 
             DB::commit();
@@ -266,6 +268,36 @@ class ServiceReportController extends Controller
             DB::rollBack();
             return back()->withInput()->with('error', 'Gagal memperbarui service report: ' . $e->getMessage());
         }
+    }
+
+    private function finalizeServiceWork(ServiceReport $serviceReport, Request $request): void
+    {
+        if (! empty($request->kondisi_setelah_service) && $serviceReport->registerAset) {
+            $serviceReport->registerAset->update([
+                'kondisi_aset' => $request->kondisi_setelah_service,
+            ]);
+        }
+
+        RiwayatPemeliharaan::updateOrCreate(
+            ['id_service_report' => $serviceReport->id_service_report],
+            [
+                'id_register_aset' => $serviceReport->id_register_aset,
+                'id_permintaan_pemeliharaan' => $serviceReport->id_permintaan_pemeliharaan,
+                'id_service_report' => $serviceReport->id_service_report,
+                'tanggal_pemeliharaan' => $request->tanggal_selesai ?? $request->tanggal_service,
+                'jenis_pemeliharaan' => $request->jenis_service,
+                'status' => 'SELESAI',
+                'keterangan' => trim(($request->keterangan ?? '').' | Rekomendasi: '.($request->rekomendasi ?? '-')),
+            ]
+        );
+
+        $this->rollForwardActiveSchedule(
+            (int) $serviceReport->id_register_aset,
+            (string) $request->jenis_service,
+            $request->tanggal_selesai ?? $request->tanggal_service
+        );
+
+        $this->pemeliharaanWorkflow->startServiceReportAcknowledgement($serviceReport->fresh(['permintaanPemeliharaan']));
     }
 
     public function destroy($id)

@@ -28,6 +28,8 @@ class ServiceReport extends Model
         'biaya_sparepart',
         'total_biaya',
         'kondisi_setelah_service',
+        'rekomendasi',
+        'rekomendasi_catatan',
         'file_laporan',
         'keterangan',
         'created_by',

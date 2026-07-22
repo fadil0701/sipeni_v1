@@ -154,6 +154,7 @@
                     <x-table.num-th />
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Permintaan</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nomor Register</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Barang</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Kerja</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pemohon</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis</th>
@@ -172,7 +173,9 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ $permintaan->registerAset->nomor_register ?? '-' }}</div>
-                            <div class="text-xs text-gray-500">{{ $permintaan->registerAset->inventory->dataBarang->nama_barang ?? '-' }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-gray-900">{{ $permintaan->registerAset->inventory->dataBarang->nama_barang ?? '-' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ $permintaan->unitKerja->nama_unit_kerja ?? '-' }}</div>
@@ -212,6 +215,20 @@
                                 >
                                     Detail
                                 </a>
+                                @php
+                                    $pendingDisposisiId = $pendingDisposisiApprovalIds[$permintaan->id_permintaan_pemeliharaan] ?? null;
+                                    $canProsesDisposisi = $pendingDisposisiId
+                                        && $permintaan->status_permintaan === 'DISETUJUI'
+                                        && \App\Helpers\PermissionHelper::canAccess(auth()->user(), 'transaction.approval.disposisi');
+                                @endphp
+                                @if($canProsesDisposisi)
+                                    <a
+                                        href="{{ route('transaction.approval.show', $pendingDisposisiId) }}"
+                                        class="inline-flex items-center rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-700 transition-colors"
+                                    >
+                                        Proses
+                                    </a>
+                                @endif
                                 @if($permintaan->status_permintaan == 'DRAFT')
                                     <a 
                                         href="{{ route('maintenance.permintaan-pemeliharaan.edit', $permintaan->id_permintaan_pemeliharaan) }}" 
@@ -240,7 +257,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="px-6 py-12 text-center">
+                        <td colspan="10" class="px-6 py-12 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>

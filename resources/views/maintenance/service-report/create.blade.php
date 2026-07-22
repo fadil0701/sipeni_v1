@@ -8,14 +8,48 @@
         @csrf
         <div>
             <label class="block text-sm font-medium mb-2">Permintaan Pemeliharaan</label>
-            <select name="id_permintaan_pemeliharaan" required class="block w-full border border-gray-300 rounded-md px-3 py-2">
-                <option value="">Pilih permintaan</option>
+            <select name="id_permintaan_pemeliharaan" id="id_permintaan_pemeliharaan" required class="block w-full border border-gray-300 rounded-md px-3 py-2">
+                <option value="" data-nama-barang="">Pilih permintaan</option>
                 @foreach($permintaans as $permintaan)
-                    <option value="{{ $permintaan->id_permintaan_pemeliharaan }}" @selected(old('id_permintaan_pemeliharaan', optional($selectedPermintaan)->id_permintaan_pemeliharaan) == $permintaan->id_permintaan_pemeliharaan)>
-                        {{ $permintaan->no_permintaan_pemeliharaan }} - {{ $permintaan->registerAset->nomor_register ?? '-' }}
+                    @php
+                        $namaBarang = $permintaan->registerAset->inventory->dataBarang->nama_barang ?? '-';
+                        $nomorRegister = $permintaan->registerAset->nomor_register ?? '-';
+                    @endphp
+                    <option
+                        value="{{ $permintaan->id_permintaan_pemeliharaan }}"
+                        data-nama-barang="{{ $namaBarang }}"
+                        data-nomor-register="{{ $nomorRegister }}"
+                        data-jenis="{{ $permintaan->jenis_pemeliharaan }}"
+                        @selected(old('id_permintaan_pemeliharaan', optional($selectedPermintaan)->id_permintaan_pemeliharaan) == $permintaan->id_permintaan_pemeliharaan)
+                    >
+                        {{ $permintaan->no_permintaan_pemeliharaan }} — {{ $namaBarang }} ({{ $nomorRegister }})
                     </option>
                 @endforeach
             </select>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium mb-2">Nama Barang yang akan di-service</label>
+                <input
+                    type="text"
+                    id="nama_barang_service"
+                    value="{{ old('nama_barang_service', $selectedPermintaan?->registerAset?->inventory?->dataBarang?->nama_barang ?? '') }}"
+                    readonly
+                    class="block w-full border border-gray-200 bg-gray-50 rounded-md px-3 py-2 text-gray-800"
+                    placeholder="Otomatis terisi dari permintaan"
+                >
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Nomor Register</label>
+                <input
+                    type="text"
+                    id="nomor_register_service"
+                    value="{{ old('nomor_register_service', $selectedPermintaan?->registerAset?->nomor_register ?? '') }}"
+                    readonly
+                    class="block w-full border border-gray-200 bg-gray-50 rounded-md px-3 py-2 text-gray-800"
+                    placeholder="Otomatis terisi dari permintaan"
+                >
+            </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div><label class="block text-sm font-medium mb-2">Tanggal Servis</label><input type="date" name="tanggal_service" value="{{ old('tanggal_service', now()->toDateString()) }}" required class="block w-full border border-gray-300 rounded-md px-3 py-2"></div>
@@ -43,6 +77,28 @@
             <div><label class="block text-sm font-medium mb-2">Biaya Servis</label><input type="number" step="0.01" min="0" name="biaya_service" value="{{ old('biaya_service', 0) }}" class="block w-full border border-gray-300 rounded-md px-3 py-2"></div>
             <div><label class="block text-sm font-medium mb-2">Biaya Sparepart</label><input type="number" step="0.01" min="0" name="biaya_sparepart" value="{{ old('biaya_sparepart', 0) }}" class="block w-full border border-gray-300 rounded-md px-3 py-2"></div>
             <div><label class="block text-sm font-medium mb-2">Kondisi Setelah Servis</label><select name="kondisi_setelah_service" class="block w-full border border-gray-300 rounded-md px-3 py-2"><option value="">-</option>@foreach(['BAIK','RUSAK_RINGAN','RUSAK_BERAT','TIDAK_BISA_DIPERBAIKI'] as $kondisi)<option value="{{ $kondisi }}" @selected(old('kondisi_setelah_service')===$kondisi)>{{ $kondisi }}</option>@endforeach</select></div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Rekomendasi <span class="text-red-500">*</span> (wajib jika status SELESAI)</label>
+                <select name="rekomendasi" class="block w-full border border-gray-300 rounded-md px-3 py-2 @error('rekomendasi') border-red-500 @enderror">
+                    <option value="">Pilih rekomendasi</option>
+                    @foreach(\App\Enums\PemeliharaanRekomendasi::cases() as $rek)
+                        <option value="{{ $rek->value }}" @selected(old('rekomendasi')===$rek->value)>{{ $rek->label() }}</option>
+                    @endforeach
+                </select>
+                @error('rekomendasi')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
+            <div class="sm:col-span-2">
+                <label class="block text-sm font-medium mb-2">Catatan Rekomendasi</label>
+                <textarea name="rekomendasi_catatan" rows="2" class="block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Detail rekomendasi / kebutuhan spare part...">{{ old('rekomendasi_catatan') }}</textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Status Service</label>
+                <select name="status_service" class="block w-full border border-gray-300 rounded-md px-3 py-2">
+                    @foreach(['MENUNGGU','DIPROSES','SELESAI'] as $st)
+                        <option value="{{ $st }}" @selected(old('status_service', 'MENUNGGU')===$st)>{{ $st }}</option>
+                    @endforeach
+                </select>
+            </div>
         </div>
         <div><label class="block text-sm font-medium mb-2">Deskripsi Kerja</label><textarea name="deskripsi_kerja" rows="3" class="block w-full border border-gray-300 rounded-md px-3 py-2">{{ old('deskripsi_kerja') }}</textarea></div>
         <div><label class="block text-sm font-medium mb-2">Tindakan</label><textarea name="tindakan_yang_dilakukan" rows="3" class="block w-full border border-gray-300 rounded-md px-3 py-2">{{ old('tindakan_yang_dilakukan') }}</textarea></div>
@@ -80,6 +136,33 @@
 @push('scripts')
 <script>
     (function () {
+        const permintaanSelect = document.getElementById('id_permintaan_pemeliharaan');
+        const namaBarangInput = document.getElementById('nama_barang_service');
+        const nomorRegisterInput = document.getElementById('nomor_register_service');
+        const jenisSelect = document.querySelector('select[name="jenis_service"]');
+
+        function syncFromPermintaan() {
+            if (!permintaanSelect) return;
+            const option = permintaanSelect.options[permintaanSelect.selectedIndex];
+            if (namaBarangInput) {
+                namaBarangInput.value = option?.dataset?.namaBarang || '';
+            }
+            if (nomorRegisterInput) {
+                nomorRegisterInput.value = option?.dataset?.nomorRegister || '';
+            }
+            if (jenisSelect && option?.dataset?.jenis) {
+                const jenis = option.dataset.jenis;
+                if ([...jenisSelect.options].some((o) => o.value === jenis)) {
+                    jenisSelect.value = jenis;
+                }
+            }
+        }
+
+        if (permintaanSelect) {
+            permintaanSelect.addEventListener('change', syncFromPermintaan);
+            syncFromPermintaan();
+        }
+
         const uploadInput = document.getElementById('file_laporan_upload_create');
         const kameraInput = document.getElementById('file_laporan_kamera_create');
         const uploadName = document.getElementById('file_laporan_upload_create_name');

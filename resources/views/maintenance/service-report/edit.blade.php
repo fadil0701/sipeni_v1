@@ -15,6 +15,20 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label class="block text-sm font-medium mb-2">Jenis Servis</label><select name="jenis_service" required class="block w-full border border-gray-300 rounded-md px-3 py-2">@foreach(['RUTIN','KALIBRASI','PERBAIKAN','PENGGANTIAN_SPAREPART'] as $jenis)<option value="{{ $jenis }}" @selected(old('jenis_service', $serviceReport->jenis_service)===$jenis)>{{ $jenis }}</option>@endforeach</select></div>
             <div><label class="block text-sm font-medium mb-2">Kondisi Setelah Servis</label><select name="kondisi_setelah_service" class="block w-full border border-gray-300 rounded-md px-3 py-2"><option value="">-</option>@foreach(['BAIK','RUSAK_RINGAN','RUSAK_BERAT','TIDAK_BISA_DIPERBAIKI'] as $kondisi)<option value="{{ $kondisi }}" @selected(old('kondisi_setelah_service', $serviceReport->kondisi_setelah_service)===$kondisi)>{{ $kondisi }}</option>@endforeach</select></div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Rekomendasi <span class="text-red-500">*</span> (wajib jika SELESAI)</label>
+                <select name="rekomendasi" class="block w-full border border-gray-300 rounded-md px-3 py-2 @error('rekomendasi') border-red-500 @enderror">
+                    <option value="">Pilih rekomendasi</option>
+                    @foreach(\App\Enums\PemeliharaanRekomendasi::cases() as $rek)
+                        <option value="{{ $rek->value }}" @selected(old('rekomendasi', $serviceReport->rekomendasi)===$rek->value)>{{ $rek->label() }}</option>
+                    @endforeach
+                </select>
+                @error('rekomendasi')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
+            <div class="sm:col-span-2">
+                <label class="block text-sm font-medium mb-2">Catatan Rekomendasi</label>
+                <textarea name="rekomendasi_catatan" rows="2" class="block w-full border border-gray-300 rounded-md px-3 py-2">{{ old('rekomendasi_catatan', $serviceReport->rekomendasi_catatan) }}</textarea>
+            </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label class="block text-sm font-medium mb-2">Vendor</label><input type="text" name="vendor" value="{{ old('vendor', $serviceReport->vendor) }}" class="block w-full border border-gray-300 rounded-md px-3 py-2"></div>

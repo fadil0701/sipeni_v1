@@ -63,6 +63,7 @@ class StandardRolePermissionV2Seeder extends Seeder
                 'transaction.approval.index', 'transaction.approval.show',
                 'transaction.approval.approve', 'transaction.approval.reject', 'transaction.approval.mengetahui',
                 'transaction.draft-distribusi.index', 'transaction.draft-distribusi.show',
+                'maintenance.permintaan-pemeliharaan.index', 'maintenance.permintaan-pemeliharaan.show',
                 'reports.index', 'reports.kartu-stok', 'reports.kartu-stok.merk-breakdown',
                 'reports.stock-gudang', 'reports.stock-gudang.export',
                 'reports.transaksi-summary', 'reports.aset-summary', 'reports.maintenance-summary',
@@ -91,6 +92,7 @@ class StandardRolePermissionV2Seeder extends Seeder
                 'transaction.peminjaman-barang.verifikasi-unit-a', 'transaction.peminjaman-barang.approve-unit-b',
                 'transaction.peminjaman-barang.approve-pengurus',
                 'transaction.approval.index', 'transaction.approval.show', 'transaction.approval.mengetahui',
+                'maintenance.permintaan-pemeliharaan.index', 'maintenance.permintaan-pemeliharaan.show',
                 'inventory.data-stock.index',
                 'inventory.data-inventory.index', 'inventory.data-inventory.show',
                 'asset.register-aset.index', 'asset.register-aset.show',
@@ -205,6 +207,8 @@ class StandardRolePermissionV2Seeder extends Seeder
                 ->merge($byPrefix('transaction.retur-barang.'))
                 ->merge($byPrefix('transaction.approval.'))
                 ->merge($byPrefix('transaction.peminjaman-barang.'))
+                ->merge($byPrefix('maintenance.permintaan-pemeliharaan.'))
+                ->merge($byPrefix('maintenance.service-report.'))
                 ->merge($byPrefix('reports.'))
                 ->merge($explicit([
                     'user.dashboard',

@@ -200,7 +200,7 @@
                 
                         @if($currentUser && ($canAccessPermintaan || PermissionHelper::canAccess($currentUser, 'user.requests.index')))
                             @php
-                                $permintaanOpen = $isRoute(['transaction.permintaan-barang.*', 'maintenance.permintaan-pemeliharaan.*', 'user.requests.*']) || $isRkuDaftarRoute || $isRkuInputRoute;
+                                $permintaanOpen = $isRoute(['transaction.permintaan-barang.*', 'maintenance.permintaan-pemeliharaan.*', 'user.requests.*', 'transaction.peminjaman-barang.*', 'transaction.pengembalian-barang.*']) || $isRkuDaftarRoute || $isRkuInputRoute;
                             @endphp
                             <li>
                                 <div class="flex items-center px-4 py-2 rounded-lg text-blue-200 hover:bg-blue-800 cursor-pointer" onclick="toggleSubmenu('permintaan-unit')">
@@ -212,7 +212,7 @@
                                         <li><a href="{{ route('transaction.permintaan-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.permintaan-barang.*'])) }}">Permintaan Barang</a></li>
                                     @elseif(PermissionHelper::canAccess($currentUser, 'user.requests.index'))
                                         <li><a href="{{ route('user.requests.index') }}" class="{{ $linkClass($isRoute(['user.requests.*'])) }}">Permintaan Barang</a></li>
-                                    @endif                                   
+                                    @endif
                                     @if(PermissionHelper::canAccess($currentUser, 'maintenance.permintaan-pemeliharaan.index'))
                                         <li><a href="{{ route('maintenance.permintaan-pemeliharaan.index') }}" class="{{ $linkClass($isRoute(['maintenance.permintaan-pemeliharaan.*'])) }}">Permintaan Pemeliharaan</a></li>
                                     @endif
@@ -447,7 +447,7 @@
 
                         @if($canAccessMaintenance)
                             @php
-                                $maintOpen = $isRoute(['maintenance.*']);
+                                $maintOpen = $isRoute(['maintenance.jadwal-maintenance.*', 'maintenance.kalibrasi-aset.*', 'maintenance.service-report.*']);
                             @endphp
                             <li>
                                 <div class="flex items-center px-4 py-2 rounded-lg text-blue-200 hover:bg-blue-800 cursor-pointer" onclick="toggleSubmenu('maintenance')">
@@ -455,9 +455,15 @@
                                     <svg id="maintenance-arrow" class="w-4 h-4 ml-auto transition-transform {{ $maintOpen ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </div>
                                 <ul id="maintenance-submenu" class="{{ $groupClass($maintOpen) }}">
-                                    <li><a href="{{ route('maintenance.jadwal-maintenance.index') }}" class="{{ $linkClass($isRoute(['maintenance.jadwal-maintenance.*'])) }}">Jadwal Pemeliharaan</a></li>
-                                    <li><a href="{{ route('maintenance.kalibrasi-aset.index') }}" class="{{ $linkClass($isRoute(['maintenance.kalibrasi-aset.*'])) }}">Kalibrasi</a></li>
-                                    <li><a href="{{ route('maintenance.service-report.index') }}" class="{{ $linkClass($isRoute(['maintenance.service-report.*'])) }}">Laporan Servis</a></li>
+                                    @if(PermissionHelper::canAccess($currentUser, 'maintenance.jadwal-maintenance.index'))
+                                        <li><a href="{{ route('maintenance.jadwal-maintenance.index') }}" class="{{ $linkClass($isRoute(['maintenance.jadwal-maintenance.*'])) }}">Jadwal Pemeliharaan</a></li>
+                                    @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'maintenance.kalibrasi-aset.index'))
+                                        <li><a href="{{ route('maintenance.kalibrasi-aset.index') }}" class="{{ $linkClass($isRoute(['maintenance.kalibrasi-aset.*'])) }}">Kalibrasi</a></li>
+                                    @endif
+                                    @if(PermissionHelper::canAccess($currentUser, 'maintenance.service-report.index'))
+                                        <li><a href="{{ route('maintenance.service-report.index') }}" class="{{ $linkClass($isRoute(['maintenance.service-report.*'])) }}">Laporan Servis</a></li>
+                                    @endif
                                 </ul>
                             </li>
                         @endif

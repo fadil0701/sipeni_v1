@@ -45,6 +45,19 @@
                     </button>
                 </form>
             @endif
+            @php
+                $canProsesDisposisi = ($pendingDisposisiApprovalId ?? null)
+                    && $permintaan->status_permintaan === 'DISETUJUI'
+                    && \App\Helpers\PermissionHelper::canAccess(auth()->user(), 'transaction.approval.disposisi');
+            @endphp
+            @if($canProsesDisposisi)
+                <a
+                    href="{{ route('transaction.approval.show', $pendingDisposisiApprovalId) }}"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                >
+                    Proses Disposisi
+                </a>
+            @endif
         </div>
     </div>
     
@@ -138,12 +151,65 @@
                 </dl>
             </div>
 
+            @if($permintaan->jenis_pelaksana || $permintaan->rekomendasi_akhir || $permintaan->serviceReport)
+            <div>
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Pelaksanaan & Rekomendasi</h3>
+                <dl class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                    @if($permintaan->jenis_pelaksana)
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 mb-1">Jenis Pelaksana</dt>
+                            <dd class="text-sm font-semibold text-gray-900">{{ $permintaan->jenis_pelaksana }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 mb-1">Pelaksana</dt>
+                            <dd class="text-sm font-semibold text-gray-900">
+                                {{ $permintaan->pegawaiPelaksana->nama_pegawai ?? $permintaan->nama_vendor ?? '-' }}
+                            </dd>
+                        </div>
+                    @endif
+                    @if($permintaan->rekomendasi_akhir)
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 mb-1">Rekomendasi Akhir</dt>
+                            <dd class="text-sm font-semibold text-gray-900">{{ $permintaan->rekomendasi_akhir }}</dd>
+                        </div>
+                    @endif
+                    @if($permintaan->serviceReport)
+                        <div class="sm:col-span-2">
+                            <dt class="text-sm font-medium text-gray-500 mb-1">Service Report</dt>
+                            <dd class="text-sm font-semibold text-gray-900">
+                                <a href="{{ route('maintenance.service-report.show', $permintaan->serviceReport->id_service_report) }}" class="text-blue-600 hover:underline">
+                                    {{ $permintaan->serviceReport->no_service_report }}
+                                </a>
+                            </dd>
+                        </div>
+                    @endif
+                </dl>
+            </div>
+            @endif
+
             <!-- Deskripsi Kerusakan -->
             @if($permintaan->deskripsi_kerusakan)
             <div>
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Deskripsi Kerusakan / Masalah</h3>
                 <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <p class="text-sm text-gray-900 whitespace-pre-wrap">{{ $permintaan->deskripsi_kerusakan }}</p>
+                </div>
+            </div>
+            @endif
+
+            <!-- Foto Kondisi -->
+            @if($permintaan->foto_kondisi)
+            <div>
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Foto Kondisi Barang</h3>
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 inline-block">
+                    <a href="{{ route('media.show', ['path' => $permintaan->foto_kondisi]) }}" target="_blank" rel="noopener noreferrer">
+                        <img
+                            src="{{ route('media.show', ['path' => $permintaan->foto_kondisi]) }}"
+                            alt="Foto kondisi barang"
+                            class="max-h-72 w-auto rounded-md border border-gray-200 object-contain"
+                        >
+                    </a>
+                    <p class="mt-2 text-xs text-gray-500">Klik gambar untuk membuka ukuran penuh.</p>
                 </div>
             </div>
             @endif

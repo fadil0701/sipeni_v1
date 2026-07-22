@@ -16,7 +16,7 @@
         <p class="text-sm text-gray-600 mt-1">No. Permintaan: <span class="font-semibold">{{ $permintaan->no_permintaan_pemeliharaan }}</span></p>
     </div>
     
-    <form action="{{ route('maintenance.permintaan-pemeliharaan.update', $permintaan->id_permintaan_pemeliharaan) }}" method="POST" class="p-6">
+    <form action="{{ route('maintenance.permintaan-pemeliharaan.update', $permintaan->id_permintaan_pemeliharaan) }}" method="POST" class="p-6" enctype="multipart/form-data">
         @csrf
         @method('PUT')
         
@@ -75,18 +75,44 @@
                     id="id_register_aset" 
                     name="id_register_aset" 
                     required
-                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_register_aset') border-red-500 @enderror"
+                    data-searchable="true"
+                    class="select-searchable block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_register_aset') border-red-500 @enderror"
                 >
                     <option value="">Pilih Register Aset</option>
                     @foreach($registerAsets as $aset)
-                        <option value="{{ $aset->id_register_aset }}" {{ old('id_register_aset', $permintaan->id_register_aset) == $aset->id_register_aset ? 'selected' : '' }}>
-                            {{ $aset->nomor_register }} - {{ $aset->inventory->dataBarang->nama_barang ?? '-' }}
+                        @php
+                            $inv = $aset->inventory;
+                            $noSeri = $aset->inventoryItem->no_seri ?? ($inv->no_seri ?? '-');
+                        @endphp
+                        <option
+                            value="{{ $aset->id_register_aset }}"
+                            data-merk="{{ $inv->merk ?? '-' }}"
+                            data-tipe="{{ $inv->tipe ?? '-' }}"
+                            data-no-seri="{{ $noSeri }}"
+                            {{ old('id_register_aset', $permintaan->id_register_aset) == $aset->id_register_aset ? 'selected' : '' }}
+                        >
+                            {{ $aset->nomor_register }} - {{ $inv->dataBarang->nama_barang ?? '-' }}
                         </option>
                     @endforeach
                 </select>
                 @error('id_register_aset')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Merk</label>
+                    <input type="text" id="meta_merk" readonly class="block w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md text-sm text-gray-800" value="-">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tipe</label>
+                    <input type="text" id="meta_tipe" readonly class="block w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md text-sm text-gray-800" value="-">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">No Seri</label>
+                    <input type="text" id="meta_no_seri" readonly class="block w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md text-sm text-gray-800" value="-">
+                </div>
             </div>
 
             <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
@@ -167,6 +193,38 @@
             </div>
 
             <div>
+                <label for="foto_kondisi" class="block text-sm font-medium text-gray-700 mb-2">
+                    Foto Kondisi Barang
+                </label>
+                @if($permintaan->foto_kondisi)
+                    <div class="mb-3 flex items-start gap-4">
+                        <img
+                            src="{{ route('media.show', ['path' => $permintaan->foto_kondisi]) }}"
+                            alt="Foto kondisi saat ini"
+                            class="h-28 w-28 rounded-md border border-gray-200 object-cover"
+                        >
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" name="hapus_foto_kondisi" value="1" class="rounded border-gray-300 text-red-600 focus:ring-red-500">
+                            Hapus foto saat ini
+                        </label>
+                    </div>
+                @endif
+                <input
+                    type="file"
+                    id="foto_kondisi"
+                    name="foto_kondisi"
+                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                    class="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 @error('foto_kondisi') border-red-500 @enderror"
+                    onchange="previewFotoKondisi(this)"
+                >
+                <img id="foto_kondisi_preview" src="" alt="Preview foto kondisi" class="mt-3 hidden h-28 w-28 rounded-md border border-gray-200 object-cover">
+                <p class="mt-1 text-xs text-gray-500">Opsional. Format JPG/PNG/WebP, maksimal 5 MB.</p>
+                @error('foto_kondisi')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div>
                 <label for="keterangan" class="block text-sm font-medium text-gray-700 mb-2">Keterangan</label>
                 <textarea 
                     id="keterangan" 
@@ -208,5 +266,50 @@
     </form>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function previewFotoKondisi(input) {
+    const preview = document.getElementById('foto_kondisi_preview');
+    if (!preview) return;
+    const file = input.files && input.files[0];
+    if (!file) {
+        preview.src = '';
+        preview.classList.add('hidden');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        preview.src = e.target.result;
+        preview.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const select = document.getElementById('id_register_aset');
+    const merk = document.getElementById('meta_merk');
+    const tipe = document.getElementById('meta_tipe');
+    const noSeri = document.getElementById('meta_no_seri');
+
+    function syncMeta() {
+        if (!select) return;
+        const option = select.options[select.selectedIndex];
+        if (merk) merk.value = option?.dataset?.merk || '-';
+        if (tipe) tipe.value = option?.dataset?.tipe || '-';
+        if (noSeri) noSeri.value = option?.dataset?.noSeri || '-';
+    }
+
+    if (select) {
+        if (window.jQuery) {
+            window.jQuery(select).on('change select2:select select2:clear', syncMeta);
+        } else {
+            select.addEventListener('change', syncMeta);
+        }
+        syncMeta();
+    }
+});
+</script>
+@endpush
 
 

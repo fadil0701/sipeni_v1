@@ -374,9 +374,6 @@ class PermissionHelper
                 'permission' => null,
                 'submenus' => [
                     'approval-permintaan-barang' => ['route' => 'transaction.approval.index', 'permission' => 'transaction.approval.index'],
-                    // Note: Route untuk approval pemeliharaan dan pengadaan belum dibuat, menggunakan route sementara
-                    'approval-permintaan-pemeliharaan' => ['route' => 'maintenance.permintaan-pemeliharaan.index', 'permission' => 'maintenance.permintaan-pemeliharaan.index'],
-                    'approval-permintaan-pengadaan-barang' => ['route' => 'planning.rku.index', 'permission' => 'planning.rku.index'],
                 ],
             ],
             'pengurus-barang' => [

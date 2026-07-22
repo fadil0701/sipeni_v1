@@ -23,6 +23,12 @@ class PermintaanPemeliharaan extends Model
         'prioritas',
         'status_permintaan',
         'deskripsi_kerusakan',
+        'foto_kondisi',
+        'jenis_pelaksana',
+        'id_pegawai_pelaksana',
+        'nama_vendor',
+        'disposisi_catatan',
+        'rekomendasi_akhir',
         'keterangan',
     ];
 
@@ -80,6 +86,11 @@ class PermintaanPemeliharaan extends Model
     public function pemohon(): BelongsTo
     {
         return $this->belongsTo(MasterPegawai::class, 'id_pemohon', 'id');
+    }
+
+    public function pegawaiPelaksana(): BelongsTo
+    {
+        return $this->belongsTo(MasterPegawai::class, 'id_pegawai_pelaksana', 'id');
     }
 
     /**

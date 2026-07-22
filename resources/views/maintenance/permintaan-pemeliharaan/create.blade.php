@@ -15,7 +15,7 @@
         <h2 class="text-xl font-semibold text-gray-900">Tambah Permintaan Pemeliharaan</h2>
     </div>
     
-    <form action="{{ route('maintenance.permintaan-pemeliharaan.store') }}" method="POST" class="p-6 space-y-6">
+    <form action="{{ route('maintenance.permintaan-pemeliharaan.store') }}" method="POST" class="p-6 space-y-6" enctype="multipart/form-data">
         @csrf
 
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -107,10 +107,14 @@
                 <table class="min-w-full divide-y divide-gray-200 rounded-md border border-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Register Aset</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase min-w-[14rem]">Register Aset</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Merk</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Tipe</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">No Seri</th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Jenis Pemeliharaan</th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Prioritas</th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Deskripsi Kerusakan</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Foto Kondisi</th>
                             <th class="px-3 py-2 text-right text-xs font-medium text-gray-600 uppercase">Aksi</th>
                         </tr>
                     </thead>
@@ -130,6 +134,9 @@
                 <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
             @enderror
             @error('rows.*.deskripsi_kerusakan')
+                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+            @error('rows.*.foto_kondisi')
                 <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
             @enderror
         </div>
@@ -166,70 +173,163 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const registerAsets = @json($registerAsets->map(function ($aset) {
-        return [
-            'id' => $aset->id_register_aset,
-            'label' => ($aset->nomor_register ?: '-') . ' - ' . ($aset->inventory->dataBarang->nama_barang ?? '-'),
-        ];
-    })->values()->toArray());
+    const registerAsets = @json($registerAsetOptions);
+    const registerById = {};
+    registerAsets.forEach(function (aset) {
+        registerById[String(aset.id)] = aset;
+    });
     const oldRows = @json(old('rows', []));
     const tbody = document.getElementById('permintaan-rows-body');
     const addBtn = document.getElementById('add-permintaan-row');
+
+    function escapeHtml(text) {
+        return String(text == null ? '' : text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
 
     function registerOptionsHtml(selectedId) {
         let html = '<option value="">Pilih Register Aset</option>';
         registerAsets.forEach(function (aset) {
             const selected = String(selectedId || '') === String(aset.id) ? 'selected' : '';
-            html += `<option value="${aset.id}" ${selected}>${aset.label}</option>`;
+            html += '<option value="' + aset.id + '" ' + selected + '>' + escapeHtml(aset.label) + '</option>';
         });
         return html;
+    }
+
+    function refreshSearchableSelect(selectElement) {
+        if (!selectElement || selectElement.tagName !== 'SELECT') return;
+        if (!(window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function')) {
+            return;
+        }
+        const $el = window.jQuery(selectElement);
+        if ($el.hasClass('select2-hidden-accessible')) {
+            try { $el.select2('destroy'); } catch (e) {}
+        }
+        delete selectElement.dataset.sipeniSelect2Init;
+        selectElement.classList.add('select-searchable', 'js-example-placeholder-single');
+        selectElement.setAttribute('data-searchable', 'true');
+        $el.select2(Object.assign({}, (typeof window.sipeniSelect2BaseOptions === 'function' ? window.sipeniSelect2BaseOptions() : { width: '100%', minimumResultsForSearch: 0 }), {
+            width: '100%',
+            placeholder: 'Cari register / nama barang...',
+            allowClear: true,
+            dropdownParent: window.jQuery(selectElement.closest('form') || document.body),
+        }));
+    }
+
+    function fillAsetMeta(tr, registerId) {
+        const aset = registerById[String(registerId || '')] || null;
+        tr.querySelector('.meta-merk').textContent = aset ? (aset.merk || '-') : '-';
+        tr.querySelector('.meta-tipe').textContent = aset ? (aset.tipe || '-') : '-';
+        tr.querySelector('.meta-no-seri').textContent = aset ? (aset.no_seri || '-') : '-';
+    }
+
+    function reindexRows() {
+        tbody.querySelectorAll('tr').forEach(function (tr, index) {
+            tr.querySelectorAll('[name^="rows["]').forEach(function (el) {
+                el.name = el.name.replace(/rows\[\d+]/, 'rows[' + index + ']');
+            });
+        });
     }
 
     function addRow(rowData) {
         const index = tbody.querySelectorAll('tr').length;
         const tr = document.createElement('tr');
         tr.className = 'border-b border-gray-100';
-        tr.innerHTML = `
-            <td class="px-3 py-2">
-                <select name="rows[${index}][id_register_aset]" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required>
-                    ${registerOptionsHtml(rowData && rowData.id_register_aset)}
-                </select>
-            </td>
-            <td class="px-3 py-2">
-                <select name="rows[${index}][jenis_pemeliharaan]" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required>
-                    <option value="">Pilih Jenis</option>
-                    <option value="RUTIN" ${(rowData && rowData.jenis_pemeliharaan === 'RUTIN') ? 'selected' : ''}>Rutin</option>
-                    <option value="KALIBRASI" ${(rowData && rowData.jenis_pemeliharaan === 'KALIBRASI') ? 'selected' : ''}>Kalibrasi</option>
-                    <option value="PERBAIKAN" ${(rowData && rowData.jenis_pemeliharaan === 'PERBAIKAN') ? 'selected' : ''}>Perbaikan</option>
-                    <option value="PENGGANTIAN_SPAREPART" ${(rowData && rowData.jenis_pemeliharaan === 'PENGGANTIAN_SPAREPART') ? 'selected' : ''}>Penggantian Sparepart</option>
-                </select>
-            </td>
-            <td class="px-3 py-2">
-                <select name="rows[${index}][prioritas]" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required>
-                    <option value="">Pilih Prioritas</option>
-                    <option value="RENDAH" ${(rowData && rowData.prioritas === 'RENDAH') ? 'selected' : ''}>Rendah</option>
-                    <option value="SEDANG" ${(rowData && rowData.prioritas === 'SEDANG') ? 'selected' : ''}>Sedang</option>
-                    <option value="TINGGI" ${(rowData && rowData.prioritas === 'TINGGI') ? 'selected' : ''}>Tinggi</option>
-                    <option value="DARURAT" ${(rowData && rowData.prioritas === 'DARURAT') ? 'selected' : ''}>Darurat</option>
-                </select>
-            </td>
-            <td class="px-3 py-2">
-                <textarea name="rows[${index}][deskripsi_kerusakan]" rows="2" placeholder="Jelaskan kerusakan/masalah..." class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">${(rowData && rowData.deskripsi_kerusakan) ? rowData.deskripsi_kerusakan : ''}</textarea>
-            </td>
-            <td class="px-3 py-2 text-right">
-                <button type="button" class="remove-row inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100" title="Hapus baris" aria-label="Hapus baris">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11v6M14 11v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path>
-                    </svg>
-                </button>
-            </td>
-        `;
+        const selectedRegisterId = rowData && rowData.id_register_aset ? rowData.id_register_aset : '';
+        const deskripsi = rowData && rowData.deskripsi_kerusakan ? escapeHtml(rowData.deskripsi_kerusakan) : '';
+        const jenis = rowData && rowData.jenis_pemeliharaan ? rowData.jenis_pemeliharaan : '';
+        const prioritas = rowData && rowData.prioritas ? rowData.prioritas : '';
+
+        tr.innerHTML =
+            '<td class="px-3 py-2" style="min-width:14rem">' +
+                '<select name="rows[' + index + '][id_register_aset]" class="select-register-aset select-searchable block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" data-searchable="true" required>' +
+                    registerOptionsHtml(selectedRegisterId) +
+                '</select>' +
+            '</td>' +
+            '<td class="px-3 py-2 whitespace-nowrap"><span class="meta-merk text-sm text-gray-800">-</span></td>' +
+            '<td class="px-3 py-2 whitespace-nowrap"><span class="meta-tipe text-sm text-gray-800">-</span></td>' +
+            '<td class="px-3 py-2 whitespace-nowrap"><span class="meta-no-seri text-sm text-gray-800">-</span></td>' +
+            '<td class="px-3 py-2">' +
+                '<select name="rows[' + index + '][jenis_pemeliharaan]" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required>' +
+                    '<option value="">Pilih Jenis</option>' +
+                    '<option value="RUTIN"' + (jenis === 'RUTIN' ? ' selected' : '') + '>Rutin</option>' +
+                    '<option value="KALIBRASI"' + (jenis === 'KALIBRASI' ? ' selected' : '') + '>Kalibrasi</option>' +
+                    '<option value="PERBAIKAN"' + (jenis === 'PERBAIKAN' ? ' selected' : '') + '>Perbaikan</option>' +
+                    '<option value="PENGGANTIAN_SPAREPART"' + (jenis === 'PENGGANTIAN_SPAREPART' ? ' selected' : '') + '>Penggantian Sparepart</option>' +
+                '</select>' +
+            '</td>' +
+            '<td class="px-3 py-2">' +
+                '<select name="rows[' + index + '][prioritas]" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required>' +
+                    '<option value="">Pilih Prioritas</option>' +
+                    '<option value="RENDAH"' + (prioritas === 'RENDAH' ? ' selected' : '') + '>Rendah</option>' +
+                    '<option value="SEDANG"' + (prioritas === 'SEDANG' ? ' selected' : '') + '>Sedang</option>' +
+                    '<option value="TINGGI"' + (prioritas === 'TINGGI' ? ' selected' : '') + '>Tinggi</option>' +
+                    '<option value="DARURAT"' + (prioritas === 'DARURAT' ? ' selected' : '') + '>Darurat</option>' +
+                '</select>' +
+            '</td>' +
+            '<td class="px-3 py-2">' +
+                '<textarea name="rows[' + index + '][deskripsi_kerusakan]" rows="2" placeholder="Jelaskan kerusakan/masalah..." class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">' + deskripsi + '</textarea>' +
+            '</td>' +
+            '<td class="px-3 py-2">' +
+                '<div class="space-y-2" style="min-width:10rem">' +
+                    '<input type="file" name="rows[' + index + '][foto_kondisi]" accept="image/jpeg,image/png,image/jpg,image/webp" class="foto-kondisi-input block w-full text-xs text-gray-600 file:mr-2 file:rounded-md file:border-0 file:bg-blue-50 file:px-2 file:py-1.5 file:text-xs file:font-medium file:text-blue-700 hover:file:bg-blue-100">' +
+                    '<img src="" alt="Preview foto kondisi" class="foto-kondisi-preview hidden h-16 w-16 rounded-md border border-gray-200 object-cover">' +
+                    '<p class="text-[11px] text-gray-500">JPG/PNG/WebP, maks. 5 MB</p>' +
+                '</div>' +
+            '</td>' +
+            '<td class="px-3 py-2 text-right">' +
+                '<button type="button" class="remove-row inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100" title="Hapus baris" aria-label="Hapus baris">' +
+                    '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7"></path>' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11v6M14 11v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path>' +
+                    '</svg>' +
+                '</button>' +
+            '</td>';
+
         tbody.appendChild(tr);
+
+        const registerSelect = tr.querySelector('.select-register-aset');
+        refreshSearchableSelect(registerSelect);
+        fillAsetMeta(tr, selectedRegisterId);
+
+        const onRegisterChange = function () {
+            fillAsetMeta(tr, registerSelect.value);
+        };
+        if (window.jQuery) {
+            window.jQuery(registerSelect).on('change select2:select select2:clear', onRegisterChange);
+        } else {
+            registerSelect.addEventListener('change', onRegisterChange);
+        }
+
+        const fotoInput = tr.querySelector('.foto-kondisi-input');
+        const fotoPreview = tr.querySelector('.foto-kondisi-preview');
+        if (fotoInput && fotoPreview) {
+            fotoInput.addEventListener('change', function () {
+                const file = this.files && this.files[0];
+                if (!file) {
+                    fotoPreview.src = '';
+                    fotoPreview.classList.add('hidden');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    fotoPreview.src = e.target.result;
+                    fotoPreview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            });
+        }
 
         tr.querySelector('.remove-row').addEventListener('click', function () {
             if (tbody.querySelectorAll('tr').length <= 1) return;
+            if (window.jQuery && window.jQuery(registerSelect).hasClass('select2-hidden-accessible')) {
+                try { window.jQuery(registerSelect).select2('destroy'); } catch (e) {}
+            }
             tr.remove();
+            reindexRows();
         });
     }
 
@@ -245,5 +345,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
-
-

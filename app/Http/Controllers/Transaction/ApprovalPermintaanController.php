@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ApprovalFlowDefinition;
 use App\Models\ApprovalLog;
 use App\Models\PermintaanBarang;
+use App\Models\PermintaanPemeliharaan;
 use App\Models\Role;
 use App\Services\ApprovalPermintaanService;
 use App\Services\ApprovalService;
@@ -45,6 +46,7 @@ class ApprovalPermintaanController extends Controller
         // Pastikan setiap permintaan berstatus diajukan memiliki log approval awal (step 2).
         // Ini menangani data lama yang status-nya sudah diajukan tetapi belum punya approval_log.
         $this->syncInitialApprovalLogsForSubmittedRequests();
+        $this->syncInitialApprovalLogsForSubmittedPemeliharaan();
 
         // Pastikan roles ter-load
         if (! $user->relationLoaded('roles')) {
@@ -53,8 +55,8 @@ class ApprovalPermintaanController extends Controller
 
         $userRoles = $user->roles->pluck('id')->toArray();
 
-        // Ambil flow definition yang sesuai dengan role user saat ini
-        $flowDefinitions = ApprovalFlowDefinition::where('modul_approval', 'PERMINTAAN_BARANG')
+        // Ambil flow definition yang sesuai dengan role user saat ini (barang + pemeliharaan)
+        $flowDefinitions = ApprovalFlowDefinition::whereIn('modul_approval', ['PERMINTAAN_BARANG', 'PERMINTAAN_PEMELIHARAAN'])
             ->whereIn('role_id', $userRoles)
             ->pluck('id');
 
@@ -68,7 +70,7 @@ class ApprovalPermintaanController extends Controller
         // Jika tidak, tampilkan hanya yang sesuai dengan role user
         if (UserScope::canViewCrossUnitData($user)) {
             $query = ApprovalLog::with(['approvalFlow.role', 'user', 'permintaan'])
-                ->where('modul_approval', 'PERMINTAAN_BARANG')
+                ->whereIn('modul_approval', ['PERMINTAAN_BARANG', 'PERMINTAAN_PEMELIHARAAN'])
                 ->whereIn('status', $logStatuses);
         } else {
             // Ambil approval log yang menunggu persetujuan untuk role user saat ini
@@ -76,11 +78,11 @@ class ApprovalPermintaanController extends Controller
             if ($flowDefinitions->isEmpty()) {
                 // Jika tidak ada flow definition yang sesuai, tidak tampilkan apa-apa
                 $query = ApprovalLog::with(['approvalFlow.role', 'user', 'permintaan'])
-                    ->where('modul_approval', 'PERMINTAAN_BARANG')
+                    ->whereIn('modul_approval', ['PERMINTAAN_BARANG', 'PERMINTAAN_PEMELIHARAAN'])
                     ->whereRaw('1 = 0'); // Tidak tampilkan apa-apa
             } else {
                 $query = ApprovalLog::with(['approvalFlow.role', 'user', 'permintaan'])
-                    ->where('modul_approval', 'PERMINTAAN_BARANG')
+                    ->whereIn('modul_approval', ['PERMINTAAN_BARANG', 'PERMINTAAN_PEMELIHARAAN'])
                     ->whereIn('id_approval_flow', $flowDefinitions)
                     ->whereIn('status', $logStatuses);
             }
@@ -98,15 +100,33 @@ class ApprovalPermintaanController extends Controller
 
         // Filter berdasarkan tanggal mulai (berdasarkan tanggal permintaan)
         if ($request->filled('tanggal_mulai')) {
-            $query->whereHas('permintaan', function ($q) use ($request) {
-                $q->whereDate('tanggal_permintaan', '>=', $request->tanggal_mulai);
+            $tanggalMulai = $request->tanggal_mulai;
+            $query->where(function ($q) use ($tanggalMulai) {
+                $q->where(function ($qq) use ($tanggalMulai) {
+                    $qq->where('modul_approval', 'PERMINTAAN_BARANG')
+                        ->whereHas('permintaan', fn ($p) => $p->whereDate('tanggal_permintaan', '>=', $tanggalMulai));
+                })->orWhere(function ($qq) use ($tanggalMulai) {
+                    $qq->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+                        ->whereIn('id_referensi', PermintaanPemeliharaan::query()
+                            ->whereDate('tanggal_permintaan', '>=', $tanggalMulai)
+                            ->pluck('id_permintaan_pemeliharaan'));
+                });
             });
         }
 
         // Filter berdasarkan tanggal akhir (berdasarkan tanggal permintaan)
         if ($request->filled('tanggal_akhir')) {
-            $query->whereHas('permintaan', function ($q) use ($request) {
-                $q->whereDate('tanggal_permintaan', '<=', $request->tanggal_akhir);
+            $tanggalAkhir = $request->tanggal_akhir;
+            $query->where(function ($q) use ($tanggalAkhir) {
+                $q->where(function ($qq) use ($tanggalAkhir) {
+                    $qq->where('modul_approval', 'PERMINTAAN_BARANG')
+                        ->whereHas('permintaan', fn ($p) => $p->whereDate('tanggal_permintaan', '<=', $tanggalAkhir));
+                })->orWhere(function ($qq) use ($tanggalAkhir) {
+                    $qq->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+                        ->whereIn('id_referensi', PermintaanPemeliharaan::query()
+                            ->whereDate('tanggal_permintaan', '<=', $tanggalAkhir)
+                            ->pluck('id_permintaan_pemeliharaan'));
+                });
             });
         }
 
@@ -115,25 +135,26 @@ class ApprovalPermintaanController extends Controller
             $q->with('role');
         }, 'permintaan'])->get();
 
-        // Kelompokkan berdasarkan id_referensi (permintaan)
+        // Kelompokkan berdasarkan modul + id_referensi (hindari bentrok ID antar tabel)
         $permintaanGroups = [];
         foreach ($allApprovals as $approval) {
-            $idReferensi = $approval->id_referensi;
-            if (! isset($permintaanGroups[$idReferensi])) {
-                $permintaanGroups[$idReferensi] = [
-                    'permintaan_id' => $idReferensi,
+            $groupKey = $approval->modul_approval.'|'.$approval->id_referensi;
+            if (! isset($permintaanGroups[$groupKey])) {
+                $permintaanGroups[$groupKey] = [
+                    'modul_approval' => $approval->modul_approval,
+                    'permintaan_id' => $approval->id_referensi,
                     'approvals' => [],
                     'current_step' => null,
                     'current_status' => null,
                     'latest_approval' => null,
                 ];
             }
-            $permintaanGroups[$idReferensi]['approvals'][] = $approval;
+            $permintaanGroups[$groupKey]['approvals'][] = $approval;
 
             // Tentukan approval terakhir berdasarkan created_at
-            if (! $permintaanGroups[$idReferensi]['latest_approval'] ||
-                $approval->created_at > $permintaanGroups[$idReferensi]['latest_approval']->created_at) {
-                $permintaanGroups[$idReferensi]['latest_approval'] = $approval;
+            if (! $permintaanGroups[$groupKey]['latest_approval'] ||
+                $approval->created_at > $permintaanGroups[$groupKey]['latest_approval']->created_at) {
+                $permintaanGroups[$groupKey]['latest_approval'] = $approval;
             }
         }
 
@@ -186,6 +207,23 @@ class ApprovalPermintaanController extends Controller
                     }
                 }
 
+                // Pemeliharaan: tampilkan step MENUNGGU tertinggi apa adanya (jangan remap ke DIDISPOSISIKAN).
+                // Remap lama untuk step 4 membuat disposisi Pengurus masuk tab Riwayat.
+                if (($group['modul_approval'] ?? '') === 'PERMINTAAN_PEMELIHARAAN') {
+                    $pendingPemeliharaan = null;
+                    foreach ($group['approvals'] as $approval) {
+                        if ($approval->status === 'MENUNGGU') {
+                            $pendingPemeliharaan = $approval;
+                        }
+                    }
+                    if ($pendingPemeliharaan) {
+                        $currentStep = $pendingPemeliharaan;
+                        $currentStatus = 'MENUNGGU';
+                    } else {
+                        $currentStep = $group['latest_approval'];
+                        $currentStatus = $currentStep?->status ?? 'MENUNGGU';
+                    }
+                } else {
                 // Cari current step berdasarkan urutan step_order (prioritas step yang lebih tinggi)
                 // Step 4 (disposisi) harus ditampilkan sebagai DIDISPOSISIKAN meskipun status approval lognya MENUNGGU
 
@@ -282,6 +320,7 @@ class ApprovalPermintaanController extends Controller
                         }
                     }
                 }
+                } // end PERMINTAAN_BARANG branch
             } else {
                 // Jika ada yang ditolak, tetap hitung last completed step untuk display
                 foreach ($group['approvals'] as $approval) {
@@ -301,20 +340,45 @@ class ApprovalPermintaanController extends Controller
         }
 
         // Ambil data permintaan untuk setiap group
-        $permintaanIds = array_keys($permintaanGroups);
-        $permintaans = PermintaanBarang::with([
-            'unitKerja.gudang', // Load gudang unit melalui unit kerja
-            'pemohon.jabatan', // Load jabatan pemohon
+        $barangIds = collect($permintaanGroups)
+            ->where('modul_approval', 'PERMINTAAN_BARANG')
+            ->pluck('permintaan_id')
+            ->unique()
+            ->values();
+        $pemeliharaanIds = collect($permintaanGroups)
+            ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+            ->pluck('permintaan_id')
+            ->unique()
+            ->values();
+
+        $permintaansBarang = PermintaanBarang::with([
+            'unitKerja.gudang',
+            'pemohon.jabatan',
             'detailPermintaan.dataBarang',
         ])
-            ->whereIn('id_permintaan', $permintaanIds)
+            ->whereIn('id_permintaan', $barangIds)
             ->get()
             ->keyBy('id_permintaan');
 
+        $permintaansPemeliharaan = PermintaanPemeliharaan::with([
+            'unitKerja',
+            'pemohon',
+            'registerAset.inventory.dataBarang',
+        ])
+            ->whereIn('id_permintaan_pemeliharaan', $pemeliharaanIds)
+            ->get()
+            ->keyBy('id_permintaan_pemeliharaan');
+
         // Convert ke collection untuk pagination
-        $permintaanList = collect($permintaanGroups)->map(function ($group) use ($permintaans) {
+        $permintaanList = collect($permintaanGroups)->map(function ($group) use ($permintaansBarang, $permintaansPemeliharaan) {
+            $modul = $group['modul_approval'] ?? 'PERMINTAAN_BARANG';
+            $permintaan = $modul === 'PERMINTAAN_PEMELIHARAAN'
+                ? ($permintaansPemeliharaan[$group['permintaan_id']] ?? null)
+                : ($permintaansBarang[$group['permintaan_id']] ?? null);
+
             return [
-                'permintaan' => $permintaans[$group['permintaan_id']] ?? null,
+                'modul_approval' => $modul,
+                'permintaan' => $permintaan,
                 'current_step' => $group['current_step'],
                 'current_status' => $group['current_status'],
                 'last_completed_step' => $group['last_completed_step'],
@@ -347,7 +411,59 @@ class ApprovalPermintaanController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        return view('transaction.approval.index', compact('paginator', 'permintaans', 'viewType'));
+        return view('transaction.approval.index', compact('paginator', 'viewType'));
+    }
+
+    private function syncInitialApprovalLogsForSubmittedPemeliharaan(): void
+    {
+        $flowStep2 = ApprovalFlowDefinition::query()
+            ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+            ->where('step_order', 2)
+            ->whereNotNull('role_id')
+            ->first();
+
+        if (! $flowStep2) {
+            return;
+        }
+
+        $submittedIds = PermintaanPemeliharaan::query()
+            ->where('status_permintaan', 'DIAJUKAN')
+            ->pluck('id_permintaan_pemeliharaan');
+
+        if ($submittedIds->isEmpty()) {
+            return;
+        }
+
+        $existingIds = ApprovalLog::query()
+            ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+            ->where('id_approval_flow', $flowStep2->id)
+            ->whereIn('id_referensi', $submittedIds)
+            ->pluck('id_referensi')
+            ->all();
+
+        $missingIds = $submittedIds
+            ->reject(fn ($id) => in_array($id, $existingIds, true))
+            ->values();
+
+        if ($missingIds->isEmpty()) {
+            return;
+        }
+
+        $now = now();
+        $rows = $missingIds->map(fn ($idPermintaan) => [
+            'modul_approval' => 'PERMINTAAN_PEMELIHARAAN',
+            'id_referensi' => $idPermintaan,
+            'id_approval_flow' => $flowStep2->id,
+            'user_id' => null,
+            'role_id' => $flowStep2->role_id,
+            'status' => 'MENUNGGU',
+            'catatan' => null,
+            'approved_at' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all();
+
+        ApprovalLog::query()->insert($rows);
     }
 
     private function syncInitialApprovalLogsForSubmittedRequests(): void
@@ -421,10 +537,11 @@ class ApprovalPermintaanController extends Controller
         }
 
         $userRoles = $user->roles->pluck('id')->toArray();
+        $modul = $approval->modul_approval;
 
         // Admin bisa melihat semua approval
         if (! UserScope::canViewCrossUnitData($user)) {
-            $allowedFlowIds = ApprovalFlowDefinition::where('modul_approval', 'PERMINTAAN_BARANG')
+            $allowedFlowIds = ApprovalFlowDefinition::where('modul_approval', $modul)
                 ->whereIn('role_id', $userRoles)
                 ->pluck('id')
                 ->toArray();
@@ -434,7 +551,45 @@ class ApprovalPermintaanController extends Controller
             }
         }
 
-        // Load permintaan
+        if ($modul === 'PERMINTAAN_PEMELIHARAAN') {
+            $permintaan = PermintaanPemeliharaan::with([
+                'unitKerja',
+                'pemohon',
+                'pegawaiPelaksana',
+                'registerAset.inventory.dataBarang',
+                'serviceReport',
+            ])->find($approval->id_referensi);
+
+            if (! $permintaan) {
+                abort(404, 'Permintaan pemeliharaan tidak ditemukan.');
+            }
+
+            $approvalHistory = $this->approvalService->history('PERMINTAAN_PEMELIHARAAN', (int) $approval->id_referensi);
+            $rejectedApproval = ApprovalLog::where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+                ->where('id_referensi', $approval->id_referensi)
+                ->where('status', 'DITOLAK')
+                ->first();
+            $displayStatus = $rejectedApproval ? 'DITOLAK' : $approval->status;
+            $currentFlow = $approval->approvalFlow;
+            $nextFlow = $currentFlow ? $currentFlow->getNextStep() : null;
+            $pegawaiPelaksanaOptions = \App\Models\MasterPegawai::query()
+                ->orderBy('nama_pegawai')
+                ->limit(500)
+                ->get(['id', 'nama_pegawai']);
+
+            return view('transaction.approval.show-pemeliharaan', compact(
+                'approval',
+                'permintaan',
+                'approvalHistory',
+                'currentFlow',
+                'nextFlow',
+                'displayStatus',
+                'rejectedApproval',
+                'pegawaiPelaksanaOptions'
+            ));
+        }
+
+        // Load permintaan barang
         $permintaan = PermintaanBarang::with([
             'unitKerja',
             'pemohon.jabatan',
@@ -544,6 +699,16 @@ class ApprovalPermintaanController extends Controller
     public function disposisi(Request $request, $id)
     {
         return $this->handleAction($request, (int) $id, 'disposisi', [], 'Permintaan telah didisposisikan.');
+    }
+
+    public function disposisiPemeliharaan(Request $request, $id)
+    {
+        return $this->handleAction($request, (int) $id, 'disposisi_pemeliharaan', [
+            'jenis_pelaksana' => 'required|in:TEKNISI_ATEM,TEKNISI_IT,KONTRAK_SERVICE,VENDOR',
+            'id_pegawai_pelaksana' => 'nullable|exists:master_pegawai,id',
+            'nama_vendor' => 'nullable|string|max:255',
+            'disposisi_catatan' => 'nullable|string',
+        ], 'Permintaan pemeliharaan telah didisposisikan ke pelaksana.');
     }
 
     private function handleAction(
