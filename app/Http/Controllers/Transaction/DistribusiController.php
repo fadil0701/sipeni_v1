@@ -500,6 +500,28 @@ class DistribusiController extends Controller
             $query->where('jenis_inventory', $gudang->kategori_gudang);
         }
 
+        // Mode proses SBBK: batasi ke barang yang ada di permintaan (bukan seluruh stok gudang).
+        $permintaanId = request()->input('permintaan_id');
+        if ($permintaanId) {
+            $permintaan = PermintaanBarang::with('detailPermintaan')->findOrFail($permintaanId);
+            UserScope::assertCanAccessPermintaan(Auth::user(), $permintaan);
+
+            $stockData = PermintaanBarangStock::stockDataForDetails($permintaan);
+            $dataBarangIds = $permintaan->detailPermintaan
+                ->filter(fn ($detail) => PermintaanBarangStock::detailReadyForDistribusi($detail, $stockData))
+                ->pluck('id_data_barang')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($dataBarangIds === []) {
+                return response()->json(['inventory' => []]);
+            }
+
+            $query->whereIn('id_data_barang', $dataBarangIds);
+        }
+
         $inventories = $query->with(['dataBarang', 'satuan'])->get();
 
         $result = $inventories->map(function ($inv) {
@@ -511,6 +533,7 @@ class DistribusiController extends Controller
 
             return [
                 'id_inventory' => $inv->id_inventory,
+                'id_data_barang' => $inv->id_data_barang,
                 'nama_barang' => $inv->dataBarang->nama_barang ?? '-',
                 'kode_barang' => $inv->dataBarang->kode_data_barang ?? '-',
                 'jenis_inventory' => $inv->jenis_inventory,

@@ -225,7 +225,8 @@
                 <select 
                     name="detail[INDEX][id_inventory]" 
                     required
-                    class="select-inventory block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    data-searchable="true"
+                    class="select-inventory select-searchable block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     onchange="updateHargaSatuan(this)"
                 >
                     <option value="">Pilih Inventory</option>
@@ -307,6 +308,7 @@
 let itemIndex = 0;
 let inventoryData = {};
 const selectedApprovalLogId = @json(request('approval_log'));
+const isProsesMode = @json(($flowMode ?? 'distribusi') === 'proses');
 
 // Simpan data gudang untuk fallback
 const allGudangs = [
@@ -319,6 +321,77 @@ const allGudangs = [
     }{{ !$loop->last ? ',' : '' }}
     @endforeach
 ];
+
+function inventoryApiUrl(gudangId) {
+    let url = `{{ route('api.gudang.inventory', ['id' => '__ID__']) }}`.replace('__ID__', encodeURIComponent(gudangId));
+    const permintaanSelect = document.getElementById('id_permintaan');
+    const permintaanId = permintaanSelect ? permintaanSelect.value : '';
+    if (isProsesMode && permintaanId) {
+        url += (url.includes('?') ? '&' : '?') + 'permintaan_id=' + encodeURIComponent(permintaanId);
+    }
+    return url;
+}
+
+/** Destroy + re-init Select2 setelah opsi diganti via innerHTML (baris dinamis). */
+function refreshSearchableSelect(selectElement) {
+    if (!selectElement || selectElement.tagName !== 'SELECT') {
+        return;
+    }
+    if (!(window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function')) {
+        return;
+    }
+
+    const $el = window.jQuery(selectElement);
+    if (selectElement.choicesInstance && typeof selectElement.choicesInstance.destroy === 'function') {
+        try { selectElement.choicesInstance.destroy(); } catch (e) {}
+        selectElement.choicesInstance = null;
+    }
+    if ($el.hasClass('select2-hidden-accessible')) {
+        try { $el.select2('destroy'); } catch (e) {}
+    }
+    delete selectElement.dataset.sipeniSelect2Init;
+
+    if (typeof window.initChoicesForSelect === 'function') {
+        window.initChoicesForSelect(selectElement, 0);
+        return;
+    }
+
+    const placeholderOption = selectElement.querySelector('option[value=""]');
+    const placeholderText = ((placeholderOption && placeholderOption.textContent) || 'Pilih...').trim();
+    $el.select2(Object.assign({}, (typeof window.sipeniSelect2BaseOptions === 'function' ? window.sipeniSelect2BaseOptions() : { width: '100%', minimumResultsForSearch: 0 }), {
+        placeholder: placeholderText || 'Pilih...',
+        allowClear: !!placeholderOption,
+    }));
+    selectElement.dataset.sipeniSelect2Init = '1';
+}
+
+function populateInventoryOptions(selectElement, inventoryList, preferredValue) {
+    if (!selectElement) {
+        return;
+    }
+    const currentValue = preferredValue != null ? String(preferredValue) : String(selectElement.value || '');
+    selectElement.innerHTML = '<option value="">Pilih Inventory</option>';
+
+    (inventoryList || []).forEach(inv => {
+        const option = document.createElement('option');
+        option.value = inv.id_inventory;
+        const kodeText = inv.kode_barang ? ` (${inv.kode_barang})` : '';
+        option.textContent = `${inv.nama_barang}${kodeText} - Stok: ${inv.qty_available}`;
+        option.setAttribute('data-harga', inv.harga_satuan);
+        option.setAttribute('data-satuan', inv.id_satuan);
+        selectElement.appendChild(option);
+    });
+
+    if (currentValue && Array.from(selectElement.options).some(opt => String(opt.value) === currentValue)) {
+        selectElement.value = currentValue;
+        updateHargaSatuan(selectElement);
+    } else if ((inventoryList || []).length === 1) {
+        selectElement.value = String(inventoryList[0].id_inventory);
+        updateHargaSatuan(selectElement);
+    }
+
+    refreshSearchableSelect(selectElement);
+}
 
 // Load detail permintaan dan set gudang tujuan
 function loadPermintaanDetail(permintaanId) {
@@ -354,8 +427,10 @@ function loadPermintaanDetail(permintaanId) {
                 } else if (data.gudang.length === 1) {
                     gudangTujuanSelect.value = data.gudang[0].id_gudang;
                 }
+                refreshSearchableSelect(gudangTujuanSelect);
             } else {
                 gudangTujuanSelect.innerHTML = '<option value="">Gudang UNIT tujuan tidak ditemukan</option>';
+                refreshSearchableSelect(gudangTujuanSelect);
             }
 
             // Auto-set gudang asal (pusat) sesuai kategori disposisi/permintaan.
@@ -377,12 +452,14 @@ function loadPermintaanDetail(permintaanId) {
                 } else if (asalList.length === 1) {
                     gudangAsalSelect.value = asalList[0].id_gudang;
                 }
+                refreshSearchableSelect(gudangAsalSelect);
 
                 if (gudangAsalSelect.value) {
                     loadInventoryFromGudang(gudangAsalSelect.value);
                 }
             } else {
                 gudangAsalSelect.innerHTML = '<option value="">Gudang PUSAT asal tidak ditemukan</option>';
+                refreshSearchableSelect(gudangAsalSelect);
             }
         })
         .catch(error => {
@@ -433,7 +510,7 @@ function loadInventoryFromGudang(gudangId) {
         return;
     }
 
-    fetch(`{{ route('api.gudang.inventory', ['id' => '__ID__']) }}`.replace('__ID__', encodeURIComponent(gudangId)))
+    fetch(inventoryApiUrl(gudangId))
         .then(response => {
             if (!response.ok) {
                 throw new Error('Gagal memuat inventory gudang');
@@ -455,27 +532,7 @@ function loadInventoryFromGudang(gudangId) {
 
             // Update semua select inventory
             document.querySelectorAll('.select-inventory').forEach(select => {
-                const currentValue = select.value;
-                select.innerHTML = '<option value="">Pilih Inventory</option>';
-                
-                data.inventory.forEach(inv => {
-                    const option = document.createElement('option');
-                    option.value = inv.id_inventory;
-                    const kodeText = inv.kode_barang ? ` (${inv.kode_barang})` : '';
-                    option.textContent = `${inv.nama_barang}${kodeText} - Stok: ${inv.qty_available}`;
-                    option.setAttribute('data-harga', inv.harga_satuan);
-                    option.setAttribute('data-satuan', inv.id_satuan);
-                    select.appendChild(option);
-                });
-
-                if (currentValue) {
-                    select.value = currentValue;
-                    updateHargaSatuan(select);
-                } else if (data.inventory.length === 1) {
-                    // Auto-select jika hanya ada satu inventory yang tersedia.
-                    select.value = String(data.inventory[0].id_inventory);
-                    updateHargaSatuan(select);
-                }
+                populateInventoryOptions(select, data.inventory, select.value);
             });
         })
         .catch(error => console.error('Error loading inventory:', error));
@@ -553,7 +610,7 @@ function loadInventoryToSelect(selectElement, gudangId) {
         return;
     }
     
-    fetch(`{{ route('api.gudang.inventory', ['id' => '__ID__']) }}`.replace('__ID__', encodeURIComponent(gudangId)))
+    fetch(inventoryApiUrl(gudangId))
         .then(response => {
             if (!response.ok) {
                 throw new Error('Gagal memuat inventory gudang');
@@ -561,22 +618,7 @@ function loadInventoryToSelect(selectElement, gudangId) {
             return response.json();
         })
         .then(data => {
-            selectElement.innerHTML = '<option value="">Pilih Inventory</option>';
-            data.inventory.forEach(inv => {
-                const option = document.createElement('option');
-                option.value = inv.id_inventory;
-                const kodeText = inv.kode_barang ? ` (${inv.kode_barang})` : '';
-                option.textContent = `${inv.nama_barang}${kodeText} - Stok: ${inv.qty_available}`;
-                option.setAttribute('data-harga', inv.harga_satuan);
-                option.setAttribute('data-satuan', inv.id_satuan);
-                selectElement.appendChild(option);
-            });
-
-            // Auto-select jika hanya ada satu inventory lalu sync harga+satuan.
-            if (data.inventory.length === 1) {
-                selectElement.value = String(data.inventory[0].id_inventory);
-                updateHargaSatuan(selectElement);
-            }
+            populateInventoryOptions(selectElement, data.inventory);
         })
         .catch(error => {
             console.error('Error loading inventory:', error);
@@ -616,36 +658,33 @@ function addItemRow() {
         return;
     }
     
-    // Attach event handler untuk update harga satuan
+    // Attach event handler untuk update harga satuan (native + Select2)
     inventorySelect.addEventListener('change', function() {
         updateHargaSatuan(this);
     });
+    if (window.jQuery) {
+        window.jQuery(inventorySelect).on('select2:select select2:clear', function () {
+            updateHargaSatuan(this);
+        });
+    }
     
     // Load inventory ke select baru
     const gudangAsal = document.getElementById('id_gudang_asal').value;
     if (gudangAsal) {
         // Jika inventoryData sudah ada, langsung isi
         if (Object.keys(inventoryData).length > 0) {
-            inventorySelect.innerHTML = '<option value="">Pilih Inventory</option>';
-            const inventoryValues = Object.values(inventoryData);
-            inventoryValues.forEach(inv => {
-                const option = document.createElement('option');
-                option.value = inv.id_inventory;
-                const kodeText = inv.kode_barang ? ` (${inv.kode_barang})` : '';
-                option.textContent = `${inv.nama_barang}${kodeText} - Stok: ${inv.qty_available}`;
-                option.setAttribute('data-harga', inv.harga_satuan);
-                option.setAttribute('data-satuan', inv.id_satuan);
-                inventorySelect.appendChild(option);
-            });
-
-            if (inventoryValues.length === 1) {
-                inventorySelect.value = String(inventoryValues[0].id_inventory);
-                updateHargaSatuan(inventorySelect);
-            }
+            populateInventoryOptions(inventorySelect, Object.values(inventoryData));
         } else {
             // Jika belum ada, load dari API
             loadInventoryToSelect(inventorySelect, gudangAsal);
         }
+    } else {
+        refreshSearchableSelect(inventorySelect);
+    }
+
+    const satuanSelect = newRow.querySelector('.select-satuan');
+    if (satuanSelect && satuanSelect.getAttribute('data-searchable') !== 'false') {
+        refreshSearchableSelect(satuanSelect);
     }
     
     // Hapus item
