@@ -115,13 +115,17 @@
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Informasi Barang</h3>
                 @php
                     $fotoInventory = $registerAset->inventory->upload_foto ?? null;
-                    $fotoItem = $registerAset->inventory->inventoryItems->first()->foto_barang ?? null;
-                    $fotoBarangPath = $fotoInventory ?: $fotoItem;
-                    $fotoBarangUrl = $fotoBarangPath
-                        ? (\Illuminate\Support\Str::startsWith($fotoBarangPath, ['http://', 'https://'])
-                            ? $fotoBarangPath
-                            : asset('storage/' . ltrim($fotoBarangPath, '/')))
-                        : null;
+                    $fotoItem = $registerAset->inventoryItem?->foto_barang
+                        ?? $registerAset->inventory->inventoryItems->first()?->foto_barang
+                        ?? null;
+                    $fotoMaster = $registerAset->inventory->dataBarang->upload_foto
+                        ?? $registerAset->inventory->dataBarang->foto_barang
+                        ?? null;
+                    $fotoBarangPath = $fotoItem ?: ($fotoInventory ?: $fotoMaster);
+                    // Upload sensitif di disk private — wajib lewat media.show / ImageHelper (bukan asset storage/)
+                    $fotoBarangUrl = ($fotoBarangPath && \App\Helpers\ImageHelper::imageExists($fotoBarangPath))
+                        ? \App\Helpers\ImageHelper::getImageUrl($fotoBarangPath)
+                        : (filter_var((string) $fotoBarangPath, FILTER_VALIDATE_URL) ? $fotoBarangPath : null);
                 @endphp
 
                 <div class="mb-5">

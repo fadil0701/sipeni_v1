@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Enums\DistribusiStatus;
 use App\Enums\PermintaanBarangStatus;
-use App\Models\DataStock;
 use App\Models\DetailDistribusi;
 use App\Models\DetailPenerimaanBarang;
 use App\Models\MasterPegawai;
@@ -19,7 +18,7 @@ class DistribusiService
 {
     public function __construct(
         private readonly PermintaanBarangStatusService $permintaanBarangStatus,
-        private readonly StockGuardService $stockGuard
+        private readonly DistribusiStockMutationService $stockMutation
     ) {}
 
     public function createDraft(array $validated): TransaksiDistribusi
@@ -92,36 +91,13 @@ class DistribusiService
 
             $distribusi->update(['status_distribusi' => DistribusiStatus::Dikirim]);
 
-            foreach ($distribusi->detailDistribusi as $detail) {
-                $inventory = $detail->inventory;
-                if (! $inventory) {
-                    continue;
-                }
+            // Guard ASET (qty inventory + jumlah inventory_item di gudang asal).
+            $this->stockMutation->assertAsetAvailableOnKirim($distribusi);
 
-                $context = "pengiriman distribusi {$distribusi->no_sbbk}";
-                $this->stockGuard->ensureInventoryQty((int) $detail->id_inventory, (float) $detail->qty_distribusi, $context);
+            // Persediaan/Farmasi: data_stock asal turun + inventory pindah/split ke tujuan (Opsi A).
+            $this->stockMutation->applyPersediaanFarmasiOnKirim($distribusi->fresh(['detailDistribusi.inventory']));
 
-                if (in_array($inventory->jenis_inventory, ['PERSEDIAAN', 'FARMASI'])) {
-                    $this->stockGuard->ensureStockQty(
-                        (int) $inventory->id_data_barang,
-                        (int) $distribusi->id_gudang_asal,
-                        (float) $detail->qty_distribusi,
-                        $context
-                    );
-
-                    $stockAsal = DataStock::where('id_data_barang', $inventory->id_data_barang)
-                        ->where('id_gudang', $distribusi->id_gudang_asal)
-                        ->first();
-                    if ($stockAsal) {
-                        $stockAsal->qty_keluar += $detail->qty_distribusi;
-                        $stockAsal->qty_akhir -= $detail->qty_distribusi;
-                        $stockAsal->last_updated = now();
-                        $stockAsal->save();
-                    }
-                }
-            }
-
-            $this->createAutoPenerimaan($distribusi);
+            $this->createAutoPenerimaan($distribusi->fresh(['detailDistribusi', 'gudangTujuan', 'permintaan.pemohon']));
             // Status tetap dikirim sampai pengirim laporkan bukti sampai (foto + nama penerima).
 
             if ($distribusi->id_permintaan) {

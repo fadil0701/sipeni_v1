@@ -20,11 +20,14 @@ use App\Models\PenerimaanBarang;
 use App\Models\RegisterAset;
 use App\Models\TransaksiDistribusi;
 use App\Services\DataStockSyncService;
+use App\Services\DistribusiStockMutationService;
 use App\Services\PenerimaanDistribusiInventoryTransferService;
 use App\Services\PermintaanBarangStatusService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 
 class PenerimaanBarangController extends Controller
 {
@@ -106,7 +109,25 @@ class PenerimaanBarangController extends Controller
 
         $this->authorizePenerimaanAccess($penerimaan);
 
-        return view('transaction.penerimaan-barang.show', compact('penerimaan'));
+        $registersNeedRuangan = collect();
+        if ($penerimaan->status_penerimaan === 'DITERIMA') {
+            $inventoryIds = $penerimaan->detailPenerimaan
+                ->pluck('id_inventory')
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($inventoryIds->isNotEmpty()) {
+                $registersNeedRuangan = RegisterAset::query()
+                    ->whereIn('id_inventory', $inventoryIds)
+                    ->whereNull('id_ruangan')
+                    ->with(['inventory.dataBarang'])
+                    ->orderBy('nomor_register')
+                    ->get();
+            }
+        }
+
+        return view('transaction.penerimaan-barang.show', compact('penerimaan', 'registersNeedRuangan'));
     }
 
     public function verify(Request $request, PenerimaanBarang $penerimaan_barang)
@@ -459,6 +480,9 @@ class PenerimaanBarangController extends Controller
             return [
                 'id_inventory' => $detail->id_inventory,
                 'nama_barang' => $inventory->dataBarang->nama_barang ?? '-',
+                'merk' => $inventory->merk ?: '-',
+                'tipe' => $inventory->tipe ?: '-',
+                'jenis_barang' => $inventory->jenis_barang ?? '-',
                 'qty_distribusi' => $detail->qty_distribusi,
                 'id_satuan' => $detail->id_satuan,
                 'nama_satuan' => $detail->satuan->nama_satuan ?? '-',
@@ -482,7 +506,10 @@ class PenerimaanBarangController extends Controller
     }
 
     /**
-     * Auto create RegisterAset saat penerimaan ASET dikonfirmasi
+     * Auto create RegisterAset saat penerimaan ASET dikonfirmasi.
+     * - Anti double-register per id_item
+     * - Pindah/split data_inventory ke gudang tujuan
+     * - Pindah inventory_item ke gudang tujuan (id_ruangan tetap null → KIR via edit Register)
      */
     protected function autoCreateRegisterAset($penerimaan, $distribusi, $validated)
     {
@@ -498,60 +525,97 @@ class PenerimaanBarangController extends Controller
             return;
         }
 
-        foreach ($validated['detail'] as $detail) {
-            $inventory = DataInventory::find($detail['id_inventory']);
+        $mutation = app(DistribusiStockMutationService::class);
+        $idAsal = (int) $distribusi->id_gudang_asal;
+        $idTujuan = (int) $distribusi->id_gudang_tujuan;
+        $hasIdItemColumn = Schema::hasColumn('register_aset', 'id_item');
+        $context = "penerimaan {$penerimaan->no_penerimaan}";
 
-            // Hanya untuk ASET
+        foreach ($validated['detail'] as $detail) {
+            $inventory = DataInventory::query()->find($detail['id_inventory']);
+
             if (! $inventory || $inventory->jenis_inventory !== 'ASET') {
                 continue;
             }
 
-            // Ambil InventoryItem yang masih di gudang asal dan belum punya RegisterAset
-            // Filter berdasarkan id_item yang belum ter-register
-            $hasIdItemColumn = \Schema::hasColumn('register_aset', 'id_item');
-            $registeredItemIds = [];
-
-            if ($hasIdItemColumn) {
-                $registeredItemIds = RegisterAset::whereNotNull('id_item')
-                    ->pluck('id_item')
-                    ->toArray();
+            $qtyNeeded = (int) ceil((float) $detail['qty_diterima']);
+            if ($qtyNeeded <= 0) {
+                continue;
             }
 
-            $inventoryItemsQuery = InventoryItem::where('id_inventory', $detail['id_inventory'])
-                ->where('id_gudang', $distribusi->id_gudang_asal);
+            $relocated = $mutation->relocateAsetInventoryOnDiterima(
+                $inventory,
+                (float) $detail['qty_diterima'],
+                $idTujuan,
+                $context
+            );
 
-            if ($hasIdItemColumn && ! empty($registeredItemIds)) {
-                $inventoryItemsQuery->whereNotIn('id_item', $registeredItemIds);
-            } elseif (! $hasIdItemColumn) {
-                // Fallback untuk data lama
+            if ((int) $relocated->id_inventory !== (int) $detail['id_inventory']) {
+                DetailPenerimaanBarang::query()
+                    ->where('id_penerimaan', $penerimaan->id_penerimaan)
+                    ->where('id_inventory', $detail['id_inventory'])
+                    ->update(['id_inventory' => $relocated->id_inventory]);
+
+                if ($distribusi->id_distribusi) {
+                    $distribusi->detailDistribusi()
+                        ->where('id_inventory', $detail['id_inventory'])
+                        ->update(['id_inventory' => $relocated->id_inventory]);
+                }
+            }
+
+            $inventoryItemsQuery = InventoryItem::query()
+                ->whereIn('id_inventory', array_unique([
+                    (int) $inventory->id_inventory,
+                    (int) $relocated->id_inventory,
+                ]))
+                ->whereIn('id_gudang', array_unique([$idAsal, $idTujuan]))
+                ->where('status_item', 'AKTIF')
+                ->orderBy('id_item');
+
+            if ($hasIdItemColumn) {
+                $inventoryItemsQuery->whereNotExists(function ($sub) {
+                    $sub->selectRaw('1')
+                        ->from('register_aset')
+                        ->whereColumn('register_aset.id_item', 'inventory_item.id_item');
+                });
+            } else {
                 $inventoryItemsQuery->whereDoesntHave('registerAset');
             }
 
-            $inventoryItems = $inventoryItemsQuery->limit((int) $detail['qty_diterima'])->get();
+            $inventoryItems = $inventoryItemsQuery->limit($qtyNeeded)->get();
+
+            if ($inventoryItems->count() < $qtyNeeded) {
+                throw new RuntimeException(
+                    "Item aset tidak cukup untuk {$context}. Dibutuhkan {$qtyNeeded}, tersedia {$inventoryItems->count()} (inventory #{$inventory->id_inventory})."
+                );
+            }
 
             foreach ($inventoryItems as $item) {
-                // Update lokasi fisik InventoryItem ke gudang tujuan
-                $item->update(['id_gudang' => $distribusi->id_gudang_tujuan]);
+                if ($hasIdItemColumn && DistribusiStockMutationService::registerExistsForItem((int) $item->id_item)) {
+                    continue;
+                }
 
-                // Generate nomor register dengan format baru: ID_UNIT_KERJA/ID_RUANGAN/URUT atau ID_UNIT_KERJA/URUT
+                $item->update([
+                    'id_gudang' => $idTujuan,
+                    'id_inventory' => $relocated->id_inventory,
+                ]);
+
                 $nomorRegister = $this->generateNomorRegisterForPenerimaan(
                     $unitKerjaId,
-                    null, // Ruangan null saat auto-create, bisa diisi nanti via edit
+                    null,
                     $validated['tanggal_penerimaan']
                 );
 
-                // Buat RegisterAset otomatis dengan id_item spesifik
                 $registerData = [
-                    'id_inventory' => $detail['id_inventory'],
+                    'id_inventory' => $relocated->id_inventory,
                     'id_unit_kerja' => $unitKerjaId,
-                    'id_ruangan' => null, // Bisa diisi nanti via edit
+                    'id_ruangan' => null,
                     'nomor_register' => $nomorRegister,
                     'kondisi_aset' => $item->kondisi_item ?? 'BAIK',
                     'status_aset' => $item->status_item === 'AKTIF' ? 'AKTIF' : 'NONAKTIF',
                     'tanggal_perolehan' => $validated['tanggal_penerimaan'],
                 ];
 
-                // Tambahkan id_item jika kolom sudah ada
                 if ($hasIdItemColumn) {
                     $registerData['id_item'] = $item->id_item;
                 }

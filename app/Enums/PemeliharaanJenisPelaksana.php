@@ -24,6 +24,11 @@ enum PemeliharaanJenisPelaksana: string
         return in_array($this, [self::KontrakService, self::Vendor], true);
     }
 
+    public function isInternalTeknisi(): bool
+    {
+        return in_array($this, [self::TeknisiAtem, self::TeknisiIt], true);
+    }
+
     /**
      * @return list<string>
      */

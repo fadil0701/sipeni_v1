@@ -128,6 +128,8 @@ class PegawaiUserPerJabatanSeeder extends Seeder
             'Perencanaan' => 'perencana',
             'Pengadaan Barang' => 'pengadaan',
             'Keuangan/Bendahara' => 'keuangan',
+            'ATEM (Teknisi Alat Kesehatan)' => 'teknisi_atem',
+            'Admin IT/IT Support (Teknisi IT)' => 'teknisi_it',
             default => 'admin_unit',
         };
 

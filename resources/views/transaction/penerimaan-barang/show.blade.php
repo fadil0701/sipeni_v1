@@ -16,6 +16,33 @@
 </div>
 @endif
 
+@if(($registersNeedRuangan ?? collect())->isNotEmpty())
+<div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+    <p class="font-medium">Lengkapi ruangan pada register aset agar KIR terbentuk.</p>
+    <p class="mt-1 text-amber-900/90">
+        Ada {{ $registersNeedRuangan->count() }} register aset dari penerimaan ini yang belum punya ruangan.
+        KIR (Kartu Inventaris Ruangan) dibuat otomatis saat ruangan diisi di menu Register Aset.
+    </p>
+    <ul class="mt-2 list-disc pl-5 space-y-1">
+        @foreach($registersNeedRuangan->take(5) as $reg)
+            <li>
+                <a href="{{ route('asset.register-aset.edit', $reg->id_register_aset) }}" class="underline hover:text-amber-800">
+                    {{ $reg->nomor_register }}
+                </a>
+                @if($reg->inventory?->dataBarang?->nama_barang)
+                    — {{ $reg->inventory->dataBarang->nama_barang }}
+                @endif
+            </li>
+        @endforeach
+    </ul>
+    @if($registersNeedRuangan->count() > 5)
+        <p class="mt-2">
+            <a href="{{ route('asset.register-aset.index') }}" class="underline hover:text-amber-800">Lihat semua register aset</a>
+        </p>
+    @endif
+</div>
+@endif
+
 <div class="bg-white shadow-sm rounded-lg border border-gray-200">
     <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-center">
         <div>
@@ -142,6 +169,8 @@
                         <colgroup>
                             <col style="width:2.5rem">
                             <col>
+                            <col style="width:6rem">
+                            <col style="width:6rem">
                             <col style="width:4.5rem">
                             <col style="width:5rem">
                             <col style="width:5rem">
@@ -164,6 +193,8 @@
                             <tr>
                                 <th class="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">No</th>
                                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nama Barang</th>
+                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Merk</th>
+                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipe</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Jenis</th>
                                 <th class="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty Kirim</th>
                                 <th class="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty Terima</th>
@@ -209,6 +240,12 @@
                                 <td class="px-2 py-2 text-center text-gray-600 tabular-nums text-xs align-middle">{{ $index + 1 }}</td>
                                 <td class="px-3 py-2 font-medium text-gray-900 align-middle">
                                     <span class="block break-words leading-snug">{{ $inventory->dataBarang->nama_barang ?? '-' }}</span>
+                                </td>
+                                <td class="px-2 py-2 text-gray-900 align-middle">
+                                    <span class="block break-words leading-snug">{{ $inventory->merk ?: '-' }}</span>
+                                </td>
+                                <td class="px-2 py-2 text-gray-900 align-middle">
+                                    <span class="block break-words leading-snug">{{ $inventory->tipe ?: '-' }}</span>
                                 </td>
                                 <td class="px-2 py-2 text-gray-900 align-middle">
                                     <span class="block break-words leading-snug">{{ $inventory->jenis_barang ?? '-' }}</span>

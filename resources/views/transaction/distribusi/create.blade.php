@@ -46,7 +46,7 @@
                                 id="id_permintaan" 
                                 name="id_permintaan" 
                                 required
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_permintaan') border-red-500 @enderror"
+                                class="select-searchable block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_permintaan') border-red-500 @enderror"
                                 onchange="loadPermintaanDetail(this.value)"
                             >
                                 <option value="">Pilih Permintaan Barang</option>
@@ -87,7 +87,7 @@
                             id="id_gudang_asal" 
                             name="id_gudang_asal" 
                             required
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_gudang_asal') border-red-500 @enderror"
+                            class="select-searchable block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_gudang_asal') border-red-500 @enderror"
                             onchange="loadInventoryFromGudang(this.value)"
                             data-old-value="{{ old('id_gudang_asal') }}"
                         >
@@ -111,7 +111,7 @@
                             id="id_gudang_tujuan" 
                             name="id_gudang_tujuan" 
                             required
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_gudang_tujuan') border-red-500 @enderror"
+                            class="select-searchable block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_gudang_tujuan') border-red-500 @enderror"
                             data-old-value="{{ old('id_gudang_tujuan') }}"
                         >
                             <option value="">Pilih Gudang Tujuan</option>
@@ -135,7 +135,7 @@
                                 id="id_pegawai_pengirim" 
                                 name="id_pegawai_pengirim" 
                                 required
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_pegawai_pengirim') border-red-500 @enderror"
+                                class="select-searchable block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('id_pegawai_pengirim') border-red-500 @enderror"
                             >
                                 <option value="">Pilih Pegawai Pengirim</option>
                                 @foreach($pegawais as $pegawai)
@@ -187,8 +187,22 @@
                     </button>
                 </div>
 
-                <div id="detailContainer" class="space-y-4">
-                    <!-- Item akan ditambahkan di sini via JavaScript -->
+                <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200 table-no-enhance">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[32%]">Inventory <span class="text-red-500">*</span></th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10%]">Qty <span class="text-red-500">*</span></th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[12%]">Satuan <span class="text-red-500">*</span></th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[14%]">Harga <span class="text-red-500">*</span></th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[24%]">Keterangan</th>
+                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-[8%]">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailContainer" class="bg-white divide-y divide-gray-200">
+                            <!-- Item akan ditambahkan di sini via JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
 
                 @error('detail')
@@ -216,91 +230,76 @@
 
 <!-- Template untuk item detail (hidden) -->
 <template id="itemTemplate">
-    <div class="item-row bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-12">
-            <div class="sm:col-span-5">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Inventory <span class="text-red-500">*</span>
-                </label>
-                <select 
-                    name="detail[INDEX][id_inventory]" 
-                    required
-                    data-searchable="true"
-                    class="select-inventory select-searchable block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    onchange="updateHargaSatuan(this)"
-                >
-                    <option value="">Pilih Inventory</option>
-                </select>
-            </div>
-
-            <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Qty Distribusi <span class="text-red-500">*</span>
-                </label>
-                <input 
-                    type="number" 
-                    name="detail[INDEX][qty_distribusi]" 
-                    required
-                    min="0.01"
-                    step="0.01"
-                    placeholder="0"
-                    class="qty-input block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    onchange="calculateSubtotal(this)"
-                >
-            </div>
-
-            <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Satuan <span class="text-red-500">*</span>
-                </label>
-                <select 
-                    name="detail[INDEX][id_satuan]" 
-                    required
-                    data-searchable="false"
-                    class="select-satuan block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-                    <option value="">Pilih Satuan</option>
-                    @foreach($satuans as $satuan)
-                        <option value="{{ $satuan->id_satuan }}">{{ $satuan->nama_satuan }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Harga Satuan <span class="text-red-500">*</span>
-                </label>
-                <input 
-                    type="number" 
-                    name="detail[INDEX][harga_satuan]" 
-                    required
-                    min="0"
-                    step="0.01"
-                    placeholder="0"
-                    class="harga-satuan-input block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    onchange="calculateSubtotal(this)"
-                >
-            </div>
-
-            <div class="sm:col-span-1 flex items-end">
-                <button 
-                    type="button" 
-                    class="btnHapusItem w-full px-3 py-2 border border-red-300 text-red-700 bg-white hover:bg-red-50 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                    Hapus
-                </button>
-            </div>
-        </div>
-        <div class="mt-2">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Keterangan</label>
+    <tr class="item-row">
+        <td class="px-3 py-2 align-top">
+            <select 
+                name="detail[INDEX][id_inventory]" 
+                required
+                data-searchable="true"
+                class="select-inventory select-searchable block w-full min-w-[14rem] px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                onchange="updateHargaSatuan(this)"
+            >
+                <option value="">Pilih Inventory</option>
+            </select>
+        </td>
+        <td class="px-3 py-2 align-top">
+            <input 
+                type="number" 
+                name="detail[INDEX][qty_distribusi]" 
+                required
+                min="0.01"
+                step="0.01"
+                placeholder="0"
+                class="qty-input block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                onchange="calculateSubtotal(this)"
+            >
+        </td>
+        <td class="px-3 py-2 align-top">
+            <select 
+                name="detail[INDEX][id_satuan]" 
+                required
+                data-searchable="false"
+                class="select-satuan block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            >
+                <option value="">Pilih</option>
+                @foreach($satuans as $satuan)
+                    <option value="{{ $satuan->id_satuan }}">{{ $satuan->nama_satuan }}</option>
+                @endforeach
+            </select>
+        </td>
+        <td class="px-3 py-2 align-top">
+            <input 
+                type="number" 
+                name="detail[INDEX][harga_satuan]" 
+                required
+                min="0"
+                step="0.01"
+                placeholder="0"
+                class="harga-satuan-input block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                onchange="calculateSubtotal(this)"
+            >
+        </td>
+        <td class="px-3 py-2 align-top">
             <input 
                 type="text" 
                 name="detail[INDEX][keterangan]" 
                 placeholder="Opsional"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                class="block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             >
-        </div>
-    </div>
+        </td>
+        <td class="px-3 py-2 text-center align-top">
+            <button 
+                type="button" 
+                class="btnHapusItem inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                title="Hapus baris"
+                aria-label="Hapus baris"
+            >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </button>
+        </td>
+    </tr>
 </template>
 
 @push('scripts')
@@ -324,10 +323,19 @@ const allGudangs = [
 
 function inventoryApiUrl(gudangId) {
     let url = `{{ route('api.gudang.inventory', ['id' => '__ID__']) }}`.replace('__ID__', encodeURIComponent(gudangId));
+    const params = new URLSearchParams();
     const permintaanSelect = document.getElementById('id_permintaan');
     const permintaanId = permintaanSelect ? permintaanSelect.value : '';
     if (isProsesMode && permintaanId) {
-        url += (url.includes('?') ? '&' : '?') + 'permintaan_id=' + encodeURIComponent(permintaanId);
+        params.set('permintaan_id', permintaanId);
+    }
+    Array.from(document.querySelectorAll('.select-inventory'))
+        .map((el) => parseInt(el.value || el.getAttribute('data-selected-inventory') || '', 10))
+        .filter((id) => !Number.isNaN(id) && id > 0)
+        .forEach((id) => params.append('include_ids[]', String(id)));
+    const qs = params.toString();
+    if (qs) {
+        url += (url.includes('?') ? '&' : '?') + qs;
     }
     return url;
 }
@@ -369,14 +377,16 @@ function populateInventoryOptions(selectElement, inventoryList, preferredValue) 
     if (!selectElement) {
         return;
     }
-    const currentValue = preferredValue != null ? String(preferredValue) : String(selectElement.value || '');
+    const currentValue = preferredValue != null ? String(preferredValue) : String(selectElement.value || selectElement.getAttribute('data-selected-inventory') || '');
     selectElement.innerHTML = '<option value="">Pilih Inventory</option>';
 
     (inventoryList || []).forEach(inv => {
         const option = document.createElement('option');
         option.value = inv.id_inventory;
         const kodeText = inv.kode_barang ? ` (${inv.kode_barang})` : '';
-        option.textContent = `${inv.nama_barang}${kodeText} - Stok: ${inv.qty_available}`;
+        const merkText = inv.merk && inv.merk !== '-' ? inv.merk : '-';
+        const tipeText = inv.tipe && inv.tipe !== '-' ? inv.tipe : '-';
+        option.textContent = `${inv.nama_barang}${kodeText} - Merk: ${merkText} - Tipe: ${tipeText} - Stok: ${inv.qty_available}`;
         option.setAttribute('data-harga', inv.harga_satuan);
         option.setAttribute('data-satuan', inv.id_satuan);
         selectElement.appendChild(option);
@@ -384,9 +394,11 @@ function populateInventoryOptions(selectElement, inventoryList, preferredValue) 
 
     if (currentValue && Array.from(selectElement.options).some(opt => String(opt.value) === currentValue)) {
         selectElement.value = currentValue;
+        selectElement.setAttribute('data-selected-inventory', currentValue);
         updateHargaSatuan(selectElement);
     } else if ((inventoryList || []).length === 1) {
         selectElement.value = String(inventoryList[0].id_inventory);
+        selectElement.setAttribute('data-selected-inventory', String(inventoryList[0].id_inventory));
         updateHargaSatuan(selectElement);
     }
 
@@ -524,6 +536,8 @@ function loadInventoryFromGudang(gudangId) {
                     id_inventory: inv.id_inventory,
                     nama_barang: inv.nama_barang,
                     kode_barang: inv.kode_barang || '',
+                    merk: inv.merk || '-',
+                    tipe: inv.tipe || '-',
                     harga_satuan: inv.harga_satuan,
                     id_satuan: inv.id_satuan,
                     qty_available: inv.qty_available
@@ -636,10 +650,10 @@ function addItemRow() {
         return;
     }
     
-    // Clone template content dan replace INDEX
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = template.innerHTML.replace(/INDEX/g, itemIndex);
-    const newItem = tempDiv.firstElementChild;
+    // Clone template content dan replace INDEX (gunakan tbody agar <tr> tidak di-strip browser)
+    const tempTbody = document.createElement('tbody');
+    tempTbody.innerHTML = template.innerHTML.replace(/INDEX/g, itemIndex);
+    const newItem = tempTbody.firstElementChild;
     
     if (!newItem) {
         console.error('Failed to clone template');
@@ -700,6 +714,13 @@ function addItemRow() {
 
 // Event listener untuk tombol tambah item dan initialization
 document.addEventListener('DOMContentLoaded', function() {
+    ['id_permintaan', 'id_gudang_asal', 'id_gudang_tujuan', 'id_pegawai_pengirim'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            refreshSearchableSelect(el);
+        }
+    });
+
     // Setup tombol tambah item
     const btnTambahItem = document.getElementById('btnTambahItem');
     if (btnTambahItem) {

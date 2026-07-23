@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers\Maintenance;
 
-use App\Http\Controllers\Controller;
 use App\Enums\PemeliharaanRekomendasi;
-use Illuminate\Http\Request;
-use App\Models\ServiceReport;
-use App\Models\PermintaanPemeliharaan;
-use App\Models\RegisterAset;
-use App\Models\RiwayatPemeliharaan;
+use App\Http\Controllers\Controller;
 use App\Models\JadwalMaintenance;
 use App\Models\MasterPegawai;
+use App\Models\PermintaanPemeliharaan;
+use App\Models\RiwayatPemeliharaan;
+use App\Models\ServiceReport;
+use App\Models\ServiceReportSparepart;
 use App\Services\PemeliharaanWorkflowService;
 use App\Support\Storage\PrivateStorage;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ServiceReportController extends Controller
 {
@@ -37,11 +38,11 @@ class ServiceReportController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('no_service_report', 'like', "%{$search}%")
-                  ->orWhereHas('registerAset', function($q) use ($search) {
-                      $q->where('nomor_register', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('registerAset', function ($q) use ($search) {
+                        $q->where('nomor_register', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -53,68 +54,52 @@ class ServiceReportController extends Controller
 
     public function create(Request $request)
     {
-        $permintaans = PermintaanPemeliharaan::whereIn('status_permintaan', ['DIPROSES', 'MENUNGGU_PENGADAAN'])
-            ->whereDoesntHave('serviceReport')
-            ->with(['registerAset.inventory.dataBarang'])
+        $permintaans = PermintaanPemeliharaan::where('status_permintaan', 'DIPROSES')
+            ->whereDoesntHave('serviceReports', function ($q) {
+                $q->whereIn('status_service', ['MENUNGGU', 'DIPROSES']);
+            })
+            ->with([
+                'registerAset.inventory.dataBarang',
+                'registerAset.inventoryItem',
+                'pegawaiPelaksana',
+            ])
             ->get();
 
-        $selectedPermintaan = $request->get('permintaan_id') 
-            ? PermintaanPemeliharaan::with(['registerAset.inventory.dataBarang'])->find($request->get('permintaan_id'))
+        $selectedPermintaan = $request->get('permintaan_id')
+            ? PermintaanPemeliharaan::with([
+                'registerAset.inventory.dataBarang',
+                'registerAset.inventoryItem',
+                'pegawaiPelaksana',
+            ])->find($request->get('permintaan_id'))
             : null;
 
-        $teknisiPegawais = MasterPegawai::query()
-            ->whereHas('masterJabatan', function ($q) {
-                $q->whereRaw('LOWER(nama_jabatan) LIKE ?', ['%teknisi%']);
-            })
-            ->orderBy('nama_pegawai')
-            ->get(['id', 'nama_pegawai', 'id_unit_kerja']);
+        $teknisiPegawais = $this->teknisiPegawaiList();
 
         return view('maintenance.service-report.create', compact('permintaans', 'selectedPermintaan', 'teknisiPegawais'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'id_permintaan_pemeliharaan' => 'required|exists:permintaan_pemeliharaan,id_permintaan_pemeliharaan',
-            'tanggal_service' => 'required|date',
-            'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_service',
-            'jenis_service' => 'required|in:RUTIN,KALIBRASI,PERBAIKAN,PENGGANTIAN_SPAREPART',
-            'status_service' => 'nullable|in:MENUNGGU,DIPROSES,SELESAI,DITOLAK,DIBATALKAN',
-            'vendor' => 'nullable|string|max:255',
-            'teknisi' => 'nullable|string|max:255',
-            'deskripsi_kerja' => 'nullable|string',
-            'tindakan_yang_dilakukan' => 'nullable|string',
-            'sparepart_yang_diganti' => 'nullable|string',
-            'biaya_service' => 'nullable|numeric|min:0',
-            'biaya_sparepart' => 'nullable|numeric|min:0',
-            'kondisi_setelah_service' => 'nullable|in:BAIK,RUSAK_RINGAN,RUSAK_BERAT,TIDAK_BISA_DIPERBAIKI',
-            'rekomendasi' => 'nullable|in:'.implode(',', PemeliharaanRekomendasi::values()),
-            'rekomendasi_catatan' => 'nullable|string',
-            'file_laporan' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:4096',
-            'file_laporan_kamera' => 'nullable|file|mimes:jpg,jpeg,png|max:4096',
-            'keterangan' => 'nullable|string',
-        ]);
-
-        if (($request->status_service ?? 'MENUNGGU') === 'SELESAI' && ! $request->filled('rekomendasi')) {
-            return back()->withInput()->withErrors(['rekomendasi' => 'Rekomendasi wajib diisi jika Service Report selesai.']);
-        }
+        $this->validateServiceReportRequest($request, creating: true);
+        $this->assertPelaksanaAndSpareparts($request);
 
         DB::beginTransaction();
         try {
-            // Ambil permintaan untuk mendapatkan register aset
             $permintaan = PermintaanPemeliharaan::findOrFail($request->id_permintaan_pemeliharaan);
             if ((int) $permintaan->id_register_aset <= 0) {
                 throw new \RuntimeException('Permintaan tidak memiliki referensi register aset yang valid.');
             }
-            
-            // Generate nomor service report
+            if (! $permintaan->canStartServiceReport()) {
+                throw new \RuntimeException('Permintaan belum siap untuk Service Report baru (harus status DIPROSES dan tidak ada SR yang masih berjalan).');
+            }
+
             $tahun = date('Y');
             $lastReport = ServiceReport::whereYear('created_at', $tahun)
                 ->orderBy('id_service_report', 'desc')
                 ->first();
-            
-            $urutan = $lastReport ? (int)substr($lastReport->no_service_report, -4) + 1 : 1;
-            $noServiceReport = 'SRV/' . $tahun . '/' . str_pad($urutan, 4, '0', STR_PAD_LEFT);
+
+            $urutan = $lastReport ? (int) substr($lastReport->no_service_report, -4) + 1 : 1;
+            $noServiceReport = 'SRV/'.$tahun.'/'.str_pad($urutan, 4, '0', STR_PAD_LEFT);
 
             $filePath = null;
             if ($request->hasFile('file_laporan_kamera')) {
@@ -123,6 +108,8 @@ class ServiceReportController extends Controller
                 $filePath = PrivateStorage::storeUploadedFile($request->file('file_laporan'), 'service-report');
             }
 
+            [$vendor, $teknisi] = $this->resolvePelaksanaFields($request);
+            $catatan = trim((string) $request->input('catatan', ''));
             $totalBiaya = ($request->biaya_service ?? 0) + ($request->biaya_sparepart ?? 0);
 
             $serviceReport = ServiceReport::create([
@@ -133,23 +120,24 @@ class ServiceReportController extends Controller
                 'tanggal_selesai' => $request->tanggal_selesai,
                 'jenis_service' => $request->jenis_service,
                 'status_service' => $request->status_service ?? 'MENUNGGU',
-                'vendor' => $request->vendor,
-                'teknisi' => $request->teknisi,
+                'vendor' => $vendor,
+                'teknisi' => $teknisi,
                 'deskripsi_kerja' => $request->deskripsi_kerja,
                 'tindakan_yang_dilakukan' => $request->tindakan_yang_dilakukan,
-                'sparepart_yang_diganti' => $request->sparepart_yang_diganti,
+                'sparepart_yang_diganti' => null,
                 'biaya_service' => $request->biaya_service ?? 0,
                 'biaya_sparepart' => $request->biaya_sparepart ?? 0,
                 'total_biaya' => $totalBiaya,
                 'kondisi_setelah_service' => $request->kondisi_setelah_service,
                 'rekomendasi' => $request->rekomendasi,
-                'rekomendasi_catatan' => $request->rekomendasi_catatan,
+                'rekomendasi_catatan' => $catatan !== '' ? $catatan : null,
                 'file_laporan' => $filePath,
-                'keterangan' => $request->keterangan,
+                'keterangan' => $catatan !== '' ? $catatan : null,
                 'created_by' => Auth::id(),
             ]);
 
-            // Update status permintaan menjadi DIPROSES (pengerjaan)
+            $this->syncSpareparts($serviceReport, $request);
+
             if ($permintaan->status_permintaan !== 'MENUNGGU_DIKETAHUI_SR') {
                 $permintaan->update(['status_permintaan' => 'DIPROSES']);
             }
@@ -159,11 +147,16 @@ class ServiceReportController extends Controller
             }
 
             DB::commit();
+
             return redirect()->route('maintenance.service-report.index')
                 ->with('success', 'Service report berhasil dibuat.');
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error', 'Gagal membuat service report: ' . $e->getMessage());
+
+            return back()->withInput()->with('error', 'Gagal membuat service report: '.$e->getMessage());
         }
     }
 
@@ -172,7 +165,9 @@ class ServiceReportController extends Controller
         $serviceReport = ServiceReport::with([
             'permintaanPemeliharaan.registerAset',
             'registerAset.inventory.dataBarang',
-            'creator'
+            'registerAset.inventoryItem',
+            'spareparts',
+            'creator',
         ])->findOrFail($id);
 
         return view('maintenance.service-report.show', compact('serviceReport'));
@@ -180,47 +175,24 @@ class ServiceReportController extends Controller
 
     public function edit($id)
     {
-        $serviceReport = ServiceReport::findOrFail($id);
-        $permintaans = PermintaanPemeliharaan::where('status_permintaan', 'DISETUJUI')
-            ->with(['registerAset.inventory.dataBarang'])
-            ->get();
-        $teknisiPegawais = MasterPegawai::query()
-            ->whereHas('masterJabatan', function ($q) {
-                $q->whereRaw('LOWER(nama_jabatan) LIKE ?', ['%teknisi%']);
-            })
-            ->orderBy('nama_pegawai')
-            ->get(['id', 'nama_pegawai', 'id_unit_kerja']);
+        $serviceReport = ServiceReport::with([
+            'registerAset.inventory.dataBarang',
+            'registerAset.inventoryItem',
+            'spareparts',
+            'permintaanPemeliharaan.pegawaiPelaksana',
+        ])->findOrFail($id);
 
-        return view('maintenance.service-report.edit', compact('serviceReport', 'permintaans', 'teknisiPegawais'));
+        $teknisiPegawais = $this->teknisiPegawaiList();
+
+        return view('maintenance.service-report.edit', compact('serviceReport', 'teknisiPegawais'));
     }
 
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'tanggal_service' => 'required|date',
-            'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_service',
-            'jenis_service' => 'required|in:RUTIN,KALIBRASI,PERBAIKAN,PENGGANTIAN_SPAREPART',
-            'status_service' => 'required|in:MENUNGGU,DIPROSES,SELESAI,DITOLAK,DIBATALKAN',
-            'vendor' => 'nullable|string|max:255',
-            'teknisi' => 'nullable|string|max:255',
-            'deskripsi_kerja' => 'nullable|string',
-            'tindakan_yang_dilakukan' => 'nullable|string',
-            'sparepart_yang_diganti' => 'nullable|string',
-            'biaya_service' => 'nullable|numeric|min:0',
-            'biaya_sparepart' => 'nullable|numeric|min:0',
-            'kondisi_setelah_service' => 'nullable|in:BAIK,RUSAK_RINGAN,RUSAK_BERAT,TIDAK_BISA_DIPERBAIKI',
-            'rekomendasi' => 'nullable|in:'.implode(',', PemeliharaanRekomendasi::values()),
-            'rekomendasi_catatan' => 'nullable|string',
-            'file_laporan' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:4096',
-            'file_laporan_kamera' => 'nullable|file|mimes:jpg,jpeg,png|max:4096',
-            'keterangan' => 'nullable|string',
-        ]);
+        $this->validateServiceReportRequest($request, creating: false);
+        $this->assertPelaksanaAndSpareparts($request);
 
-        if ($request->status_service === 'SELESAI' && ! $request->filled('rekomendasi')) {
-            return back()->withInput()->withErrors(['rekomendasi' => 'Rekomendasi wajib diisi jika Service Report selesai.']);
-        }
-
-        $serviceReport = ServiceReport::findOrFail($id);
+        $serviceReport = ServiceReport::with('spareparts')->findOrFail($id);
 
         DB::beginTransaction();
         try {
@@ -234,6 +206,8 @@ class ServiceReportController extends Controller
                 }
             }
 
+            [$vendor, $teknisi] = $this->resolvePelaksanaFields($request);
+            $catatan = trim((string) $request->input('catatan', ''));
             $totalBiaya = ($request->biaya_service ?? 0) + ($request->biaya_sparepart ?? 0);
 
             $serviceReport->update([
@@ -241,33 +215,241 @@ class ServiceReportController extends Controller
                 'tanggal_selesai' => $request->tanggal_selesai,
                 'jenis_service' => $request->jenis_service,
                 'status_service' => $request->status_service,
-                'vendor' => $request->vendor,
-                'teknisi' => $request->teknisi,
+                'vendor' => $vendor,
+                'teknisi' => $teknisi,
                 'deskripsi_kerja' => $request->deskripsi_kerja,
                 'tindakan_yang_dilakukan' => $request->tindakan_yang_dilakukan,
-                'sparepart_yang_diganti' => $request->sparepart_yang_diganti,
+                'sparepart_yang_diganti' => null,
                 'biaya_service' => $request->biaya_service ?? 0,
                 'biaya_sparepart' => $request->biaya_sparepart ?? 0,
                 'total_biaya' => $totalBiaya,
                 'kondisi_setelah_service' => $request->kondisi_setelah_service,
                 'rekomendasi' => $request->rekomendasi,
-                'rekomendasi_catatan' => $request->rekomendasi_catatan,
+                'rekomendasi_catatan' => $catatan !== '' ? $catatan : null,
                 'file_laporan' => $filePath,
-                'keterangan' => $request->keterangan,
+                'keterangan' => $catatan !== '' ? $catatan : null,
             ]);
 
-            // Jika status SELESAI pengerjaan: mulai rantai diketahui (jangan langsung SELESAI permintaan).
+            $this->syncSpareparts($serviceReport, $request);
+
             if ($request->status_service === 'SELESAI') {
                 $this->finalizeServiceWork($serviceReport->fresh(['permintaanPemeliharaan', 'registerAset']), $request);
             }
 
             DB::commit();
+
             return redirect()->route('maintenance.service-report.index')
                 ->with('success', 'Service report berhasil diperbarui.');
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error', 'Gagal memperbarui service report: ' . $e->getMessage());
+
+            return back()->withInput()->with('error', 'Gagal memperbarui service report: '.$e->getMessage());
         }
+    }
+
+    public function destroy($id)
+    {
+        $serviceReport = ServiceReport::with('spareparts')->findOrFail($id);
+
+        PrivateStorage::delete($serviceReport->file_laporan);
+        foreach ($serviceReport->spareparts as $sparepart) {
+            PrivateStorage::delete($sparepart->foto_path);
+        }
+
+        $serviceReport->delete();
+
+        return redirect()->route('maintenance.service-report.index')
+            ->with('success', 'Service report berhasil dihapus.');
+    }
+
+    private function teknisiPegawaiList()
+    {
+        return MasterPegawai::query()
+            ->teknisiInternal()
+            ->with('masterJabatan')
+            ->orderBy('nama_pegawai')
+            ->get(['id', 'nama_pegawai', 'id_unit_kerja', 'id_jabatan']);
+    }
+
+    private function validateServiceReportRequest(Request $request, bool $creating): void
+    {
+        $rules = [
+            'tanggal_service' => 'required|date',
+            'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_service',
+            'jenis_service' => 'required|in:RUTIN,KALIBRASI,PERBAIKAN,PENGGANTIAN_SPAREPART',
+            'status_service' => ($creating ? 'nullable' : 'required').'|in:MENUNGGU,DIPROSES,SELESAI,DITOLAK,DIBATALKAN',
+            'pelaksana_mode' => 'required|in:INTERNAL,EKSTERNAL',
+            'vendor' => 'nullable|string|max:255',
+            'teknisi' => 'nullable|string|max:255',
+            'deskripsi_kerja' => 'nullable|string',
+            'tindakan_yang_dilakukan' => 'nullable|string',
+            'biaya_service' => 'nullable|numeric|min:0',
+            'biaya_sparepart' => 'nullable|numeric|min:0',
+            'kondisi_setelah_service' => 'nullable|in:BAIK,RUSAK_RINGAN,RUSAK_BERAT,TIDAK_BISA_DIPERBAIKI',
+            'rekomendasi' => 'nullable|in:'.implode(',', PemeliharaanRekomendasi::values()),
+            'catatan' => 'nullable|string',
+            'file_laporan' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:4096',
+            'file_laporan_kamera' => 'nullable|file|mimes:jpg,jpeg,png|max:4096',
+            'spareparts' => 'nullable|array',
+            'spareparts.*.id' => 'nullable|integer',
+            'spareparts.*.nama_sparepart' => 'nullable|string|max:255',
+            'spareparts.*.merk' => 'nullable|string|max:255',
+            'spareparts.*.nomor_seri' => 'nullable|string|max:255',
+            'spareparts.*.foto' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:4096',
+        ];
+
+        if ($creating) {
+            $rules['id_permintaan_pemeliharaan'] = 'required|exists:permintaan_pemeliharaan,id_permintaan_pemeliharaan';
+        }
+
+        $request->validate($rules);
+
+        if (($request->status_service ?? 'MENUNGGU') === 'SELESAI' && ! $request->filled('rekomendasi')) {
+            throw ValidationException::withMessages([
+                'rekomendasi' => 'Rekomendasi wajib diisi jika Service Report selesai.',
+            ]);
+        }
+    }
+
+    private function assertPelaksanaAndSpareparts(Request $request): void
+    {
+        $mode = $request->input('pelaksana_mode');
+        if ($mode === 'EKSTERNAL' && ! $request->filled('vendor')) {
+            throw ValidationException::withMessages([
+                'vendor' => 'Nama vendor wajib diisi untuk pelaksana eksternal.',
+            ]);
+        }
+        if ($mode === 'INTERNAL' && ! $request->filled('teknisi')) {
+            throw ValidationException::withMessages([
+                'teknisi' => 'Pilih teknisi internal (ATEM / IT Support).',
+            ]);
+        }
+
+        if ($request->input('rekomendasi') !== PemeliharaanRekomendasi::PendingSparepart->value) {
+            return;
+        }
+
+        $rows = collect($request->input('spareparts', []))
+            ->filter(fn ($row) => filled(trim((string) ($row['nama_sparepart'] ?? ''))));
+
+        if ($rows->isEmpty()) {
+            if (($request->status_service ?? 'MENUNGGU') === 'SELESAI' || $request->filled('rekomendasi')) {
+                throw ValidationException::withMessages([
+                    'spareparts' => 'Isi minimal satu spare part (nama) untuk rekomendasi Pending.',
+                ]);
+            }
+        }
+    }
+
+    /**
+     * @return array{0: ?string, 1: ?string}
+     */
+    private function resolvePelaksanaFields(Request $request): array
+    {
+        if ($request->input('pelaksana_mode') === 'EKSTERNAL') {
+            return [
+                trim((string) $request->input('vendor')) ?: null,
+                trim((string) $request->input('teknisi')) ?: null,
+            ];
+        }
+
+        return [
+            null,
+            trim((string) $request->input('teknisi')) ?: null,
+        ];
+    }
+
+    private function syncSpareparts(ServiceReport $serviceReport, Request $request): void
+    {
+        $isPending = $request->input('rekomendasi') === PemeliharaanRekomendasi::PendingSparepart->value;
+        $existing = $serviceReport->spareparts()->get()->keyBy('id_service_report_sparepart');
+        $keptIds = [];
+
+        if (! $isPending) {
+            foreach ($existing as $row) {
+                PrivateStorage::delete($row->foto_path);
+                $row->delete();
+            }
+
+            return;
+        }
+
+        $rows = $request->input('spareparts', []);
+
+        foreach ($rows as $index => $row) {
+            $nama = trim((string) ($row['nama_sparepart'] ?? ''));
+            if ($nama === '') {
+                continue;
+            }
+
+            $id = isset($row['id']) ? (int) $row['id'] : 0;
+            $merk = trim((string) ($row['merk'] ?? '')) ?: null;
+            $nomorSeri = trim((string) ($row['nomor_seri'] ?? '')) ?: null;
+            $fotoFile = $this->resolveSparepartFoto($request, $index);
+
+            if ($id > 0 && $existing->has($id)) {
+                $model = $existing->get($id);
+                $fotoPath = $model->foto_path;
+                if ($fotoFile) {
+                    PrivateStorage::delete($fotoPath);
+                    $fotoPath = PrivateStorage::storeUploadedFile($fotoFile, 'service-report/sparepart');
+                }
+                $model->update([
+                    'nama_sparepart' => $nama,
+                    'merk' => $merk,
+                    'nomor_seri' => $nomorSeri,
+                    'foto_path' => $fotoPath,
+                ]);
+                $keptIds[] = $id;
+                continue;
+            }
+
+            $fotoPath = $fotoFile
+                ? PrivateStorage::storeUploadedFile($fotoFile, 'service-report/sparepart')
+                : null;
+
+            $created = ServiceReportSparepart::create([
+                'id_service_report' => $serviceReport->id_service_report,
+                'nama_sparepart' => $nama,
+                'merk' => $merk,
+                'nomor_seri' => $nomorSeri,
+                'foto_path' => $fotoPath,
+            ]);
+            $keptIds[] = $created->id_service_report_sparepart;
+        }
+
+        foreach ($existing as $id => $row) {
+            if (! in_array((int) $id, $keptIds, true)) {
+                PrivateStorage::delete($row->foto_path);
+                $row->delete();
+            }
+        }
+
+        if ($serviceReport->spareparts()->count() < 1) {
+            throw ValidationException::withMessages([
+                'spareparts' => 'Isi minimal satu spare part (nama) untuk rekomendasi Pending.',
+            ]);
+        }
+    }
+
+    private function resolveSparepartFoto(Request $request, int|string $index): ?UploadedFile
+    {
+        $candidates = [
+            $request->file("spareparts.{$index}.foto"),
+            data_get($request->file('spareparts'), "{$index}.foto"),
+            data_get($request->file('spareparts'), ((string) $index).'.foto'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate instanceof UploadedFile && $candidate->isValid()) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     private function finalizeServiceWork(ServiceReport $serviceReport, Request $request): void
@@ -278,6 +460,8 @@ class ServiceReportController extends Controller
             ]);
         }
 
+        $catatan = trim((string) $request->input('catatan', $request->keterangan ?? ''));
+
         RiwayatPemeliharaan::updateOrCreate(
             ['id_service_report' => $serviceReport->id_service_report],
             [
@@ -287,7 +471,7 @@ class ServiceReportController extends Controller
                 'tanggal_pemeliharaan' => $request->tanggal_selesai ?? $request->tanggal_service,
                 'jenis_pemeliharaan' => $request->jenis_service,
                 'status' => 'SELESAI',
-                'keterangan' => trim(($request->keterangan ?? '').' | Rekomendasi: '.($request->rekomendasi ?? '-')),
+                'keterangan' => trim($catatan.' | Rekomendasi: '.($request->rekomendasi ?? '-')),
             ]
         );
 
@@ -300,18 +484,6 @@ class ServiceReportController extends Controller
         $this->pemeliharaanWorkflow->startServiceReportAcknowledgement($serviceReport->fresh(['permintaanPemeliharaan']));
     }
 
-    public function destroy($id)
-    {
-        $serviceReport = ServiceReport::findOrFail($id);
-        
-        PrivateStorage::delete($serviceReport->file_laporan);
-
-        $serviceReport->delete();
-
-        return redirect()->route('maintenance.service-report.index')
-            ->with('success', 'Service report berhasil dihapus.');
-    }
-
     private function rollForwardActiveSchedule(int $registerAsetId, string $jenis, string $tanggalAcuan): void
     {
         $jadwal = JadwalMaintenance::query()
@@ -321,7 +493,7 @@ class ServiceReportController extends Controller
             ->orderBy('tanggal_selanjutnya')
             ->first();
 
-        if (!$jadwal) {
+        if (! $jadwal) {
             return;
         }
 
@@ -336,6 +508,7 @@ class ServiceReportController extends Controller
     private function calculateNextDate(string $tanggalMulai, string $periode, ?int $intervalHari = null): string
     {
         $date = \Carbon\Carbon::parse($tanggalMulai);
+
         return match ($periode) {
             'HARIAN' => $date->addDay()->format('Y-m-d'),
             'MINGGUAN' => $date->addWeek()->format('Y-m-d'),
@@ -348,5 +521,3 @@ class ServiceReportController extends Controller
         };
     }
 }
-
-

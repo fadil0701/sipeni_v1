@@ -145,6 +145,24 @@ class DemoUserSeeder extends Seeder
                 'scope_unit' => false,
             ],
             [
+                'email' => 'demo.teknisi.atem@sipeni.local',
+                'name' => 'Demo Teknisi ATEM',
+                'nip' => 'DEMO000016',
+                'roles' => ['teknisi_atem'],
+                'jabatan' => 'ATEM (Teknisi Alat Kesehatan)',
+                'unit' => $unitPrimary,
+                'scope_unit' => false,
+            ],
+            [
+                'email' => 'demo.teknisi.it@sipeni.local',
+                'name' => 'Demo Teknisi IT',
+                'nip' => 'DEMO000017',
+                'roles' => ['teknisi_it'],
+                'jabatan' => 'Admin IT/IT Support (Teknisi IT)',
+                'unit' => $unitPrimary,
+                'scope_unit' => false,
+            ],
+            [
                 'email' => 'demo.admin.gudang@sipeni.local',
                 'name' => 'Demo Admin Gudang Pusat',
                 'nip' => 'DEMO000007',
@@ -325,6 +343,8 @@ class DemoUserSeeder extends Seeder
         $this->command?->info('  demo.kasubbag.tu@sipeni.local         → kasubbag_tu');
         $this->command?->info('  demo.kepala.pusat@sipeni.local        → kepala_pusat');
         $this->command?->info('  demo.pengurus.barang@sipeni.local     → pengurus_barang');
+        $this->command?->info('  demo.teknisi.atem@sipeni.local        → teknisi_atem');
+        $this->command?->info('  demo.teknisi.it@sipeni.local          → teknisi_it');
         $this->command?->info('  demo.admin.gudang@sipeni.local        → admin_gudang_pusat');
         $this->command?->info('  demo.admin.gudang.aset@sipeni.local   → admin_gudang_aset');
         $this->command?->info('  demo.admin.gudang.persediaan@sipeni.local → admin_gudang_persediaan');

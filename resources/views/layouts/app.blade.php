@@ -190,12 +190,14 @@
                                 <span>Dashboard</span>
                             </a>
                         </li>
+                        @if($currentUser && \App\Services\PanduanPenggunaService::userCanAccess($currentUser))
                         <li>
                             <a href="{{ route('panduan.index') }}" class="{{ $linkClass($isRoute(['panduan.*'])) }}">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                                 <span>Panduan Pengguna</span>
                             </a>
                         </li>
+                        @endif
 
                 
                         @if($currentUser && ($canAccessPermintaan || PermissionHelper::canAccess($currentUser, 'user.requests.index')))
@@ -447,7 +449,7 @@
 
                         @if($canAccessMaintenance)
                             @php
-                                $maintOpen = $isRoute(['maintenance.jadwal-maintenance.*', 'maintenance.kalibrasi-aset.*', 'maintenance.service-report.*']);
+                                $maintOpen = $isRoute(['maintenance.daftar-permintaan-pemeliharaan.*', 'maintenance.jadwal-maintenance.*', 'maintenance.kalibrasi-aset.*', 'maintenance.service-report.*']);
                             @endphp
                             <li>
                                 <div class="flex items-center px-4 py-2 rounded-lg text-blue-200 hover:bg-blue-800 cursor-pointer" onclick="toggleSubmenu('maintenance')">
@@ -455,6 +457,10 @@
                                     <svg id="maintenance-arrow" class="w-4 h-4 ml-auto transition-transform {{ $maintOpen ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </div>
                                 <ul id="maintenance-submenu" class="{{ $groupClass($maintOpen) }}">
+                                    @if(PermissionHelper::canAccess($currentUser, 'maintenance.daftar-permintaan-pemeliharaan.index')
+                                        || PermissionHelper::canAccess($currentUser, 'maintenance.service-report.create'))
+                                        <li><a href="{{ route('maintenance.daftar-permintaan-pemeliharaan.index') }}" class="{{ $linkClass($isRoute(['maintenance.daftar-permintaan-pemeliharaan.*'])) }}">Daftar Permintaan</a></li>
+                                    @endif
                                     @if(PermissionHelper::canAccess($currentUser, 'maintenance.jadwal-maintenance.index'))
                                         <li><a href="{{ route('maintenance.jadwal-maintenance.index') }}" class="{{ $linkClass($isRoute(['maintenance.jadwal-maintenance.*'])) }}">Jadwal Pemeliharaan</a></li>
                                     @endif

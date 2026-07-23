@@ -10,7 +10,7 @@
 
 SI-MANTIK adalah sistem manajemen aset dan persediaan yang **sudah layak operasional** untuk alur inti **permintaan → approval → disposisi → distribusi (SBBK) → penerimaan → retur**, modul inventory/aset, RKU, dan pemeliharaan. Fondasi RBAC (Spatie, permission = nama route, wildcard) dan audit logging sudah cukup matang.
 
-Namun audit ini menemukan **celah keamanan yang perlu segera ditangani** (eskalasi role super admin, API helper tanpa otorisasi, login tanpa rate limit), **fitur yang belum lengkap atau tidak selaras dengan dokumentasi** (notifikasi, pemakaian barang, handoff pengadaan, Compile SBBK tersembunyi), serta **keterbatasan operasional produksi** (tanpa CI/CD, backup otomatis, dan test end-to-end alur transaksi).
+Namun audit ini menemukan **celah keamanan yang perlu segera ditangani** (eskalasi role super admin, API helper tanpa otorisasi, login tanpa rate limit), **fitur yang belum lengkap atau tidak selaras dengan dokumentasi** (notifikasi, pemakaian barang, handoff pengadaan), serta **keterbatasan operasional produksi** (tanpa CI/CD, backup otomatis, dan test end-to-end alur transaksi). *(Catatan: Compile SBBK tersembunyi sudah by design — digabung ke Distribusi.)*
 
 | Area | Skor kesiapan | Risiko utama |
 |------|---------------|--------------|
@@ -192,7 +192,7 @@ Audit ini **tidak** mencakup penetration testing dinamis, scan CVE dependensi ot
 | Permintaan Barang | ✅ Implemented | CRUD, multi-item, ajukan |
 | Approval multi-level | ✅ Implemented | 7 aksi POST |
 | Draft disposisi | ✅ Implemented | Driven ApprovalLog step 4 |
-| Compile SBBK | ⚠️ Partial | Route ada; **tidak ada link sidebar** |
+| Compile SBBK (legacy) | ✅ Digabung | Redirect ke Distribusi Barang (SBBK) |
 | Distribusi (SBBK) | ⚠️ Partial | Implementasi beda dari dokumentasi (lihat §3.3) |
 | Penerimaan | ⚠️ Partial | Auto-create on kirim; tidak ada create manual |
 | Retur | ✅ Implemented | CRUD + ajukan/terima/tolak |
@@ -252,9 +252,9 @@ Setelah paket pengadaan selesai, status permintaan berhenti di `barang_tersedia`
 
 Perilaku fungsional ada, tetapi **tidak selaras** dengan step-by-step panduan.
 
-#### GAP-WF-05: Compile SBBK tidak terlihat di menu
+#### GAP-WF-05: Compile SBBK tidak terlihat di menu — **by design (resolved)**
 
-Route `transaction.compile-distribusi.*` dan view ada, tetapi **tidak ada item sidebar** di `app.blade.php` L298–312 (hanya draft, distribusi, penerimaan, retur).
+Route `transaction.compile-distribusi.*` sengaja **hanya redirect** ke **Distribusi Barang (SBBK)**. Tahap Compile terpisah digabung: proses disposisi di Daftar Permintaan langsung membuat SBBK. **Tidak perlu** menambah item sidebar Compile.
 
 #### GAP-WF-06: Dashboard masih query Pemakaian Barang
 
@@ -297,7 +297,7 @@ Fresh install cocok untuk uji login/RBAC; **lemah untuk demo end-to-end transaks
 **Area belum/baru smoke test:**
 
 ```
-Permintaan → Approval → Disposisi → Compile SBBK → Kirim → Penerimaan
+Permintaan → Approval → Disposisi → Buat SBBK (Distribusi) → Kirim → Penerimaan
 ```
 
 `CriticalFlowSmokeTest` hanya cek redirect guest (15 route), bukan validasi bisnis.
@@ -372,7 +372,7 @@ Tidak ada `composer audit` / Dependabot di CI.
 |-------|-------------|--------------|----------|
 | Status permintaan | Nama legacy | Enum kanonik | ❌ |
 | Alur kirim distribusi | DIKIRIM → tunggu → terima | Auto penerimaan + selesai | ❌ |
-| Compile SBBK | Langkah workflow | Hidden dari sidebar | ❌ |
+| Compile SBBK (legacy) | Digabung ke Distribusi | Redirect only | ✅ by design |
 | Pemakaian Barang | Disabled di panduan | Match (404) | ✅ |
 | Notifikasi | Placeholder | Match (cosmetic) | ✅ |
 | Admin IT bypass | Tidak bypass scope | Match RBAC Phase 1 | ✅ |
@@ -402,7 +402,7 @@ Dokumentasi **user-facing** (`docs/panduan-pengguna/`) sudah lengkap dan PDF-rea
 | # | Item | Area |
 |---|------|------|
 | 8 | Auto-resume `barang_tersedia` → disposisi/distribusi | Workflow |
-| 9 | Tambah Compile SBBK ke sidebar | UX |
+| 9 | ~~Tambah Compile SBBK ke sidebar~~ — tidak perlu; sudah digabung ke Distribusi | UX |
 | 10 | Selaraskan `ALUR_TRANSAKSI.md` dengan enum/service | Docs |
 | 11 | Foundation notifikasi (event → in-app/email) untuk approval & penerimaan | Feature |
 | 12 | Aktifkan `FEATURE_PRINT_TEMPLATES` di staging; wire dokumen lain | Feature |
@@ -439,7 +439,7 @@ Gunakan checklist ini sebelum produksi penuh:
 ### Fitur
 - [ ] Alur permintaan→penerimaan diuji UAT dengan data real
 - [ ] Handoff pengadaan→distribusi jelas (otomatis atau SOP manual)
-- [ ] Compile SBBK dapat diakses operator
+- [x] Buat SBBK dari Daftar Permintaan / Distribusi (Compile terpisah tidak dipakai)
 - [ ] Keputusan final: Pemakaian Barang on/off
 - [ ] Print template: env flag & template produksi ready
 

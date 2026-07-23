@@ -1,47 +1,48 @@
 # Panduan Pengguna SI-MANTIK
 
-Panduan lengkap penggunaan **Sistem Informasi Manajemen Terintegrasi (SI-MANTIK)** — mencakup cara kerja aplikasi, kegunaan setiap modul/fitur, alur bisnis, dan instruksi khusus per role.
+Panduan lengkap **Sistem Informasi Manajemen Terintegrasi (SI-MANTIK)**: cara kerja aplikasi, modul, alur bisnis, matriks role/permission, dan instruksi per role.
 
 ---
 
-## Panduan di dalam aplikasi (disarankan)
+## Siapa yang bisa membuka Panduan di aplikasi?
 
-Setelah login, buka menu sidebar **Panduan Pengguna** (`/panduan`):
+| Role | Akses menu **Panduan Pengguna** (`/panduan`) |
+|------|-----------------------------------------------|
+| **Administrator** (`admin` / `administrator`) | Ya |
+| **Super Administrator** | Ya |
+| Role lain (unit, gudang, teknisi, dll.) | **Tidak** (menu disembunyikan, URL mengembalikan 403) |
 
-| Fitur | Keterangan |
-|-------|------------|
-| **Panduan role Anda** | Otomatis menampilkan panduan sesuai role login |
-| **Bab umum** | Pengenalan, modul, alur kerja, matriks akses |
-| **Unduh PDF** | Versi cetak per bab atau per role |
-
-Dashboard juga menampilkan pintasan ke panduan role Anda.
+File markdown di folder ini tetap ada di repositori untuk Admin IT / dokumentasi internal.
 
 ---
 
-## Untuk siapa?
+## Mulai dari mana? (untuk Administrator)
 
-| Audiens | Mulai dari |
-|---------|------------|
-| User baru | [01 — Pengenalan & Login](./01-pengenalan-dan-login.md) |
-| Operator harian (unit/gudang) | [02 — Modul & Fitur](./02-modul-dan-fitur.md) + [Panduan per Role](./per-role/README.md) |
-| Pimpinan / approval | [03 — Alur Kerja Utama](./03-alur-kerja-utama.md) |
-| Admin IT | [per-role/admin-dan-administrator.md](./per-role/admin-dan-administrator.md) |
+| Kebutuhan | Baca |
+|-----------|------|
+| Login & navigasi dasar | [01 — Pengenalan & Login](./01-pengenalan-dan-login.md) |
+| Semua menu sidebar | [02 — Modul & Fitur](./02-modul-dan-fitur.md) |
+| Alur bisnis utama | [03 — Alur Kerja Utama](./03-alur-kerja-utama.md) |
+| **Matriks role × akses** | [04 — Matriks Akses Role](./04-matrik-akses-role.md) |
+| **Cara kelola role, permission & user** | [05 — Mengelola Role, Permission & User](./05-mengelola-role-permission-dan-user.md) |
+| Detail tiap role (termasuk teknisi) | [Panduan per Role](./per-role/README.md) |
 
 ---
 
-## Daftar isi panduan
+## Daftar isi
 
 | # | Dokumen | Isi |
 |---|---------|-----|
-| 1 | [Pengenalan & Login](./01-pengenalan-dan-login.md) | Apa itu SI-MANTIK, login, navigasi, mobile, scope unit |
-| 2 | [Modul & Fitur Lengkap](./02-modul-dan-fitur.md) | Semua menu sidebar, kegunaan, halaman utama |
-| 3 | [Alur Kerja Utama](./03-alur-kerja-utama.md) | Permintaan → approval → distribusi → penerimaan, RKU, pengadaan, dll. |
-| 4 | [Matriks Akses Role](./04-matrik-akses-role.md) | Tabel ringkas: role × modul × tugas |
-| 5 | [Panduan per Role](./per-role/README.md) | 15 role kanonik + Admin IT |
+| 1 | [Pengenalan & Login](./01-pengenalan-dan-login.md) | Login, password, navigasi, scope unit |
+| 2 | [Modul & Fitur](./02-modul-dan-fitur.md) | Menu sidebar & kegunaan |
+| 3 | [Alur Kerja Utama](./03-alur-kerja-utama.md) | Permintaan → distribusi, RKU, pemeliharaan, dll. |
+| 4 | [Matriks Akses Role](./04-matrik-akses-role.md) | Permission matrix ramah pembaca |
+| 5 | [Mengelola Role, Permission & User](./05-mengelola-role-permission-dan-user.md) | Langkah Admin IT |
+| — | [per-role/](./per-role/README.md) | Panduan per role kanonik + teknisi |
 
 ---
 
-## Role kanonik (15)
+## Role kanonik (ringkas)
 
 | Role | Panduan |
 |------|---------|
@@ -53,51 +54,22 @@ Dashboard juga menampilkan pintasan ke panduan role Anda.
 | Perencana | [per-role/perencana.md](./per-role/perencana.md) |
 | Pengadaan | [per-role/pengadaan.md](./per-role/pengadaan.md) |
 | Keuangan | [per-role/keuangan.md](./per-role/keuangan.md) |
-| PPTK APBD | [per-role/pptk_apbd.md](./per-role/pptk_apbd.md) |
-| PPTK BLUD | [per-role/pptk_blud.md](./per-role/pptk_blud.md) |
+| PPTK APBD / BLUD | [pptk_apbd](./per-role/pptk_apbd.md) / [pptk_blud](./per-role/pptk_blud.md) |
 | Pengurus Barang | [per-role/pengurus_barang.md](./per-role/pengurus_barang.md) |
-| Admin Gudang Pusat | [per-role/admin_gudang_pusat.md](./per-role/admin_gudang_pusat.md) |
-| Admin Gudang Aset | [per-role/admin_gudang_aset.md](./per-role/admin_gudang_aset.md) |
-| Admin Gudang Persediaan | [per-role/admin_gudang_persediaan.md](./per-role/admin_gudang_persediaan.md) |
-| Admin Gudang Farmasi | [per-role/admin_gudang_farmasi.md](./per-role/admin_gudang_farmasi.md) |
+| **Teknisi ATEM** | [per-role/teknisi_atem.md](./per-role/teknisi_atem.md) |
+| **Teknisi IT** | [per-role/teknisi_it.md](./per-role/teknisi_it.md) |
+| Admin Gudang (pusat/aset/persediaan/farmasi) | [per-role/](./per-role/README.md) |
 | Admin / Administrator IT | [per-role/admin-dan-administrator.md](./per-role/admin-dan-administrator.md) |
-
-> **Catatan:** Role legacy (`pegawai`, `admin_gudang`, `perencanaan`, dll.) masih bisa dipakai di data lama tetapi secara fungsional setara dengan role kanonik di atas. Lihat [docs/rbac-phase1/role-mapping.md](../rbac-phase1/role-mapping.md).
 
 ---
 
 ## Versi PDF
 
-Panduan tersedia dalam bentuk PDF di folder [`pdf/`](./pdf/).
-
-| File | Isi |
-|------|-----|
-| [panduan-pengguna-simantik-lengkap.pdf](./pdf/panduan-pengguna-simantik-lengkap.pdf) | **Semua bab + panduan per role** (satu file) |
-| [01-pengenalan-dan-login.pdf](./pdf/01-pengenalan-dan-login.pdf) | Bab 1 |
-| [02-modul-dan-fitur.pdf](./pdf/02-modul-dan-fitur.pdf) | Bab 2 |
-| [03-alur-kerja-utama.pdf](./pdf/03-alur-kerja-utama.pdf) | Bab 3 |
-| [04-matrik-akses-role.pdf](./pdf/04-matrik-akses-role.pdf) | Bab 4 |
-| [per-role/](./pdf/) | PDF per role (mis. `admin-gudang-aset.pdf`) |
-
-**Regenerasi PDF** (setelah mengubah file `.md`):
-
-```bash
-php artisan panduan:export-pdf
-```
-
-Opsi: `--combined-only` (hanya PDF lengkap), `--file=per-role/admin_gudang_aset.md` (satu file).
+Folder [`pdf/`](./pdf/) — regenerasi: `php artisan panduan:export-pdf` (dari environment yang mendukung).
 
 ---
 
-## Dokumentasi teknis terkait
+## Dokumen teknis terkait
 
-- [Alur Transaksi (detail step-by-step)](../ALUR_TRANSAKSI.md)
-- [Diagram Alur Transaksi](../DIAGRAM_ALUR_TRANSAKSI.md)
-- [Alur Inventory & Distribusi](../alur_inventory_pusat_distribusi_unit_kerja.md)
-- [Alur RKU → Pengadaan → Pembayaran](../alur_rku_pengadaan_pembayaran_serah_terima.md)
-- [Alur Pemeliharaan & Kalibrasi](../alur_pemeliharaan_aset_maintenance_kalibrasi.md)
-- [Daftar Dokumen Cetak](../DAFTAR_DOKUMEN_CETAK.md)
-
----
-
-**Versi panduan:** 1.0 · **Terakhir diperbarui:** Juni 2026 · **Aplikasi:** SI-MANTIK (sipeni_v1)
+- [HAK_AKSES_ROLE_DAN_DELEGASI.md](../HAK_AKSES_ROLE_DAN_DELEGASI.md) — detail teknis permission & delegasi
+- [rbac-phase1/role-mapping.md](../rbac-phase1/role-mapping.md) — mapping role legacy

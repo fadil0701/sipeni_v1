@@ -91,6 +91,16 @@ class MasterJabatanSeeder extends Seeder
                 'nama_jabatan' => 'Staf Administrasi',
                 'deskripsi' => 'Gelar organisasi baku (banyak orang bisa memakai nama ini). Hak akses aplikasi ditetapkan per akun pegawai, bukan dari nama jabatan.',
             ],
+            [
+                'urutan' => 16,
+                'nama_jabatan' => 'ATEM (Teknisi Alat Kesehatan)',
+                'deskripsi' => 'Teknisi Alat Kesehatan (ATEM) - Pelaksana pemeliharaan/servis aset alat kesehatan',
+            ],
+            [
+                'urutan' => 17,
+                'nama_jabatan' => 'Admin IT/IT Support (Teknisi IT)',
+                'deskripsi' => 'Teknisi IT / IT Support - Pelaksana pemeliharaan/servis aset IT',
+            ],
         ];
 
         foreach ($jabatans as $row) {

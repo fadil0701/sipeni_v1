@@ -11,12 +11,12 @@
     </div>
 </div>
 
-<!-- @if(!empty($panduanRoleGuides))
+@if(($canAccessPanduan ?? false) && !empty($panduanRoleGuides))
 <div class="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
             <h2 class="text-base font-semibold text-green-900">Panduan Pengguna</h2>
-            <p class="mt-1 text-sm text-green-900">Petunjuk tugas sesuai role Anda di SI-MANTIK.</p>
+            <p class="mt-1 text-sm text-green-900">Petunjuk role, matriks akses, dan pengelolaan user (khusus Administrator).</p>
         </div>
         <a href="{{ route('panduan.index') }}" class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700">
             Semua panduan
@@ -29,13 +29,17 @@
                 {{ $guide['title'] }}
             </a>
         @endforeach
-        <a href="{{ route('panduan.show', 'alur-kerja') }}"
+        <a href="{{ route('panduan.show', 'matriks-role') }}"
            class="inline-flex items-center rounded-md border border-green-200 bg-white px-3 py-2 text-xs font-medium text-green-900 hover:border-green-400">
-            Alur kerja utama
+            Matriks akses role
+        </a>
+        <a href="{{ route('panduan.show', 'role-permission-user') }}"
+           class="inline-flex items-center rounded-md border border-green-200 bg-white px-3 py-2 text-xs font-medium text-green-900 hover:border-green-400">
+            Kelola role &amp; user
         </a>
     </div>
 </div>
-@endif -->
+@endif
 
 @if($isPengurusBarangWorkspace ?? false)
 @php

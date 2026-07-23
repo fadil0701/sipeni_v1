@@ -12,6 +12,8 @@ class PanduanPenggunaController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorizePanduan($request);
+
         $user = $request->user();
         $roleGuides = PanduanPenggunaService::roleGuidesForUser($user);
         $chapters = PanduanPenggunaService::generalChapters();
@@ -20,8 +22,10 @@ class PanduanPenggunaController extends Controller
         return view('panduan.index', compact('roleGuides', 'chapters', 'pdfAvailable'));
     }
 
-    public function show(string $doc)
+    public function show(Request $request, string $doc)
     {
+        $this->authorizePanduan($request);
+
         try {
             $resolved = PanduanPenggunaService::resolveDoc($doc);
             $html = PanduanPenggunaService::htmlFromDoc($doc);
@@ -43,8 +47,10 @@ class PanduanPenggunaController extends Controller
         ]);
     }
 
-    public function pdf(string $doc)
+    public function pdf(Request $request, string $doc)
     {
+        $this->authorizePanduan($request);
+
         if (! PanduanPenggunaPdfExporter::isAvailable()) {
             abort(Response::HTTP_SERVICE_UNAVAILABLE, 'Ekspor PDF tidak tersedia di server ini.');
         }
@@ -61,5 +67,12 @@ class PanduanPenggunaController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
         ]);
+    }
+
+    private function authorizePanduan(Request $request): void
+    {
+        if (! PanduanPenggunaService::userCanAccess($request->user())) {
+            abort(403, 'Panduan Pengguna hanya dapat diakses oleh Administrator.');
+        }
     }
 }

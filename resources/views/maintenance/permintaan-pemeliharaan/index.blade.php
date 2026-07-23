@@ -9,20 +9,14 @@
             @if(($viewType ?? 'aktif') === 'riwayat')
                 Riwayat permintaan pemeliharaan yang sudah selesai atau ditolak
             @else
-                Daftar permintaan pemeliharaan aset yang masih berjalan
+                Ajukan dan pantau status permintaan pemeliharaan aset unit Anda
             @endif
         </p>
     </div>
     @if(($viewType ?? 'aktif') !== 'riwayat')
-        <a 
-            href="{{ route('maintenance.permintaan-pemeliharaan.create') }}" 
-            class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-        >
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
+        <x-ui.btn action="tambah" href="{{ route('maintenance.permintaan-pemeliharaan.create') }}" size="md">
             Tambah Permintaan
-        </a>
+        </x-ui.btn>
     @endif
 </div>
 
@@ -208,34 +202,24 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div class="flex items-center justify-end space-x-3">
-                                <a 
-                                    href="{{ route('maintenance.permintaan-pemeliharaan.show', $permintaan->id_permintaan_pemeliharaan) }}" 
-                                    class="text-blue-600 hover:text-blue-900 transition-colors"
+                            <div class="flex items-center justify-end gap-2">
+                                <x-ui.btn
+                                    action="detail"
+                                    size="sm"
+                                    soft
+                                    href="{{ route('maintenance.permintaan-pemeliharaan.show', $permintaan->id_permintaan_pemeliharaan) }}"
                                 >
                                     Detail
-                                </a>
-                                @php
-                                    $pendingDisposisiId = $pendingDisposisiApprovalIds[$permintaan->id_permintaan_pemeliharaan] ?? null;
-                                    $canProsesDisposisi = $pendingDisposisiId
-                                        && $permintaan->status_permintaan === 'DISETUJUI'
-                                        && \App\Helpers\PermissionHelper::canAccess(auth()->user(), 'transaction.approval.disposisi');
-                                @endphp
-                                @if($canProsesDisposisi)
-                                    <a
-                                        href="{{ route('transaction.approval.show', $pendingDisposisiId) }}"
-                                        class="inline-flex items-center rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-700 transition-colors"
-                                    >
-                                        Proses
-                                    </a>
-                                @endif
+                                </x-ui.btn>
                                 @if($permintaan->status_permintaan == 'DRAFT')
-                                    <a 
-                                        href="{{ route('maintenance.permintaan-pemeliharaan.edit', $permintaan->id_permintaan_pemeliharaan) }}" 
-                                        class="text-blue-700 hover:text-blue-900 transition-colors"
+                                    <x-ui.btn
+                                        action="edit"
+                                        size="sm"
+                                        soft
+                                        href="{{ route('maintenance.permintaan-pemeliharaan.edit', $permintaan->id_permintaan_pemeliharaan) }}"
                                     >
                                         Edit
-                                    </a>
+                                    </x-ui.btn>
                                     <form 
                                         action="{{ route('maintenance.permintaan-pemeliharaan.destroy', $permintaan->id_permintaan_pemeliharaan) }}" 
                                         method="POST" 
@@ -244,12 +228,9 @@
                                     >
                                         @csrf
                                         @method('DELETE')
-                                        <button 
-                                            type="submit" 
-                                            class="text-red-600 hover:text-red-900 transition-colors"
-                                        >
+                                        <x-ui.btn action="hapus" size="sm" soft type="submit">
                                             Hapus
-                                        </button>
+                                        </x-ui.btn>
                                     </form>
                                 @endif
                             </div>

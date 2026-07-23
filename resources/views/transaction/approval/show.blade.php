@@ -308,15 +308,9 @@
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         ></textarea>
                     </div>
-                    <button 
-                        type="submit" 
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                    <x-ui.btn action="mengetahui" type="submit">
                         Mengetahui
-                    </button>
+                    </x-ui.btn>
                 </form>
             
             {{-- Kasubbag TU - Verifikasi/Kembalikan (Step 3) --}}
@@ -347,16 +341,9 @@
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         ></textarea>
                     </div>
-                    <button 
-                        type="submit" 
-                        form="formVerifikasi"
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    >
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                    <x-ui.btn action="verifikasi" type="submit" form="formVerifikasi">
                         Verifikasi, Setujui & Disposisi
-                    </button>
+                    </x-ui.btn>
 
                     <form method="POST" action="{{ route('transaction.approval.kembalikan', $approval->id) }}" id="formKembalikan" data-confirm="Apakah Anda yakin ingin mengembalikan permintaan ini?">
                         @csrf
@@ -376,17 +363,9 @@
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-                        <button 
-                            type="submit" 
-                            form="formKembalikan"
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                            onclick="return validateKembalikan();"
-                        >
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                        <x-ui.btn action="tolak" type="submit" form="formKembalikan" onclick="return validateKembalikan();">
                             Kembalikan
-                        </button>
+                        </x-ui.btn>
                     </form>
                 </div>
 
@@ -410,12 +389,9 @@
                                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                             ></textarea>
                         </div>
-                        <button
-                            type="submit"
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                        >
+                        <x-ui.btn action="setujui" type="submit">
                             Setujui untuk Pengadaan
-                        </button>
+                        </x-ui.btn>
                     </form>
 
                     <form method="POST" action="{{ route('transaction.approval.reject', $approval->id) }}" class="space-y-4" data-confirm="Tolak permintaan ini?">
@@ -437,12 +413,9 @@
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-                        <button
-                            type="submit"
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                        >
+                        <x-ui.btn action="tolak" type="submit">
                             Tolak
-                        </button>
+                        </x-ui.btn>
                     </form>
                 </div>
             

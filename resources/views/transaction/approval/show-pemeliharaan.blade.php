@@ -25,6 +25,9 @@
     $stepOrder = $currentFlow?->step_order ?? 0;
     $statusColor = \App\Support\UiColor::badgeForStatus($displayStatus);
     $jenisPelaksanaOptions = \App\Enums\PemeliharaanJenisPelaksana::cases();
+    $rekomendasiAkhir = $permintaan->rekomendasi_akhir ? (string) $permintaan->rekomendasi_akhir : null;
+    $isPendingSparepart = $rekomendasiAkhir === \App\Enums\PemeliharaanRekomendasi::PendingSparepart->value;
+    $isTidakBisaDiperbaiki = $rekomendasiAkhir === \App\Enums\PemeliharaanRekomendasi::TidakBisaDiperbaiki->value;
 @endphp
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
@@ -167,7 +170,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Catatan (Opsional)</label>
                         <textarea name="catatan" rows="3" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"></textarea>
                     </div>
-                    <button type="submit" class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Ketahui</button>
+                    <x-ui.btn action="mengetahui" type="submit">Ketahui</x-ui.btn>
                 </form>
 
             {{-- Step 3 / 8 / 9: Kepala Pusat setujui/tolak --}}
@@ -179,21 +182,25 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">Catatan (Opsional)</label>
                             <textarea name="catatan" rows="3" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"></textarea>
                         </div>
-                        <button type="submit" class="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">
+                        <x-ui.btn action="setujui" type="submit">
                             @if($stepOrder === 3) Setujui & Disposisi ke Pengurus Barang
-                            @elseif($stepOrder === 8) Ketahui / Tindak Lanjut Rekomendasi
+                            @elseif($stepOrder === 8)
+                                @if($isPendingSparepart) Setujui Pembelian
+                                @elseif($isTidakBisaDiperbaiki) Ketahui
+                                @else Ketahui / Tindak Lanjut Rekomendasi
+                                @endif
                             @else Setujui Pembelian
                             @endif
-                        </button>
+                        </x-ui.btn>
                     </form>
-                    @if(\App\Helpers\PermissionHelper::canAccess($user, 'transaction.approval.reject'))
+                    @if(!($stepOrder === 8 && $isTidakBisaDiperbaiki) && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.approval.reject'))
                         <form method="POST" action="{{ route('transaction.approval.reject', $approval->id) }}" class="space-y-4" data-confirm="Tolak permintaan ini?">
                             @csrf
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Catatan Penolakan <span class="text-red-500">*</span></label>
                                 <textarea name="catatan" rows="3" required minlength="10" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"></textarea>
                             </div>
-                            <button type="submit" class="inline-flex items-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">Tolak</button>
+                            <x-ui.btn action="tolak" type="submit">Tolak</x-ui.btn>
                         </form>
                     @endif
                 </div>
@@ -228,7 +235,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Catatan Disposisi</label>
                         <textarea name="disposisi_catatan" rows="3" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"></textarea>
                     </div>
-                    <button type="submit" class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Disposisi ke Pelaksana</button>
+                    <x-ui.btn action="disposisi" type="submit">Disposisi ke Pelaksana</x-ui.btn>
                 </form>
                 @push('scripts')
                 <script>

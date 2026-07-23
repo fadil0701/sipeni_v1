@@ -37,25 +37,16 @@
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    PROSES DISPOSISI                              │
+│                    PROSES DISPOSISI → BUAT SBBK                  │
 │  (Admin Gudang Kategori)                                          │
 │                                                                  │
-│  1. Lihat Daftar Disposisi                                       │
+│  1. Lihat Daftar Permintaan (disposisi)                          │
 │  2. Proses Disposisi                                             │
 │  3. Pilih Inventory dari Gudang Pusat                           │
-│  4. Tentukan Qty Distribusi                                     │
-│  5. Simpan Draft Distribusi (Status: READY)                     │
-└──────────────────────┬──────────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    COMPILE SBBK                                  │
-│  (Admin Gudang)                                                  │
+│  4. Tentukan Qty Distribusi + Gudang Tujuan                     │
+│  5. Simpan SBBK (Status: DRAFT) — langsung di menu Distribusi   │
 │                                                                  │
-│  1. Lihat Draft Ready                                            │
-│  2. Compile menjadi SBBK                                        │
-│  3. Tentukan Gudang Tujuan                                      │
-│  4. Simpan SBBK (Status: DRAFT)                                 │
+│  Catatan: tahap "Compile SBBK" terpisah sudah digabung ke sini. │
 └──────────────────────┬──────────────────────────────────────────┘
                        │
                        ▼
@@ -98,16 +89,16 @@
 
 ## Role & Permission Matrix
 
-| Role | Permintaan | Approval | Disposisi | Compile | Distribusi | Penerimaan | Retur |
-|------|-----------|----------|-----------|---------|------------|------------|-------|
+| Role | Permintaan | Approval | Disposisi | Buat SBBK | Distribusi | Penerimaan | Retur |
+|------|-----------|----------|-----------|-----------|------------|------------|-------|
 | **Pegawai** | ✅ Create | ❌ | ❌ | ❌ | ❌ | ✅ Receive | ✅ Create |
 | **Kepala Unit** | ✅ Create | ✅ Approve | 👁️ View | ❌ | ❌ | ✅ Receive | ✅ Create |
 | **Kasubbag TU** | ✅ Create | ✅ Verify | 👁️ View | ❌ | ❌ | ❌ | ❌ |
 | **Kepala Pusat** | ✅ Create | ✅ Approve | 👁️ View | ❌ | ❌ | ❌ | ❌ |
-| **Admin Gudang** | ✅ All | ✅ Disposisi | ✅ Process | ✅ Compile | ✅ Send | ✅ Receive | ✅ All |
-| **Admin Gudang Aset** | ✅ All | ✅ View | ✅ Process | ❌ | ✅ Send | ✅ Receive | ✅ All |
-| **Admin Gudang Persediaan** | ✅ All | ✅ View | ✅ Process | ❌ | ✅ Send | ✅ Receive | ✅ All |
-| **Admin Gudang Farmasi** | ✅ All | ✅ View | ✅ Process | ❌ | ✅ Send | ✅ Receive | ✅ All |
+| **Admin Gudang** | ✅ All | ✅ Disposisi | ✅ Process | ✅ Buat | ✅ Send | ✅ Receive | ✅ All |
+| **Admin Gudang Aset** | ✅ All | ✅ View | ✅ Process | ✅ Buat | ✅ Send | ✅ Receive | ✅ All |
+| **Admin Gudang Persediaan** | ✅ All | ✅ View | ✅ Process | ✅ Buat | ✅ Send | ✅ Receive | ✅ All |
+| **Admin Gudang Farmasi** | ✅ All | ✅ View | ✅ Process | ✅ Buat | ✅ Send | ✅ Receive | ✅ All |
 | **Admin** | ✅ All | ✅ All | ✅ All | ✅ All | ✅ All | ✅ All | ✅ All |
 
 **Legend:**
@@ -196,7 +187,7 @@ DISPOSISI
     │
     └─→ draft_detail_distribusi (items ready)
 
-COMPILE SBBK
+BUAT SBBK (dari proses disposisi / menu Distribusi)
     │
     ├─→ transaksi_distribusi (header)
     └─→ detail_distribusi (items)
@@ -230,7 +221,7 @@ RETUR (jika ada)
 | Verifikasi Kasubbag | 1-2 hari | Tergantung ketersediaan |
 | Approval Kepala Pusat | 1-3 hari | Tergantung ketersediaan |
 | Proses Disposisi | 15-30 menit | Tergantung jumlah item |
-| Compile SBBK | 5-10 menit | Quick process |
+| Buat SBBK (dari disposisi) | 5-10 menit | Langsung di menu Distribusi |
 | Distribusi (Kirim) | 1-3 hari | Tergantung jarak & logistik |
 | Penerimaan Barang | 10-15 menit | Verifikasi fisik |
 | Retur (jika ada) | 1-2 hari | Tergantung proses retur |
@@ -257,7 +248,7 @@ Kasubbag TU Verif → Disetujui
     → Cek Fisik: Sesuai → Selesai (SBBK ditandatangani, barang masuk data stock unit)
 ```
 
-**Implementasi saat ini:** Setelah Kasubbag TU verifikasi, sistem membuat **disposisi ke Admin Gudang** (step 4) sesuai kategori (Persediaan/Farmasi). Admin Gudang memproses disposisi → Compile SBBK → Distribusi → Penerimaan.
+**Implementasi saat ini:** Setelah Kasubbag TU verifikasi, sistem membuat **disposisi ke Admin Gudang** (step 4) sesuai kategori (Persediaan/Farmasi). Admin Gudang memproses disposisi di **Daftar Permintaan** → **buat SBBK** di menu Distribusi → Kirim → Penerimaan. Tahap Compile SBBK terpisah tidak dipakai lagi (route hanya redirect).
 
 ### Cabang 2: Barang TIDAK ADA di Stock (Pengadaan Barang dan Jasa)
 
@@ -272,14 +263,14 @@ SPB (Permintaan yang tidak ada di Data Stock)
 
 **Implementasi saat ini:**
 
-- Sistem mendeteksi item yang **tidak ada di stock** (permintaan lainnya / `id_data_barang` null, atau stock gudang pusat = 0).
-- Jika ada item seperti itu, setelah Kasubbag TU verifikasi dibuat **disposisi ke Pengadaan Barang dan Jasa** (step 4 – role `pengadaan`). Role Pengadaan melihat permintaan tersebut di menu **Persetujuan** dan dapat memproses pengadaan.
-
-**Catatan:** Di flowchart, cabang pengadaan melalui **persetujuan Kepala Pusat** dulu sebelum ke PPK/PPBJ. Di sistem saat ini, disposisi ke Pengadaan dibuat langsung setelah verifikasi Kasubbag TU (tanpa step persetujuan Kepala Pusat khusus untuk pengadaan). Jika diinginkan penambahan step “Persetujuan Kepala Pusat untuk Disposisi ke Pengadaan” sebelum item masuk ke bagian Pengadaan, dapat ditambahkan di kemudian hari.
+- Sistem mendeteksi item yang **tidak ada di stock** (permintaan lainnya / `id_data_barang` null, atau stock gudang pusat = 0 / qty > stok).
+- Setelah Kasubbag TU verifikasi: item tersebut masuk **persetujuan Kepala Pusat**, lalu disposisi ke role `pengadaan` + paket pengadaan.
+- Item master dengan stok cukup dapat diproses distribusi **secara paralel** (bukan all-or-nothing).
+- Route/menu **Compile SBBK** terpisah sudah digabung ke **Distribusi Barang (SBBK)** (hanya redirect).
 
 ---
 
-**Last Updated:** 02/02/2026  
-**Version:** 1.1
+**Last Updated:** 23/07/2026  
+**Version:** 1.2
 
 

@@ -29,6 +29,72 @@ class InventoryBusinessFlowTest extends TestCase
         $this->seed(ComprehensiveDummySeeder::class);
     }
 
+    public function test_distribusi_kirim_memindahkan_inventory_persediaan_ke_gudang_tujuan(): void
+    {
+        $inventory = DataInventory::query()
+            ->where('auto_qr_code', 'INV-DMY-001')
+            ->where('jenis_inventory', 'PERSEDIAAN')
+            ->firstOrFail();
+
+        $gudangTujuan = \App\Models\MasterGudang::query()
+            ->where('nama_gudang', 'Gudang Unit A Dummy')
+            ->firstOrFail();
+
+        $this->assertNotEquals((int) $inventory->id_gudang, (int) $gudangTujuan->id_gudang);
+
+        $qtyKirim = 10.0;
+        $qtyAsalBefore = (float) $inventory->qty_input;
+
+        $stockAsal = DataStock::query()
+            ->where('id_data_barang', $inventory->id_data_barang)
+            ->where('id_gudang', $inventory->id_gudang)
+            ->firstOrFail();
+        $qtyAkhirBefore = (float) $stockAsal->qty_akhir;
+
+        $permintaan = PermintaanBarang::query()->firstOrFail();
+        $satuan = MasterSatuan::query()->firstOrFail();
+        $pegawai = \App\Models\MasterPegawai::query()->firstOrFail();
+
+        $distribusi = TransaksiDistribusi::create([
+            'no_sbbk' => 'SBBK-TEST-MUTASI-PERS',
+            'id_permintaan' => $permintaan->id_permintaan,
+            'tanggal_distribusi' => now(),
+            'id_gudang_asal' => $inventory->id_gudang,
+            'id_gudang_tujuan' => $gudangTujuan->id_gudang,
+            'id_pegawai_pengirim' => $pegawai->id,
+            'status_distribusi' => DistribusiStatus::Draft,
+            'keterangan' => 'Test mutasi Opsi A',
+        ]);
+
+        DetailDistribusi::create([
+            'id_distribusi' => $distribusi->id_distribusi,
+            'id_inventory' => $inventory->id_inventory,
+            'qty_distribusi' => $qtyKirim,
+            'id_satuan' => $satuan->id_satuan,
+            'harga_satuan' => (float) $inventory->harga_satuan,
+            'subtotal' => $qtyKirim * (float) $inventory->harga_satuan,
+            'keterangan' => null,
+        ]);
+
+        app(DistribusiService::class)->kirim($distribusi->fresh(['detailDistribusi.inventory']));
+
+        $inventory->refresh();
+        $this->assertEquals($qtyAsalBefore - $qtyKirim, (float) $inventory->qty_input);
+        $this->assertEquals((int) $distribusi->id_gudang_asal, (int) $inventory->id_gudang);
+
+        $detail = DetailDistribusi::query()
+            ->where('id_distribusi', $distribusi->id_distribusi)
+            ->firstOrFail();
+        $this->assertNotEquals((int) $inventory->id_inventory, (int) $detail->id_inventory);
+
+        $relocated = DataInventory::query()->findOrFail($detail->id_inventory);
+        $this->assertEquals((int) $gudangTujuan->id_gudang, (int) $relocated->id_gudang);
+        $this->assertEquals($qtyKirim, (float) $relocated->qty_input);
+
+        $stockAsal->refresh();
+        $this->assertEquals($qtyAkhirBefore - $qtyKirim, (float) $stockAsal->qty_akhir);
+    }
+
     public function test_distribusi_kirim_ditolak_ketika_qty_melebihi_stok_inventory(): void
     {
         $inventory = DataInventory::query()

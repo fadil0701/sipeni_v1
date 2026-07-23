@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\PermintaanBarangStatus;
+use App\Enums\PemeliharaanRekomendasi;
 use App\Models\ApprovalFlowDefinition;
 use App\Models\ApprovalLog;
 use App\Models\PermintaanBarang;
@@ -135,8 +136,20 @@ class ApprovalService
         $modul = $pendingLog->modul_approval;
 
         if ($modul === 'PERMINTAAN_PEMELIHARAAN') {
+            if ($step === 8) {
+                $permintaan = PermintaanPemeliharaan::find($pendingLog->id_referensi);
+                if (
+                    $permintaan
+                    && (string) $permintaan->rekomendasi_akhir === PemeliharaanRekomendasi::PendingSparepart->value
+                ) {
+                    return 'DISETUJUI';
+                }
+
+                return 'DIKETAHUI';
+            }
+
             return match ($step) {
-                2, 6, 7, 8 => 'DIKETAHUI',
+                2, 6, 7 => 'DIKETAHUI',
                 3, 9 => 'DISETUJUI',
                 4 => 'DIDISPOSISIKAN',
                 10 => 'DIDISPOSISIKAN',
@@ -243,7 +256,7 @@ class ApprovalService
 
         // Setelah diketahui SR Kepala Pusat → cabang rekomendasi.
         if ($stepOrder === 8) {
-            app(PemeliharaanWorkflowService::class)->resolveAfterServiceReportKnown($permintaan->fresh());
+            app(PemeliharaanWorkflowService::class)->resolveAfterServiceReportKnown($permintaan->fresh(), $log);
 
             return;
         }

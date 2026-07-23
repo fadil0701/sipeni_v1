@@ -641,6 +641,8 @@ class RegisterAsetController extends Controller
             'inventory.gudang',
             'inventory.satuan',
             'inventory.sumberAnggaran',
+            'inventory.inventoryItems',
+            'inventoryItem',
             'unitKerja',
             'ruangan',
             'kartuInventarisRuangan',

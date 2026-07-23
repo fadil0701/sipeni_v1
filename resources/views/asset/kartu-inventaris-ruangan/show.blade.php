@@ -44,13 +44,17 @@
             $penanggungJawabKir = $kir->penanggungJawab;
 
             $fotoInventory = $kir->registerAset->inventory->upload_foto ?? null;
-            $fotoItem = $kir->registerAset->inventory->inventoryItems->first()->foto_barang ?? null;
-            $fotoBarangPath = $fotoInventory ?: $fotoItem;
-            $fotoBarangUrl = $fotoBarangPath
-                ? (\Illuminate\Support\Str::startsWith($fotoBarangPath, ['http://', 'https://'])
-                    ? $fotoBarangPath
-                    : asset('storage/' . ltrim($fotoBarangPath, '/')))
-                : null;
+            $fotoItem = $kir->registerAset->inventoryItem?->foto_barang
+                ?? $kir->registerAset->inventory->inventoryItems->first()?->foto_barang
+                ?? null;
+            $fotoMaster = $kir->registerAset->inventory->dataBarang->upload_foto
+                ?? $kir->registerAset->inventory->dataBarang->foto_barang
+                ?? null;
+            $fotoBarangPath = $fotoItem ?: ($fotoInventory ?: $fotoMaster);
+            // Upload sensitif di disk private — wajib lewat media.show / ImageHelper (bukan asset storage/)
+            $fotoBarangUrl = ($fotoBarangPath && \App\Helpers\ImageHelper::imageExists($fotoBarangPath))
+                ? \App\Helpers\ImageHelper::getImageUrl($fotoBarangPath)
+                : (filter_var((string) $fotoBarangPath, FILTER_VALIDATE_URL) ? $fotoBarangPath : null);
         @endphp
 
         <div class="mb-6 bg-gray-50 rounded-lg p-5 border border-gray-200">

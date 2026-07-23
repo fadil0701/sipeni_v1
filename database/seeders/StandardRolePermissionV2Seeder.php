@@ -195,7 +195,7 @@ class StandardRolePermissionV2Seeder extends Seeder
                 'reports.transaksi-summary',
             ]),
 
-            // ===== pengurus_barang: inventory + distribusi + aset + laporan =====
+            // ===== pengurus_barang: inventory + distribusi + aset + pemeliharaan + laporan =====
             'pengurus_barang' => $byPrefix('inventory.')
                 ->merge($byPrefix('asset.'))
                 ->merge($byPrefix('master-data.'))
@@ -209,13 +209,40 @@ class StandardRolePermissionV2Seeder extends Seeder
                 ->merge($byPrefix('transaction.peminjaman-barang.'))
                 ->merge($byPrefix('maintenance.permintaan-pemeliharaan.'))
                 ->merge($byPrefix('maintenance.service-report.'))
+                ->merge($byPrefix('maintenance.jadwal-maintenance.'))
+                ->merge($byPrefix('maintenance.kalibrasi-aset.'))
                 ->merge($byPrefix('reports.'))
                 ->merge($explicit([
                     'user.dashboard',
+                    'maintenance.daftar-permintaan-pemeliharaan.index',
                     'master.gudang.index', 'master.gudang.show', 'master.gudang.create',
                     'master.gudang.store', 'master.gudang.edit', 'master.gudang.update',
                     'master.gudang.destroy',
                     'master.ruangan.index', 'master.ruangan.show',
+                ])),
+
+            // ===== teknisi_atem / teknisi_it: operasional pemeliharaan =====
+            'teknisi_atem' => $byPrefix('maintenance.service-report.')
+                ->merge($byPrefix('maintenance.jadwal-maintenance.'))
+                ->merge($byPrefix('maintenance.kalibrasi-aset.'))
+                ->merge($explicit([
+                    'user.dashboard',
+                    'maintenance.daftar-permintaan-pemeliharaan.index',
+                    'maintenance.permintaan-pemeliharaan.show',
+                    'maintenance.permintaan-pemeliharaan.lanjut-perbaikan',
+                    'asset.register-aset.index',
+                    'asset.register-aset.show',
+                ])),
+            'teknisi_it' => $byPrefix('maintenance.service-report.')
+                ->merge($byPrefix('maintenance.jadwal-maintenance.'))
+                ->merge($byPrefix('maintenance.kalibrasi-aset.'))
+                ->merge($explicit([
+                    'user.dashboard',
+                    'maintenance.daftar-permintaan-pemeliharaan.index',
+                    'maintenance.permintaan-pemeliharaan.show',
+                    'maintenance.permintaan-pemeliharaan.lanjut-perbaikan',
+                    'asset.register-aset.index',
+                    'asset.register-aset.show',
                 ])),
 
             // ===== admin_gudang_pusat: inventory full + distribusi penuh =====

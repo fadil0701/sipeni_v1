@@ -356,6 +356,8 @@ function setSatuanSelectValue(selectEl, value) {
             'id_gudang' => $inv->id_gudang,
             'nama_barang' => ($inv->dataBarang->nama_barang ?? '-'),
             'kode_barang' => ($inv->dataBarang->kode_data_barang ?? ''),
+            'merk' => $inv->merk ?: '-',
+            'tipe' => $inv->tipe ?: '-',
             'jenis_inventory' => $inv->jenis_inventory,
             'jenis_barang' => $inv->jenis_barang ?? null,
             'harga_satuan' => (float)($inv->harga_satuan ?? 0),
@@ -489,7 +491,9 @@ function populateInventoryForAllGudangs(inventorySelect) {
             const option = document.createElement('option');
             option.value = inv.id_inventory;
             const kodeText = inv.kode_barang ? ` (${inv.kode_barang})` : '';
-            option.textContent = `${inv.nama_barang}${kodeText} - Stok: ${inv.qty_input}`;
+            const merkText = inv.merk && inv.merk !== '-' ? inv.merk : '-';
+            const tipeText = inv.tipe && inv.tipe !== '-' ? inv.tipe : '-';
+            option.textContent = `${inv.nama_barang}${kodeText} - Merk: ${merkText} - Tipe: ${tipeText} - Stok: ${inv.qty_input}`;
             option.setAttribute('data-harga', inv.harga_satuan);
             option.setAttribute('data-satuan', inv.id_satuan);
             option.setAttribute('data-gudang', inv.id_gudang);
@@ -530,7 +534,9 @@ function filterInventoryByGudang(inventorySelect, gudangId) {
             const option = document.createElement('option');
             option.value = inv.id_inventory;
             const kodeText = inv.kode_barang ? ` (${inv.kode_barang})` : '';
-            option.textContent = `${inv.nama_barang}${kodeText} - Stok: ${inv.qty_input}`;
+            const merkText = inv.merk && inv.merk !== '-' ? inv.merk : '-';
+            const tipeText = inv.tipe && inv.tipe !== '-' ? inv.tipe : '-';
+            option.textContent = `${inv.nama_barang}${kodeText} - Merk: ${merkText} - Tipe: ${tipeText} - Stok: ${inv.qty_input}`;
             option.setAttribute('data-harga', inv.harga_satuan);
             option.setAttribute('data-satuan', inv.id_satuan);
             option.setAttribute('data-gudang', inv.id_gudang);

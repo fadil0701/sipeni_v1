@@ -109,7 +109,7 @@ class PemeliharaanWorkflowService
     /**
      * Setelah step 8 (Kepala Pusat mengetahui SR): cabang berdasarkan rekomendasi.
      */
-    public function resolveAfterServiceReportKnown(PermintaanPemeliharaan $permintaan): void
+    public function resolveAfterServiceReportKnown(PermintaanPemeliharaan $permintaan, ApprovalLog $approvalLog): void
     {
         $rekomendasi = PemeliharaanRekomendasi::tryFrom((string) $permintaan->rekomendasi_akhir);
         if (! $rekomendasi) {
@@ -132,18 +132,14 @@ class PemeliharaanWorkflowService
             return;
         }
 
-        // PENDING_SPAREPART → step 9 Kepala Pusat pembelian
-        $permintaan->update(['status_permintaan' => 'MENUNGGU_PENGADAAN']);
-        $step9 = $this->flowStep(9);
-        if (! $step9) {
-            throw new \RuntimeException('Flow Persetujuan Pembelian belum dikonfigurasi.');
-        }
-        $this->approvalService->createPendingLog(
-            $step9,
-            'PERMINTAAN_PEMELIHARAAN',
-            (int) $permintaan->id_permintaan_pemeliharaan,
-            'Menunggu persetujuan pembelian spare part'
-        );
+        // PENDING_SPAREPART:
+        // Kepala Pusat langsung mengetahui sekaligus menyetujui/menolak pembelian pada step 8.
+        // Maka: skip step 9 dan langsung buat disposisi pengadaan (step 10).
+        $actor = $approvalLog->user
+            ?? User::find($approvalLog->user_id)
+            ?? auth()->user();
+
+        $this->createPengadaanDisposisi($permintaan, $actor, $approvalLog->catatan);
     }
 
     /**
@@ -174,5 +170,25 @@ class PemeliharaanWorkflowService
         }
 
         $permintaan->update(['status_permintaan' => 'MENUNGGU_PENGADAAN']);
+    }
+
+    /**
+     * Setelah pembelian spare part selesai: kembali ke pengerjaan teknisi (SR berikutnya).
+     */
+    public function lanjutPerbaikanSetelahPembelian(PermintaanPemeliharaan $permintaan): void
+    {
+        if ($permintaan->status_permintaan !== 'MENUNGGU_PENGADAAN') {
+            throw new \RuntimeException('Status permintaan belum menunggu pengadaan / pembelian.');
+        }
+
+        if ($permintaan->rekomendasi_akhir !== PemeliharaanRekomendasi::PendingSparepart->value) {
+            throw new \RuntimeException('Lanjut perbaikan hanya untuk rekomendasi pending spare part.');
+        }
+
+        if ($permintaan->hasOpenServiceReport()) {
+            throw new \RuntimeException('Masih ada Service Report yang belum selesai.');
+        }
+
+        $permintaan->update(['status_permintaan' => 'DIPROSES']);
     }
 }

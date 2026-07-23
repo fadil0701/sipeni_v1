@@ -94,11 +94,44 @@ class PermintaanPemeliharaan extends Model
     }
 
     /**
-     * Service report yang terkait
+     * Semua service report terkait (bisa lebih dari satu jika ada siklus spare part).
+     */
+    public function serviceReports(): HasMany
+    {
+        return $this->hasMany(ServiceReport::class, 'id_permintaan_pemeliharaan', 'id_permintaan_pemeliharaan');
+    }
+
+    /**
+     * Service report terbaru (kompatibilitas view/controller lama).
      */
     public function serviceReport(): HasOne
     {
-        return $this->hasOne(ServiceReport::class, 'id_permintaan_pemeliharaan', 'id_permintaan_pemeliharaan');
+        return $this->hasOne(ServiceReport::class, 'id_permintaan_pemeliharaan', 'id_permintaan_pemeliharaan')
+            ->latestOfMany('id_service_report');
+    }
+
+    public function hasOpenServiceReport(): bool
+    {
+        if ($this->relationLoaded('serviceReports')) {
+            return $this->serviceReports
+                ->whereIn('status_service', ['MENUNGGU', 'DIPROSES'])
+                ->isNotEmpty();
+        }
+
+        return $this->serviceReports()
+            ->whereIn('status_service', ['MENUNGGU', 'DIPROSES'])
+            ->exists();
+    }
+
+    public function canStartServiceReport(): bool
+    {
+        return $this->status_permintaan === 'DIPROSES' && ! $this->hasOpenServiceReport();
+    }
+
+    public function canResumeRepairAfterPurchase(): bool
+    {
+        return $this->status_permintaan === 'MENUNGGU_PENGADAAN'
+            && $this->rekomendasi_akhir === 'PENDING_SPAREPART';
     }
 
     /**

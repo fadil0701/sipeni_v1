@@ -20,6 +20,8 @@ final class CanonicalRoleCatalog
         'pptk_apbd',
         'pptk_blud',
         'pengurus_barang',
+        'teknisi_atem',
+        'teknisi_it',
         'admin_gudang_pusat',
         'admin_gudang_aset',
         'admin_gudang_persediaan',
@@ -86,6 +88,16 @@ final class CanonicalRoleCatalog
             'pengurus_barang' => [
                 'display_name' => 'Pengurus Barang',
                 'description' => 'Pengelola operasional persediaan dan distribusi',
+                'level_akses' => 'pusat',
+            ],
+            'teknisi_atem' => [
+                'display_name' => 'Teknisi ATEM',
+                'description' => 'Teknisi Alat Kesehatan — daftar permintaan, service report, jadwal & kalibrasi',
+                'level_akses' => 'pusat',
+            ],
+            'teknisi_it' => [
+                'display_name' => 'Teknisi IT',
+                'description' => 'Teknisi IT / IT Support — daftar permintaan, service report, jadwal & kalibrasi',
                 'level_akses' => 'pusat',
             ],
             'admin_gudang_pusat' => [

@@ -67,6 +67,16 @@ class RoleSeeder extends Seeder
                 'description' => 'Pengelola operasional persediaan dan distribusi',
                 'level_akses' => 'pusat',
             ],
+            'teknisi_atem' => [
+                'display_name' => 'Teknisi ATEM',
+                'description' => 'Teknisi Alat Kesehatan — daftar permintaan, service report, jadwal & kalibrasi',
+                'level_akses' => 'pusat',
+            ],
+            'teknisi_it' => [
+                'display_name' => 'Teknisi IT',
+                'description' => 'Teknisi IT / IT Support — daftar permintaan, service report, jadwal & kalibrasi',
+                'level_akses' => 'pusat',
+            ],
             'admin_gudang_pusat' => [
                 'display_name' => 'Admin Gudang Pusat',
                 'description' => 'Admin gudang pusat (semua kategori)',

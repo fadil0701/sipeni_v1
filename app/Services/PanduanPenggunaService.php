@@ -18,6 +18,7 @@ class PanduanPenggunaService
         'modul-dan-fitur' => '02-modul-dan-fitur.md',
         'alur-kerja' => '03-alur-kerja-utama.md',
         'matriks-role' => '04-matrik-akses-role.md',
+        'role-permission-user' => '05-mengelola-role-permission-dan-user.md',
         'daftar-role' => 'per-role/README.md',
     ];
 
@@ -34,6 +35,8 @@ class PanduanPenggunaService
         'pptk_apbd' => 'per-role/pptk_apbd.md',
         'pptk_blud' => 'per-role/pptk_blud.md',
         'pengurus_barang' => 'per-role/pengurus_barang.md',
+        'teknisi_atem' => 'per-role/teknisi_atem.md',
+        'teknisi_it' => 'per-role/teknisi_it.md',
         'admin_gudang_pusat' => 'per-role/admin_gudang_pusat.md',
         'admin_gudang_aset' => 'per-role/admin_gudang_aset.md',
         'admin_gudang_persediaan' => 'per-role/admin_gudang_persediaan.md',
@@ -41,6 +44,26 @@ class PanduanPenggunaService
         'admin' => 'per-role/admin-dan-administrator.md',
         'administrator' => 'per-role/admin-dan-administrator.md',
     ];
+
+    /**
+     * Menu & halaman Panduan Pengguna hanya untuk Administrator (Admin IT) dan Super Administrator.
+     */
+    public static function userCanAccess(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ((bool) ($user->is_superadmin ?? false)) {
+            return true;
+        }
+
+        return $user->hasAnyRole([
+            'super_administrator',
+            'admin',
+            'administrator',
+        ]);
+    }
 
     public static function basePath(): string
     {
@@ -59,7 +82,7 @@ class PanduanPenggunaService
 
         return [
             'slug' => $slug,
-            'title' => self::titleFromRelativePath($relative),
+            'title' => self::titleFromRelativePath($relative, $slug),
             'description' => self::chapterDescription($slug),
             'relative' => $relative,
         ];
@@ -222,6 +245,17 @@ class PanduanPenggunaService
         return $realFile;
     }
 
+    public static function pathExists(string $relative): bool
+    {
+        try {
+            self::absolutePath($relative);
+
+            return true;
+        } catch (RuntimeException) {
+            return false;
+        }
+    }
+
     public static function htmlFromDoc(string $doc): string
     {
         $resolved = self::resolveDoc($doc);
@@ -281,7 +315,10 @@ class PanduanPenggunaService
     public static function generalChapters(): array
     {
         $out = [];
-        foreach (self::CHAPTERS as $slug => $_file) {
+        foreach (self::CHAPTERS as $slug => $file) {
+            if (! self::pathExists($file)) {
+                continue;
+            }
             $meta = self::chapterMeta($slug);
             $out[] = [
                 'slug' => $meta['slug'],
@@ -328,6 +365,10 @@ class PanduanPenggunaService
                 }
             }
 
+            if (! self::pathExists($meta['relative'])) {
+                continue;
+            }
+
             $seen[$canonical] = true;
             $guides[] = [
                 'slug' => $meta['slug'],
@@ -349,12 +390,28 @@ class PanduanPenggunaService
         return $guides[0] ?? null;
     }
 
-    public static function titleFromRelativePath(string $relative): string
+    public static function titleFromRelativePath(string $relative, ?string $slug = null): string
     {
-        $absolute = self::absolutePath($relative);
-        $markdown = (string) file_get_contents($absolute);
+        try {
+            $absolute = self::absolutePath($relative);
+            $markdown = (string) file_get_contents($absolute);
 
-        return PanduanPenggunaPdfExporter::titleFromMarkdown($markdown);
+            return PanduanPenggunaPdfExporter::titleFromMarkdown($markdown);
+        } catch (RuntimeException) {
+            if ($slug !== null) {
+                return match ($slug) {
+                    'pengenalan' => 'Pengenalan dan Login',
+                    'modul-dan-fitur' => 'Modul dan Fitur',
+                    'alur-kerja' => 'Alur Kerja Utama',
+                    'matriks-role' => 'Matriks Akses Role',
+                    'role-permission-user' => 'Mengelola Role, Permission, dan User',
+                    'daftar-role' => 'Daftar Panduan per Role',
+                    default => Str::headline(pathinfo($relative, PATHINFO_FILENAME)),
+                };
+            }
+
+            return Str::headline(pathinfo($relative, PATHINFO_FILENAME));
+        }
     }
 
     public static function chapterDescription(string $slug): string
@@ -363,7 +420,8 @@ class PanduanPenggunaService
             'pengenalan' => 'Login, navigasi, kebijakan password, dan scope unit kerja.',
             'modul-dan-fitur' => 'Semua menu sidebar dan kegunaannya.',
             'alur-kerja' => 'Permintaan, distribusi, RKU, pengadaan, dan modul terkait.',
-            'matriks-role' => 'Tabel ringkas akses role × modul.',
+            'matriks-role' => 'Matriks lengkap role × modul × tugas, termasuk pemeliharaan.',
+            'role-permission-user' => 'Cara mengelola role, permission, user, dan modul menu (untuk Administrator).',
             'daftar-role' => 'Indeks panduan untuk setiap role kanonik.',
             default => 'Panduan pengguna SI-MANTIK.',
         };

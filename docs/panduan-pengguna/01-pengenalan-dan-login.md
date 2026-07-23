@@ -52,13 +52,16 @@ Akun administrator dan demo dibuat oleh administrator sistem melalui konfigurasi
 
 ---
 
-## Panduan di dalam aplikasi
+## Panduan di dalam aplikasi (khusus Administrator)
 
-Setelah login, buka menu sidebar **Panduan Pengguna** (atau kartu panduan di Dashboard):
+Menu sidebar **Panduan Pengguna** hanya tersedia untuk:
 
-- **Panduan role Anda** — tugas dan menu khusus role login
-- **Bab umum** — modul, alur kerja, matriks akses
-- **Unduh PDF** — versi cetak (jika server mendukung)
+- **Administrator** / Admin IT (`admin`, `administrator`)
+- **Super Administrator**
+
+Role operasional (unit, gudang, teknisi, dll.) **tidak** melihat menu ini. Jika URL `/panduan` dibuka tanpa hak, sistem menolak (403).
+
+Isi panduan mencakup tugas tiap role, matriks akses, dan cara mengelola user — untuk dibaca Admin IT saat onboarding atau konfigurasi.
 
 ---
 

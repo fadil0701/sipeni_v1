@@ -128,11 +128,11 @@ Modul **Pengurus Barang** — fulfillment setelah permintaan disetujui.
 | Submenu | Kegunaan |
 |---------|----------|
 | **Daftar Permintaan** | Draft distribusi / proses disposisi per item |
-| **Distribusi Barang (SBBK)** | Surat Bukti Barang Keluar — compile, proses, kirim, cetak PDF |
+| **Distribusi Barang (SBBK)** | Surat Bukti Barang Keluar — buat dari disposisi, proses, kirim, cetak PDF |
 | **Penerimaan Barang** | Unit menerima & verifikasi barang datang |
 | **Retur Barang Rusak** | Retur barang cacat/rusak ke gudang |
 
-**Langkah tersembunyi:** **Compile SBBK** (`transaction.compile-distribusi`) — langkah antara draft distribusi dan SBBK final (akses via alur draft → compile).
+**Catatan:** Tahap **Compile SBBK** terpisah sudah digabung ke **Distribusi Barang (SBBK)**. Route `transaction.compile-distribusi.*` hanya redirect ke menu Distribusi (kompatibilitas lama).
 
 **Role umum:** `pengurus_barang`, `admin_gudang_pusat`, admin gudang kategori (proses), `admin_unit`/`kepala_unit` (penerimaan & retur)
 

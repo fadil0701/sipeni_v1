@@ -8,7 +8,7 @@ use App\Models\TransaksiDistribusi;
 class UpdateDistribusiStatus extends Command
 {
     protected $signature = 'distribusi:update-status';
-    protected $description = 'Update status distribusi yang sudah di-compile menjadi DIKIRIM';
+    protected $description = 'Update status distribusi (SBBK draft) menjadi DIKIRIM';
 
     public function handle()
     {

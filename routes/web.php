@@ -253,7 +253,7 @@ Route::middleware(['auth', 'scope.unit'])->group(function () {
             Route::get('/{id}', [DraftDistribusiController::class, 'show'])->name('show');
         });
 
-        // Compile Distribusi
+        // Compile Distribusi (legacy): redirect ke Distribusi Barang (SBBK) — tidak ada tahap compile terpisah
         Route::prefix('compile-distribusi')->name('compile-distribusi.')->middleware(['role'])->group(function () {
             Route::get('/', [CompileDistribusiController::class, 'index'])->name('index');
             Route::get('/create/{permintaanId}', [CompileDistribusiController::class, 'create'])->name('create');
@@ -310,6 +310,10 @@ Route::middleware(['auth', 'scope.unit'])->group(function () {
 
     // Maintenance & Pemeliharaan
     Route::prefix('maintenance')->name('maintenance.')->middleware(['role'])->group(function () {
+        Route::get('daftar-permintaan-pemeliharaan', [PermintaanPemeliharaanController::class, 'teknisiIndex'])
+            ->name('daftar-permintaan-pemeliharaan.index');
+        Route::post('permintaan-pemeliharaan/{id}/lanjut-perbaikan', [PermintaanPemeliharaanController::class, 'lanjutPerbaikan'])
+            ->name('permintaan-pemeliharaan.lanjut-perbaikan');
         Route::resource('permintaan-pemeliharaan', PermintaanPemeliharaanController::class);
         Route::post('permintaan-pemeliharaan/{id}/ajukan', [PermintaanPemeliharaanController::class, 'ajukan'])->name('permintaan-pemeliharaan.ajukan');
 

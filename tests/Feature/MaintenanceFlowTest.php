@@ -90,9 +90,11 @@ class MaintenanceFlowTest extends TestCase
             'tanggal_selesai' => now()->toDateString(),
             'jenis_service' => 'PERBAIKAN',
             'kondisi_setelah_service' => 'BAIK',
+            'pelaksana_mode' => 'INTERNAL',
+            'teknisi' => 'Teknisi Test',
             'biaya_service' => 100000,
             'biaya_sparepart' => 50000,
-            'keterangan' => 'Selesai perbaikan',
+            'catatan' => 'Selesai perbaikan',
         ]);
         $createResponse->assertRedirect(route('maintenance.service-report.index'));
 
@@ -107,12 +109,12 @@ class MaintenanceFlowTest extends TestCase
             'status_service' => 'SELESAI',
             'kondisi_setelah_service' => 'BAIK',
             'rekomendasi' => 'BAIK',
-            'rekomendasi_catatan' => 'Alat normal',
+            'pelaksana_mode' => 'EKSTERNAL',
             'vendor' => 'Vendor Test',
             'teknisi' => 'Teknisi Test',
             'biaya_service' => 100000,
             'biaya_sparepart' => 50000,
-            'keterangan' => 'Final selesai',
+            'catatan' => 'Final selesai',
         ]);
         $updateResponse->assertRedirect(route('maintenance.service-report.index'));
 
@@ -682,23 +684,88 @@ class MaintenanceFlowTest extends TestCase
         $permintaan->refresh();
         $this->assertSame('MENUNGGU_PENGADAAN', $permintaan->status_permintaan);
 
+        // Step 9 (menunggu persetujuan pembelian) seharusnya tidak dibuat lagi.
         $step9 = \App\Models\ApprovalLog::query()
             ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
             ->where('id_referensi', $permintaan->id_permintaan_pemeliharaan)
-            ->where('status', 'MENUNGGU')
             ->whereHas('approvalFlow', fn ($q) => $q->where('step_order', 9))
-            ->firstOrFail();
+            ->exists();
+        $this->assertFalse($step9);
 
-        $approval->approve($step9, $admin, 'Setujui pembelian');
-
+        // Disposisi pengadaan langsung dibuat (step 10) dan ditandai DIDISPOSISIKAN.
         $this->assertDatabaseHas('approval_log', [
             'modul_approval' => 'PERMINTAAN_PEMELIHARAAN',
             'id_referensi' => $permintaan->id_permintaan_pemeliharaan,
             'status' => 'DIDISPOSISIKAN',
         ]);
 
-        $permintaan->refresh();
-        $this->assertSame('MENUNGGU_PENGADAAN', $permintaan->status_permintaan);
+        $step10 = \App\Models\ApprovalLog::query()
+            ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+            ->where('id_referensi', $permintaan->id_permintaan_pemeliharaan)
+            ->where('status', 'DIDISPOSISIKAN')
+            ->whereHas('approvalFlow', fn ($q) => $q->where('step_order', 10))
+            ->first();
+        $this->assertNotNull($step10);
+    }
+
+    public function test_service_report_pending_sparepart_stores_foto(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->withoutMiddleware(\App\Http\Middleware\AuditRequestActivity::class);
+
+        $admin = User::query()->where('email', 'pusdatinppkp@gmail.com')->firstOrFail();
+        $register = $this->findRegisterWithKirAndPemohon();
+        $pemohon = $this->findPemohonByUnit((int) $register->id_unit_kerja);
+
+        $permintaan = PermintaanPemeliharaan::query()->create([
+            'no_permintaan_pemeliharaan' => 'PMH/'.now()->year.'/9202',
+            'id_register_aset' => $register->id_register_aset,
+            'id_unit_kerja' => $register->id_unit_kerja,
+            'id_pemohon' => $pemohon->id,
+            'tanggal_permintaan' => now()->toDateString(),
+            'jenis_pemeliharaan' => 'PERBAIKAN',
+            'prioritas' => 'TINGGI',
+            'status_permintaan' => 'DIPROSES',
+            'jenis_pelaksana' => 'TEKNISI_IT',
+            'deskripsi_kerusakan' => 'Uji foto sparepart',
+        ]);
+
+        $foto = \Illuminate\Http\UploadedFile::fake()->image('sparepart.png', 120, 120);
+
+        $response = $this->actingAs($admin)->post(route('maintenance.service-report.store'), [
+            'id_permintaan_pemeliharaan' => $permintaan->id_permintaan_pemeliharaan,
+            'tanggal_service' => now()->toDateString(),
+            'tanggal_selesai' => now()->toDateString(),
+            'jenis_service' => 'PERBAIKAN',
+            'status_service' => 'SELESAI',
+            'kondisi_setelah_service' => 'RUSAK_RINGAN',
+            'rekomendasi' => 'PENDING_SPAREPART',
+            'pelaksana_mode' => 'INTERNAL',
+            'teknisi' => 'Teknisi IT',
+            'biaya_service' => 0,
+            'biaya_sparepart' => 0,
+            'catatan' => 'Perlu sparepart',
+            'spareparts' => [
+                0 => [
+                    'nama_sparepart' => 'Motherboard',
+                    'merk' => 'Acer',
+                    'nomor_seri' => 'MB-001',
+                    'foto' => $foto,
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect(route('maintenance.service-report.index'));
+
+        $service = ServiceReport::query()
+            ->where('id_permintaan_pemeliharaan', $permintaan->id_permintaan_pemeliharaan)
+            ->firstOrFail();
+
+        $sparepart = $service->spareparts()->first();
+        $this->assertNotNull($sparepart);
+        $this->assertSame('Motherboard', $sparepart->nama_sparepart);
+        $this->assertNotEmpty($sparepart->foto_path);
+        \Illuminate\Support\Facades\Storage::disk('local')->assertExists($sparepart->foto_path);
     }
 
     private function findRegisterWithKirAndPemohon(): RegisterAset

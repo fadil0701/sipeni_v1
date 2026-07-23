@@ -144,7 +144,7 @@
                     <div>
                         <dt class="text-sm font-medium text-gray-500 mb-1">Foto</dt>
                         <dd class="text-sm text-gray-900">
-                            <img src="{{ asset('storage/' . $inventory->upload_foto) }}" alt="Foto Inventory" class="h-48 w-auto rounded-md border border-gray-300 shadow-sm">
+                            <img src="{{ \App\Helpers\ImageHelper::getImageUrl($inventory->upload_foto) }}" alt="Foto Inventory" class="h-48 w-auto rounded-md border border-gray-300 shadow-sm">
                         </dd>
                     </div>
                     @endif

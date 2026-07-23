@@ -17,6 +17,7 @@ bootstrap/cache/*
 tests
 phpunit.xml
 *.md
+!docs/**/*.md
 !deploy/README.md
 agent-transcripts
 terminals

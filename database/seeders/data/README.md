@@ -17,23 +17,17 @@ py scripts/enrich_kemendagri_persediaan_farmasi.py
 py scripts/enrich_kemendagri_persediaan_farmasi.py --target "database/seeders/data/kemendagri_import_sheet6_objek_filtered_v2.xlsx"
 ```
 
-Import inventory ASET dari KIB B:
-- `import_inventory_aset_kib_b.xlsx` — siap diunggah di **Inventory → Import Data Inventory**
-  - sumber sheet 2 `KIB B.xlsx` (`KIBB_00032_PUSAT_PELAYANAN_KESE`)
-  - `jenis_inventory=ASET`
-  - `id_data_barang` = kode KOBAR (importer resolve ke ID master)
-  - default `id_gudang=1` (Gudang Aset Pusat), `id_anggaran=1` (APBD)
-  - **agregasi**: KOBAR + merk + tahun pembelian + harga_satuan → `qty_input` dijumlahkan
-  - harga berbeda (meski merk & tahun sama) tetap baris terpisah
+Import inventory ASET + PERSEDIAAN:
+- `import_inventory_aset_kib_b_prod.xlsx` / `import_inventory_aset_persediaan_prod.xlsx`
+  - ASET dari KIB B (`id_gudang=22` GUDANG ASET)
+  - PERSEDIAAN dari Stock Opname ATK/Cetakan/ART (`id_gudang=24` GUDANG PERSEDIAAN)
+  - mapping nama SO → `kode_data_barang` di file Kemendagri
 
-Generate ulang dari KIB B terbaru:
+Generate ulang PERSEDIAAN ke file import:
 ```bash
-py scripts/convert_kib_b_to_inventory_import.py
-py scripts/convert_kib_b_to_inventory_import.py --source "path/ke/KIB B.xlsx" --output "database/seeders/data/import_inventory_aset_kib_b.xlsx"
-# Agregasi ulang file import yang sudah ada:
-py scripts/convert_kib_b_to_inventory_import.py --aggregate-import "database/seeders/data/import_inventory_aset_kib_b_fixed.xlsx" --output "database/seeders/data/import_inventory_aset_kib_b_fixed.xlsx"
+py scripts/convert_stock_opname_to_inventory_import.py --id-gudang 24
+py scripts/convert_stock_opname_to_inventory_import.py --output "database/seeders/data/import_inventory_aset_persediaan_prod.xlsx"
 ```
-Butuh: `pip install openpyxl`
 
 Atau set path via `.env`:
 - `KEMENDAGRI_IMPORT_FILE=database/seeders/data/kemendagri_import_sheet6_objek_filtered_v2.xlsx`

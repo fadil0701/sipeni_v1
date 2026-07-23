@@ -25,11 +25,10 @@ draft → diajukan → diverifikasi → [ditolak]
 | 3 | Verifikasi / kembalikan | Kasubbag TU | Approval |
 | 4 | Approve / reject final | Kepala Pusat | Approval |
 | 5 | Disposisi ke gudang | Pengurus Barang | Approval |
-| 6 | Proses disposisi (draft) | Admin Gudang Kategori | Distribusi → Daftar Permintaan |
-| 7 | Compile SBBK | Pengurus Barang / Admin Gudang | Compile Distribusi *(via alur draft)* |
-| 8 | Proses & kirim SBBK | Pengurus Barang | Distribusi → SBBK |
-| 9 | Terima barang | Admin Unit / Kepala Unit | Penerimaan Barang |
-| 10 | Retur (opsional) | Admin Unit | Retur Barang Rusak |
+| 6 | Proses disposisi & buat SBBK | Admin Gudang Kategori | Distribusi → Daftar Permintaan → Proses |
+| 7 | Proses & kirim SBBK | Admin Gudang / Pengurus Barang | Distribusi → Distribusi Barang (SBBK) |
+| 8 | Terima barang | Admin Unit / Kepala Unit | Penerimaan Barang |
+| 9 | Retur (opsional) | Admin Unit | Retur Barang Rusak |
 
 ### Kapan status "menunggu pengadaan"?
 
@@ -121,6 +120,19 @@ Mutasi aset (pindah ruangan/unit) bila perlu
 
 ## 7. Pemeliharaan & kalibrasi
 
+### Permintaan pemeliharaan (corrective / ad-hoc)
+
+Acuan lengkap: [ALUR_PERMINTAAN_PEMELIHARAAN.md](../ALUR_PERMINTAAN_PEMELIHARAAN.md)
+
+```
+Ajukan (Transaksi) → Diketahui Ka.Unit → Approve Ka.PPKP
+    → Disposisi Pengurus Barang → Teknisi kerjakan (Pemeliharaan → Daftar Permintaan)
+    → Service Report → Diketahui PB / Ka.Unit / Ka.PPKP
+    → Selesai  |  Pending spare part → beli → lanjut perbaikan  |  Pengembalian barang
+```
+
+### Jadwal & kalibrasi
+
 ```
 Aset terdaftar → Jadwal Pemeliharaan
               → (auto) Permintaan Pemeliharaan
@@ -128,7 +140,7 @@ Aset terdaftar → Jadwal Pemeliharaan
               → Update kondisi aset
 ```
 
-Detail: [alur_pemeliharaan_aset_maintenance_kalibrasi.md](../alur_pemeliharaan_aset_maintenance_kalibrasi.md)
+Detail tambahan: [alur_pemeliharaan_aset_maintenance_kalibrasi.md](../alur_pemeliharaan_aset_maintenance_kalibrasi.md)
 
 ---
 
@@ -170,7 +182,7 @@ Rekonsiliasi dengan paket pengadaan
 | Tidak bisa approve | Pastikan status & level approval Anda sesuai |
 | Barang tidak muncul di dropdown | Cek filter jenis (Persediaan/Farmasi) & stok |
 | Stok unit tidak update | Pastikan penerimaan barang sudah diverifikasi |
-| Compile SBBK tidak terlihat | Akses via draft distribusi / minta permission compile |
+| Form buat SBBK tidak terbuka dari disposisi | Pastikan permission `transaction.distribusi.create` / akses menu Distribusi |
 
 ---
 

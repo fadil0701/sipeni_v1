@@ -26,8 +26,8 @@ Mengelola gudang **barang persediaan** (ATK, alkes non-farmasi, dll.) — stok, 
 
 1. Cek permintaan disposisi **persediaan** masuk
 2. Verifikasi **stok** di Data Stock
-3. Buat/update **draft distribusi** per permintaan
-4. Koordinasi compile SBBK dengan pengurus barang
+3. **Daftar Permintaan** → Proses → buat **SBBK** per permintaan
+4. **Kirim** SBBK dari menu Distribusi Barang (SBBK)
 5. **Opname** berkala → stock adjustment
 
 ## Tips

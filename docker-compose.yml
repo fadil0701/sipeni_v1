@@ -49,6 +49,7 @@ services:
       - ./database:/var/www/html/database:ro
       - ./routes:/var/www/html/routes:ro
       - ./resources:/var/www/html/resources:ro
+      - ./docs:/var/www/html/docs:ro
       - ./bootstrap/app.php:/var/www/html/bootstrap/app.php:ro
     depends_on:
       mysql:
@@ -106,6 +107,7 @@ services:
       - ./database:/var/www/html/database:ro
       - ./routes:/var/www/html/routes:ro
       - ./resources:/var/www/html/resources:ro
+      - ./docs:/var/www/html/docs:ro
       - ./bootstrap/app.php:/var/www/html/bootstrap/app.php:ro
     depends_on:
       mysql:

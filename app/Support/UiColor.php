@@ -14,9 +14,12 @@ namespace App\Support;
  * 4. Active work / in transit / pipeline progress     → info
  * 5. Draft / inactive / unknown                       → neutral
  *
- * Buttons: primary = main action; success = approve/confirm;
- *          danger = destroy/reject; warning = rare caution CTA;
- *          secondary = cancel/neutral.
+ * Buttons: primary = main action / proses / disposisi / mengetahui;
+ *          success = approve / setujui / verifikasi / ajukan;
+ *          danger = destroy / reject / tolak;
+ *          warning = lanjut perbaikan / caution CTA;
+ *          secondary = cancel / batal / netral.
+ * Actions: gunakan x-ui.btn action="proses|setujui|…" (lihat UiColor::toneForAction).
  */
 final class UiColor
 {
@@ -134,6 +137,69 @@ final class UiColor
     public static function softButtonForStatus(mixed $status): string
     {
         return self::softButton(self::toneForStatus($status));
+    }
+
+    /**
+     * Semantic tone untuk jenis aksi tombol (seragam di seluruh modul).
+     *
+     * @example toneForAction('proses') === 'primary'
+     * @example toneForAction('setujui') === 'success'
+     */
+    public static function toneForAction(string $action): string
+    {
+        $key = strtolower(str_replace([' ', '-'], '_', trim($action)));
+
+        return match ($key) {
+            // Navigasi / lihat
+            'detail', 'lihat', 'view', 'show' => self::PRIMARY,
+
+            // Alur kerja maju (proses pengerjaan, disposisi, mengetahui)
+            'proses', 'process', 'disposisi', 'mengetahui', 'ketahui' => self::PRIMARY,
+
+            // Persetujuan positif
+            'setujui', 'approve', 'menyetujui', 'verifikasi', 'verify', 'ajukan', 'submit' => self::SUCCESS,
+
+            // Perhatian / lanjut siklus
+            'lanjut', 'lanjut_perbaikan', 'warning' => self::WARNING,
+
+            // Destruktif
+            'tolak', 'reject', 'hapus', 'delete', 'destroy' => self::DANGER,
+
+            // Form utama
+            'tambah', 'create', 'simpan', 'save', 'edit', 'primary' => self::PRIMARY,
+
+            // Netral
+            'batal', 'cancel', 'secondary', 'kembali' => self::SECONDARY,
+
+            default => self::PRIMARY,
+        };
+    }
+
+    /**
+     * Label singkat (tooltip / aria) untuk aksi tombol.
+     */
+    public static function labelForAction(string $action): string
+    {
+        $key = strtolower(str_replace([' ', '-'], '_', trim($action)));
+
+        return match ($key) {
+            'detail', 'lihat', 'view', 'show' => 'Detail',
+            'proses', 'process' => 'Proses',
+            'disposisi' => 'Disposisi',
+            'mengetahui', 'ketahui' => 'Mengetahui',
+            'setujui', 'approve', 'menyetujui' => 'Setujui',
+            'verifikasi', 'verify' => 'Verifikasi',
+            'ajukan', 'submit' => 'Ajukan',
+            'lanjut', 'lanjut_perbaikan', 'warning' => 'Lanjut Perbaikan',
+            'tolak', 'reject', 'kembalikan' => 'Tolak',
+            'hapus', 'delete', 'destroy' => 'Hapus',
+            'tambah', 'create' => 'Tambah',
+            'edit' => 'Edit',
+            'simpan', 'save' => 'Simpan',
+            'batal', 'cancel' => 'Batal',
+            'kembali' => 'Kembali',
+            default => ucfirst(str_replace('_', ' ', $key)),
+        };
     }
 
     /**

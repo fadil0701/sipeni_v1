@@ -26,8 +26,8 @@ Mengelola gudang **farmasi** — stok obat/BMHP, **kedaluwarsa**, disposisi perm
 
 1. Disposisi dari pengurus barang (kategori farmasi)
 2. Cek stok + **tanggal kedaluwarsa** — prioritaskan FEFO (First Expired First Out)
-3. Draft distribusi → qty per batch
-4. Compile SBBK → kirim ke unit
+3. **Daftar Permintaan** → Proses → buat **SBBK** (pilih inventory/batch + qty)
+4. **Kirim** SBBK ke unit
 
 ## Tips
 

@@ -166,47 +166,44 @@ Permintaan Barang → Persetujuan → Proses Disposisi → Buat SBBK (Distribusi
      - Qty distribusi tidak boleh melebihi stok tersedia
      - Harga satuan otomatis diambil dari inventory
 
-5. **Simpan Draft Distribusi**
-   - Setelah semua item lengkap, klik **"Simpan & Siapkan untuk Distribusi"**
-   - Status draft detail distribusi menjadi **READY**
-   - Approval log berubah menjadi **DIPROSES**
-   - Draft siap untuk di-compile menjadi SBBK
+5. **Simpan sebagai SBBK (Draft)**
+   - Setelah semua item lengkap, klik **"Simpan SBBK"** / simpan di form Distribusi
+   - Sistem membuat `transaksi_distribusi` (SBBK) berstatus **DRAFT**
+   - Approval log disposisi berubah menjadi **DIPROSES**
+   - SBBK langsung muncul di menu **Distribusi Barang (SBBK)** siap dikirim
 
 ---
 
-## 📦 STEP 4: Compile SBBK (Surat Bukti Barang Keluar)
+## 📦 STEP 4: Buat SBBK (Surat Bukti Barang Keluar)
 
-**Role yang dapat mengakses:** `admin_gudang`, `admin`
+**Role yang dapat mengakses:** `admin_gudang`, `admin_gudang_aset`, `admin_gudang_persediaan`, `admin_gudang_farmasi`, `admin`
+
+> **Catatan:** Menu/tahap **Compile SBBK** terpisah sudah digabung ke langkah ini. Route lama `transaction.compile-distribusi.*` hanya redirect ke Distribusi.
 
 ### Langkah-langkah:
 
-1. **Akses Menu**
-   - Login sebagai Admin Gudang atau Admin
-   - Pilih menu **Transaksi** → **Compile SBBK**
+1. **Akses dari Daftar Permintaan**
+   - Login sebagai Admin Gudang kategori / Admin
+   - Pilih menu **Distribusi** → **Daftar Permintaan**
+   - Klik **Proses** pada disposisi yang menunggu
 
-2. **Lihat Daftar Draft Ready**
-   - Sistem menampilkan daftar draft distribusi dengan status **READY**
-   - Setiap item menampilkan:
-     - No. Permintaan
-     - Unit Kerja
-     - Kategori Gudang
-     - Jumlah Item Ready
+2. **Atau buat SBBK langsung**
+   - Menu **Distribusi** → **Distribusi Barang (SBBK)** → **Tambah**
+   - Pilih permintaan yang sudah eligible (disposisi / proses distribusi)
 
-3. **Compile Menjadi SBBK**
-   - Klik **"Compile"** pada draft yang ingin di-compile
-   - Sistem akan menggabungkan semua draft detail distribusi menjadi satu SBBK
-   - Isi informasi distribusi:
-     - **No. SBBK**: Otomatis ter-generate
-     - **Gudang Asal**: Gudang pusat (otomatis)
-     - **Gudang Tujuan**: Pilih gudang unit tujuan
-     - **Pegawai Pengirim**: Pilih pegawai yang mengirim
-     - **Tanggal Distribusi**: Tanggal pengiriman
-     - **Keterangan**: Catatan tambahan (opsional)
+3. **Isi informasi SBBK**
+   - **No. SBBK**: Otomatis ter-generate
+   - **Gudang Asal**: Gudang pusat (sesuai kategori disposisi)
+   - **Gudang Tujuan**: Gudang unit pemohon
+   - **Pegawai Pengirim**: Diisi saat mode distribusi penuh / sebelum kirim
+   - **Tanggal Distribusi**: Tanggal pengiriman
+   - **Detail item**: Pilih inventory + qty distribusi
+   - **Keterangan**: Catatan tambahan (opsional)
 
 4. **Simpan SBBK**
-   - Klik **"Simpan SBBK"**
+   - Klik **"Simpan"**
    - Status distribusi menjadi **DRAFT**
-   - SBBK siap untuk dikirim
+   - SBBK siap untuk dikirim (Step 5)
 
 ---
 
@@ -235,10 +232,12 @@ Permintaan Barang → Persetujuan → Proses Disposisi → Buat SBBK (Distribusi
      - Detail barang yang didistribusikan
    - Klik **"Kirim"** untuk mengirim barang
    - Status berubah menjadi **DIKIRIM**
-   - Stok inventory di gudang asal berkurang sesuai qty distribusi
+   - **Persediaan/Farmasi:** `data_stock` gudang asal berkurang **dan** `data_inventory` ikut pindah/split ke gudang tujuan (konsisten sejak Kirim)
+   - **Aset:** stok fisik (`inventory_item`) dicek di gudang asal; pemindahan item + register terjadi saat penerimaan disahkan (DITERIMA)
+   - Sistem membuat draft penerimaan untuk unit tujuan (menunggu bukti sampai + verifikasi)
 
 4. **Konfirmasi Pengiriman**
-   - Setelah barang dikirim secara fisik, sistem akan menunggu konfirmasi penerimaan dari unit tujuan
+   - Setelah barang dikirim secara fisik, pengirim unggah **bukti sampai** (foto + nama penerima + GPS); unit tujuan memverifikasi di menu Penerimaan
 
 ---
 
@@ -281,11 +280,13 @@ Permintaan Barang → Persetujuan → Proses Disposisi → Buat SBBK (Distribusi
      - **Kondisi**: Kondisi barang (BAIK, RUSAK, dll)
      - **Keterangan**: Catatan khusus item (opsional)
 
-5. **Simpan Penerimaan**
-   - Klik **"Simpan Penerimaan"**
-   - Status distribusi berubah menjadi **SELESAI**
-   - Stok inventory di gudang tujuan bertambah sesuai qty diterima
-   - Jika ada selisih (kurang/lebih), sistem akan mencatat di detail penerimaan
+5. **Simpan / Verifikasi Penerimaan**
+   - Setelah bukti sampai lengkap, penerima memverifikasi per-item (Sesuai / Tidak sesuai)
+   - Jika semua sesuai → status **DITERIMA**
+   - **Persediaan/Farmasi:** inventory biasanya sudah di gudang tujuan sejak Kirim; transfer ulang bersifat idempotent
+   - **Aset:** `inventory_item` pindah ke gudang tujuan + **Register Aset** otomatis (`id_ruangan` masih kosong)
+   - **KIR** tidak dibuat otomatis saat penerimaan — isi ruangan di menu Register Aset agar KIR terbentuk
+   - Jika ada barang tidak sesuai → status **DITOLAK** (koreksi via edit)
 
 ---
 

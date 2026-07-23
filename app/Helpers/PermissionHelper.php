@@ -381,6 +381,7 @@ class PermissionHelper
                 'permission' => null,
                 'submenus' => [
                     'proses-disposisi' => ['route' => 'transaction.draft-distribusi.index', 'permission' => 'transaction.draft-distribusi.index'],
+                    // Legacy alias: route compile hanya redirect ke Distribusi (SBBK)
                     'compile-sbbk' => ['route' => 'transaction.compile-distribusi.index', 'permission' => 'transaction.compile-distribusi.index'],
                     'distribusi' => ['route' => 'transaction.distribusi.index', 'permission' => 'transaction.distribusi.index'],
                     'penerimaan-barang' => ['route' => 'transaction.penerimaan-barang.index', 'permission' => 'transaction.penerimaan-barang.index'],
@@ -425,6 +426,7 @@ class PermissionHelper
                 'route' => null,
                 'permission' => 'maintenance.*',
                 'submenus' => [
+                    'daftar-permintaan-pemeliharaan' => ['route' => 'maintenance.daftar-permintaan-pemeliharaan.index', 'permission' => 'maintenance.daftar-permintaan-pemeliharaan.index'],
                     'jadwal-maintenance' => ['route' => 'maintenance.jadwal-maintenance.index', 'permission' => 'maintenance.jadwal-maintenance.index'],
                     'kalibrasi-aset' => ['route' => 'maintenance.kalibrasi-aset.index', 'permission' => 'maintenance.kalibrasi-aset.index'],
                     'service-report' => ['route' => 'maintenance.service-report.index', 'permission' => 'maintenance.service-report.index'],

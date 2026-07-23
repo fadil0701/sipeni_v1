@@ -158,8 +158,8 @@ class StandardPermissionSeeder extends Seeder
             ['name' => 'distribusi.draft.create', 'display_name' => 'Create Draft Distribusi', 'module' => 'distribusi', 'group' => 'distribusi.draft', 'sort_order' => 501],
             ['name' => 'distribusi.draft.show', 'display_name' => 'Show Draft Distribusi', 'module' => 'distribusi', 'group' => 'distribusi.draft', 'sort_order' => 502],
 
-            ['name' => 'distribusi.compile.view', 'display_name' => 'View Compile Distribusi', 'module' => 'distribusi', 'group' => 'distribusi.compile', 'sort_order' => 510],
-            ['name' => 'distribusi.compile.create', 'display_name' => 'Create Compile Distribusi', 'module' => 'distribusi', 'group' => 'distribusi.compile', 'sort_order' => 511],
+            ['name' => 'distribusi.compile.view', 'display_name' => 'View Distribusi (legacy Compile)', 'module' => 'distribusi', 'group' => 'distribusi.compile', 'sort_order' => 510],
+            ['name' => 'distribusi.compile.create', 'display_name' => 'Create Distribusi (legacy Compile)', 'module' => 'distribusi', 'group' => 'distribusi.compile', 'sort_order' => 511],
 
             ['name' => 'distribusi.view', 'display_name' => 'View Distribusi', 'module' => 'distribusi', 'group' => 'distribusi', 'sort_order' => 520],
             ['name' => 'distribusi.show', 'display_name' => 'Show Distribusi', 'module' => 'distribusi', 'group' => 'distribusi', 'sort_order' => 521],

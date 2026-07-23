@@ -226,7 +226,8 @@ class DistribusiController extends Controller
     public function edit(Request $request, int|string $id)
     {
         $distribusi = TransaksiDistribusi::with([
-            'detailDistribusi',
+            'detailDistribusi.inventory.dataBarang',
+            'detailDistribusi.satuan',
             'permintaan.unitKerja',
             'permintaan.detailPermintaan.dataBarang',
             'permintaan.detailPermintaan.satuan',
@@ -525,9 +526,17 @@ class DistribusiController extends Controller
         $inventories = $query->with(['dataBarang', 'satuan'])->get();
 
         $result = $inventories->map(function ($inv) {
-            $qtyDistributed = DetailDistribusi::where('id_inventory', $inv->id_inventory)
-                ->whereHas('distribusi', fn ($q) => $q->whereIn('status_distribusi', ['draft', 'diproses', 'dikirim', 'selesai']))
-                ->sum('qty_distribusi');
+            $excludeDistribusiId = (int) request()->input('exclude_distribusi_id', 0);
+
+            $qtyDistributedQuery = DetailDistribusi::where('id_inventory', $inv->id_inventory)
+                ->whereHas('distribusi', function ($q) use ($excludeDistribusiId) {
+                    $q->whereIn('status_distribusi', ['draft', 'diproses', 'dikirim', 'selesai']);
+                    if ($excludeDistribusiId > 0) {
+                        $q->where('id_distribusi', '!=', $excludeDistribusiId);
+                    }
+                });
+
+            $qtyDistributed = (float) $qtyDistributedQuery->sum('qty_distribusi');
 
             $resolvedSatuanId = $inv->id_satuan ?? $inv->dataBarang?->id_satuan;
 
@@ -536,11 +545,13 @@ class DistribusiController extends Controller
                 'id_data_barang' => $inv->id_data_barang,
                 'nama_barang' => $inv->dataBarang->nama_barang ?? '-',
                 'kode_barang' => $inv->dataBarang->kode_data_barang ?? '-',
+                'merk' => $inv->merk ?: '-',
+                'tipe' => $inv->tipe ?: '-',
                 'jenis_inventory' => $inv->jenis_inventory,
                 'jenis_barang' => $inv->jenis_barang,
                 'harga_satuan' => $inv->harga_satuan,
                 'id_satuan' => $resolvedSatuanId,
-                'qty_available' => max(0, $inv->qty_input - $qtyDistributed),
+                'qty_available' => max(0, (float) $inv->qty_input - $qtyDistributed),
             ];
         })->filter(fn ($inv) => $inv['qty_available'] > 0 || in_array((int) $inv['id_inventory'], $includeIds, true));
 

@@ -344,29 +344,29 @@ class PermissionSeeder extends Seeder
                 'sort_order' => 253,
             ],
 
-            // Compile Distribusi (pisah, bukan Transaction)
+            // Compile Distribusi (legacy redirect → Distribusi Barang / SBBK)
             [
                 'name' => 'transaction.compile-distribusi.index',
-                'display_name' => 'View Compile Distribusi',
+                'display_name' => 'Distribusi SBBK (legacy Compile)',
                 'module' => 'compile-distribusi',
                 'group' => 'transaction.compile-distribusi',
-                'description' => 'Melihat daftar compile distribusi',
+                'description' => 'Legacy: redirect ke daftar Distribusi Barang (SBBK)',
                 'sort_order' => 260,
             ],
             [
                 'name' => 'transaction.compile-distribusi.create',
-                'display_name' => 'Create Compile Distribusi',
+                'display_name' => 'Buat SBBK (legacy Compile)',
                 'module' => 'compile-distribusi',
                 'group' => 'transaction.compile-distribusi',
-                'description' => 'Membuat compile distribusi',
+                'description' => 'Legacy: redirect ke form buat SBBK di Distribusi',
                 'sort_order' => 261,
             ],
             [
                 'name' => 'transaction.compile-distribusi.*',
-                'display_name' => 'Compile Distribusi (All)',
+                'display_name' => 'Distribusi SBBK Legacy (All)',
                 'module' => 'compile-distribusi',
                 'group' => 'transaction.compile-distribusi',
-                'description' => 'Akses penuh ke compile distribusi',
+                'description' => 'Legacy: akses penuh route compile (redirect ke Distribusi)',
                 'sort_order' => 262,
             ],
 

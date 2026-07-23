@@ -16,17 +16,11 @@
             <h2 class="text-xl font-semibold text-gray-900">Detail Permintaan Pemeliharaan</h2>
             <p class="text-sm text-gray-600 mt-1">No. Permintaan: <span class="font-semibold">{{ $permintaan->no_permintaan_pemeliharaan }}</span></p>
         </div>
-        <div class="flex space-x-3">
+        <div class="flex items-center gap-2">
             @if($permintaan->status_permintaan == 'DRAFT')
-                <a 
-                    href="{{ route('maintenance.permintaan-pemeliharaan.edit', $permintaan->id_permintaan_pemeliharaan) }}" 
-                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                >
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
+                <x-ui.btn action="edit" href="{{ route('maintenance.permintaan-pemeliharaan.edit', $permintaan->id_permintaan_pemeliharaan) }}">
                     Edit
-                </a>
+                </x-ui.btn>
                 <form 
                     action="{{ route('maintenance.permintaan-pemeliharaan.ajukan', $permintaan->id_permintaan_pemeliharaan) }}" 
                     method="POST" 
@@ -34,15 +28,9 @@
                     data-confirm="Apakah Anda yakin ingin mengajukan permintaan ini?"
                 >
                     @csrf
-                    <button 
-                        type="submit" 
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                    >
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                    <x-ui.btn action="ajukan" type="submit">
                         Ajukan
-                    </button>
+                    </x-ui.btn>
                 </form>
             @endif
             @php
@@ -51,12 +39,9 @@
                     && \App\Helpers\PermissionHelper::canAccess(auth()->user(), 'transaction.approval.disposisi');
             @endphp
             @if($canProsesDisposisi)
-                <a
-                    href="{{ route('transaction.approval.show', $pendingDisposisiApprovalId) }}"
-                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                >
+                <x-ui.btn action="disposisi" href="{{ route('transaction.approval.show', $pendingDisposisiApprovalId) }}">
                     Proses Disposisi
-                </a>
+                </x-ui.btn>
             @endif
         </div>
     </div>
@@ -139,6 +124,14 @@
                     <div>
                         <dt class="text-sm font-medium text-gray-500 mb-1">Kode Barang</dt>
                         <dd class="text-sm font-semibold text-gray-900">{{ $permintaan->registerAset->inventory->dataBarang->kode_data_barang ?? '-' }}</dd>
+                    </div>
+                    @php
+                        $invShow = $permintaan->registerAset->inventory ?? null;
+                        $noSeriShow = trim((string) ($permintaan->registerAset->inventoryItem->no_seri ?? ($invShow->no_seri ?? '')));
+                    @endphp
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 mb-1">No. Seri</dt>
+                        <dd class="text-sm font-semibold text-gray-900">{{ $noSeriShow !== '' ? $noSeriShow : '-' }}</dd>
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500 mb-1">Status Aset</dt>

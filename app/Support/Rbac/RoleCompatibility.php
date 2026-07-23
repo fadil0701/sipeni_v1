@@ -39,6 +39,8 @@ final class RoleCompatibility
         'pptk_apbd',
         'pptk_blud',
         'pengurus_barang',
+        'teknisi_atem',
+        'teknisi_it',
         'admin_gudang_pusat',
         'admin_gudang_aset',
         'admin_gudang_persediaan',

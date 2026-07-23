@@ -111,4 +111,18 @@ class MasterPegawai extends Model
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
     }
+
+    /**
+     * Pegawai dengan jabatan teknisi internal (ATEM / IT Support).
+     */
+    public function scopeTeknisiInternal($query)
+    {
+        return $query->whereHas('masterJabatan', function ($q) {
+            $q->where(function ($inner) {
+                $inner->whereRaw('LOWER(nama_jabatan) LIKE ?', ['%atem%'])
+                    ->orWhereRaw('LOWER(nama_jabatan) LIKE ?', ['%it support%'])
+                    ->orWhereRaw('LOWER(nama_jabatan) LIKE ?', ['%teknisi%']);
+            });
+        });
+    }
 }

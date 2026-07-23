@@ -388,6 +388,7 @@ class KartuInventarisRuanganController extends Controller
         $kir = KartuInventarisRuangan::with([
             'registerAset.inventory.dataBarang',
             'registerAset.inventory.inventoryItems',
+            'registerAset.inventoryItem',
             'registerAset.unitKerja',
             'registerAset.ruangan',
             'ruangan.unitKerja',

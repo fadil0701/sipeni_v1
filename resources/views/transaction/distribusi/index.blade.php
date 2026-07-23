@@ -159,43 +159,32 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="inline-flex items-center justify-end gap-1">
-                                <a 
-                                    href="{{ route('transaction.distribusi.show', $distribusi->id_distribusi) }}" 
-                                    class="inline-flex items-center justify-center p-2 rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 transition-colors"
+                                <x-ui.btn
+                                    action="detail"
+                                    size="icon"
+                                    soft
+                                    href="{{ route('transaction.distribusi.show', $distribusi->id_distribusi) }}"
                                     title="Detail"
-                                    aria-label="Detail"
-                                >
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                </a>
+                                />
 
                                 @if($statusValue === 'draft')
-                                    <a
+                                    <x-ui.btn
+                                        action="proses"
+                                        size="sm"
+                                        soft
                                         href="{{ route('transaction.distribusi.edit', ['id' => $distribusi->id_distribusi, 'intent' => 'proses']) }}"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-blue-800 bg-blue-100 hover:bg-blue-200 transition-colors"
                                         title="Proses — isi pegawai pengirim"
-                                        aria-label="Proses"
-                                    >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                        </svg>
-                                        Proses
-                                    </a>
+                                    />
                                 @endif
 
                                 @if(in_array($statusValue, ['draft', 'diproses'], true))
-                                    <a 
-                                        href="{{ route('transaction.distribusi.edit', $distribusi->id_distribusi) }}" 
-                                        class="inline-flex items-center justify-center p-2 rounded-md text-amber-700 bg-amber-100 hover:bg-amber-200 transition-colors"
+                                    <x-ui.btn
+                                        action="edit"
+                                        size="icon"
+                                        soft
+                                        href="{{ route('transaction.distribusi.edit', $distribusi->id_distribusi) }}"
                                         title="Edit"
-                                        aria-label="Edit"
-                                    >
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                    </a>
+                                    />
                                 @endif
 
                                 @if($statusValue === 'diproses')

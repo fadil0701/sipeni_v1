@@ -426,6 +426,7 @@
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Barang</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Merk</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipe</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Distribusi</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Satuan</th>
                                 @if($distribusi->detailDistribusi->whereIn('inventory.gudang.kategori_gudang', ['FARMASI', 'PERSEDIAAN'])->count() > 0)
@@ -472,6 +473,9 @@
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-900">
                                     {{ trim((string) ($inventory->merk ?? '')) !== '' ? $inventory->merk : '-' }}
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-900">
+                                    {{ trim((string) ($inventory->tipe ?? '')) !== '' ? $inventory->tipe : '-' }}
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-900">{{ number_format($detail->qty_distribusi, 2, ',', '.') }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-900">{{ $detail->satuan->nama_satuan ?? '-' }}</td>

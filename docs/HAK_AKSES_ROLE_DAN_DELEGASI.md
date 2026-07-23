@@ -135,3 +135,14 @@ Manajemen Role/User memanggil helper ini setelah perubahan relevan.
 - `docs/rbac-phase1/` — role kanonik, permission matrix, migration & rollback.
 
 Jika ada perubahan besar pada struktur route atau role, sesuaikan dokumentasi ini dan jalankan ulang sinkronisasi permission.
+
+---
+
+## 10. Panduan Pengguna di aplikasi
+
+Menu **Panduan Pengguna** (`/panduan`) **hanya** untuk:
+
+- `admin` / `administrator` (Administrator / Admin IT)
+- `super_administrator` (dan flag `is_superadmin`)
+
+Operator lain mendapat **403**. Materi panduan (matriks role, kelola user) ada di `docs/panduan-pengguna/` — mulai dari [05-mengelola-role-permission-dan-user.md](./panduan-pengguna/05-mengelola-role-permission-dan-user.md).

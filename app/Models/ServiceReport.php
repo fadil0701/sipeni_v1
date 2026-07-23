@@ -74,6 +74,11 @@ class ServiceReport extends Model
     {
         return $this->hasMany(RiwayatPemeliharaan::class, 'id_service_report', 'id_service_report');
     }
+
+    public function spareparts(): HasMany
+    {
+        return $this->hasMany(ServiceReportSparepart::class, 'id_service_report', 'id_service_report');
+    }
 }
 
 

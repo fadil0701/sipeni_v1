@@ -316,6 +316,8 @@ function loadDistribusiDetail(distribusiId) {
                 html += '<table class="min-w-full divide-y divide-gray-200">';
                 html += '<thead class="bg-gray-50"><tr>';
                 html += '<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Barang</th>';
+                html += '<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Merk</th>';
+                html += '<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipe</th>';
                 html += '<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty Distribusi</th>';
                 html += '<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Satuan</th>';
                 if (hasFarmasiPersediaan) {
@@ -333,6 +335,8 @@ function loadDistribusiDetail(distribusiId) {
                     
                     html += '<tr>';
                     html += `<td>${detail.nama_barang}</td>`;
+                    html += `<td>${detail.merk || '-'}</td>`;
+                    html += `<td>${detail.tipe || '-'}</td>`;
                     html += `<td>${detail.qty_distribusi}</td>`;
                     html += `<td>${detail.nama_satuan}</td>`;
                     if (hasFarmasiPersediaan) {

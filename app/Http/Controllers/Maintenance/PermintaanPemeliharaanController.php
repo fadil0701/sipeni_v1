@@ -15,6 +15,7 @@ use App\Models\PermintaanPemeliharaan;
 use App\Models\RegisterAset;
 use App\Support\Storage\PrivateStorage;
 use App\Services\ApprovalService;
+use App\Services\PemeliharaanWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +23,8 @@ use Illuminate\Support\Facades\DB;
 class PermintaanPemeliharaanController extends Controller
 {
     public function __construct(
-        private readonly ApprovalService $approvalService
+        private readonly ApprovalService $approvalService,
+        private readonly PemeliharaanWorkflowService $pemeliharaanWorkflow
     ) {}
 
     public function index(Request $request)
@@ -88,48 +90,107 @@ class PermintaanPemeliharaanController extends Controller
 
         $perPage = PaginationHelper::getPerPage($request, 10);
         $permintaans = $query->latest('tanggal_permintaan')->paginate($perPage)->appends($request->query());
-
-        $pendingDisposisiApprovalIds = $this->pendingPengurusDisposisiApprovalIds(
-            $permintaans->getCollection()->pluck('id_permintaan_pemeliharaan')->all()
-        );
+        $listContext = 'user';
 
         return view('maintenance.permintaan-pemeliharaan.index', compact(
             'permintaans',
             'unitKerjas',
             'viewType',
-            'pendingDisposisiApprovalIds'
+            'listContext'
         ));
     }
 
     /**
-     * Map id_permintaan_pemeliharaan => id approval_log step 4 (MENUNGGU) untuk tombol Proses.
-     *
-     * @param  list<int|string>  $permintaanIds
-     * @return array<int, int>
+     * Antrian teknisi (menu Pemeliharaan → Daftar Permintaan):
+     * permintaan yang sudah didisposisi Pengurus Barang (DIPROSES+) untuk dikerjakan / buat Service Report.
      */
-    private function pendingPengurusDisposisiApprovalIds(array $permintaanIds): array
+    public function teknisiIndex(Request $request)
     {
-        if ($permintaanIds === []) {
-            return [];
+        $user = Auth::user();
+        $viewType = $request->query('view_type', 'aktif');
+        if (! in_array($viewType, ['aktif', 'riwayat'], true)) {
+            $viewType = 'aktif';
         }
 
-        $step4FlowIds = ApprovalFlowDefinition::query()
-            ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
-            ->where('step_order', 4)
-            ->pluck('id');
+        $query = PermintaanPemeliharaan::with([
+            'registerAset.inventory.dataBarang',
+            'unitKerja',
+            'pemohon',
+            'pegawaiPelaksana',
+            'serviceReport',
+            'serviceReports',
+        ]);
 
-        if ($step4FlowIds->isEmpty()) {
-            return [];
+        // Sudah melewati disposisi pengurus (ada pelaksana) atau status pengerjaan.
+        $teknisiStatusesAktif = ['DIPROSES', 'MENUNGGU_DIKETAHUI_SR', 'MENUNGGU_PENGADAAN', 'DIKEMBALIKAN_PENGURUS'];
+        $teknisiStatusesRiwayat = ['SELESAI', 'DITOLAK', 'DIBATALKAN'];
+
+        if ($viewType === 'riwayat') {
+            $query->whereIn('status_permintaan', $teknisiStatusesRiwayat);
+        } else {
+            $query->whereIn('status_permintaan', $teknisiStatusesAktif);
         }
 
-        return ApprovalLog::query()
-            ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
-            ->whereIn('id_referensi', $permintaanIds)
-            ->whereIn('id_approval_flow', $step4FlowIds)
-            ->where('status', 'MENUNGGU')
-            ->pluck('id', 'id_referensi')
-            ->map(fn ($id) => (int) $id)
-            ->all();
+        // Teknisi biasa: hanya yang ditugaskan ke dirinya (admin/cross-unit lihat semua).
+        if (! UserScope::canViewCrossUnitData($user)) {
+            $pegawai = MasterPegawai::where('user_id', $user->id)->first();
+            if ($pegawai) {
+                $query->where(function ($q) use ($pegawai) {
+                    $q->where('id_pegawai_pelaksana', $pegawai->id)
+                        ->orWhere(function ($q2) {
+                            // Vendor/kontrak: tampilkan ke user yang punya akses modul (tanpa pegawai pelaksana)
+                            $q2->whereNull('id_pegawai_pelaksana')
+                                ->whereIn('jenis_pelaksana', ['KONTRAK_SERVICE', 'VENDOR']);
+                        });
+                });
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        $unitKerjas = UserScope::canViewCrossUnitData($user)
+            ? MasterUnitKerja::all()
+            : collect();
+
+        if ($request->filled('unit_kerja') && UserScope::canViewCrossUnitData($user)) {
+            $query->where('id_unit_kerja', $request->unit_kerja);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status_permintaan', $request->status);
+        }
+
+        if ($request->filled('jenis')) {
+            $query->where('jenis_pemeliharaan', $request->jenis);
+        }
+
+        if ($request->filled('prioritas')) {
+            $query->where('prioritas', $request->prioritas);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('no_permintaan_pemeliharaan', 'like', "%{$search}%")
+                    ->orWhereHas('pemohon', function ($q) use ($search) {
+                        $q->where('nama_pegawai', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('registerAset', function ($q) use ($search) {
+                        $q->where('nomor_register', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $perPage = PaginationHelper::getPerPage($request, 10);
+        $permintaans = $query->latest('tanggal_permintaan')->paginate($perPage)->appends($request->query());
+        $listContext = 'teknisi';
+
+        return view('maintenance.permintaan-pemeliharaan.teknisi-index', compact(
+            'permintaans',
+            'unitKerjas',
+            'viewType',
+            'listContext'
+        ));
     }
 
     public function create()
@@ -276,6 +337,7 @@ class PermintaanPemeliharaanController extends Controller
     {
         $permintaan = PermintaanPemeliharaan::with([
             'registerAset.inventory.dataBarang',
+            'registerAset.inventoryItem',
             'unitKerja',
             'pemohon',
             'pegawaiPelaksana',
@@ -294,6 +356,37 @@ class PermintaanPemeliharaanController extends Controller
             'approvalLogs',
             'pendingDisposisiApprovalId'
         ));
+    }
+
+    /**
+     * Map id_permintaan_pemeliharaan => id approval_log step 4 (MENUNGGU) untuk tombol Proses disposisi.
+     *
+     * @param  list<int|string>  $permintaanIds
+     * @return array<int, int>
+     */
+    private function pendingPengurusDisposisiApprovalIds(array $permintaanIds): array
+    {
+        if ($permintaanIds === []) {
+            return [];
+        }
+
+        $step4FlowIds = ApprovalFlowDefinition::query()
+            ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+            ->where('step_order', 4)
+            ->pluck('id');
+
+        if ($step4FlowIds->isEmpty()) {
+            return [];
+        }
+
+        return ApprovalLog::query()
+            ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+            ->whereIn('id_referensi', $permintaanIds)
+            ->whereIn('id_approval_flow', $step4FlowIds)
+            ->where('status', 'MENUNGGU')
+            ->pluck('id', 'id_referensi')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     public function edit($id)
@@ -480,6 +573,24 @@ class PermintaanPemeliharaanController extends Controller
             DB::rollBack();
 
             return back()->with('error', 'Gagal mengajukan permintaan: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Setelah pembelian spare part: kembalikan ke DIPROSES agar teknisi bisa buat SR berikutnya.
+     */
+    public function lanjutPerbaikan($id)
+    {
+        $permintaan = PermintaanPemeliharaan::findOrFail($id);
+
+        try {
+            $this->pemeliharaanWorkflow->lanjutPerbaikanSetelahPembelian($permintaan);
+
+            return redirect()
+                ->route('maintenance.daftar-permintaan-pemeliharaan.index')
+                ->with('success', 'Status dikembalikan ke pengerjaan. Teknisi dapat membuat Service Report lanjutan.');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
     }
 

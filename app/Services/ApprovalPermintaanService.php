@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\Enums\PermintaanBarangStatus;
+use App\Enums\PemeliharaanRekomendasi;
 use App\Helpers\PermissionHelper;
 use App\Models\ApprovalFlowDefinition;
 use App\Models\ApprovalLog;
 use App\Models\DetailPermintaanBarang;
 use App\Models\PermintaanBarang;
+use App\Models\PermintaanPemeliharaan;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\PermintaanBarangStock;
@@ -178,7 +180,19 @@ class ApprovalPermintaanService
 
     public function reject(int $approvalId, User $user, string $catatan): void
     {
-        $approval = ApprovalLog::with('approvalFlow')->findOrFail($approvalId);
+        $approval = ApprovalLog::with('approvalFlow.role')->findOrFail($approvalId);
+
+        // Guard: untuk rekomendasi "TIDAK_BISA_DIPERBAIKI" Kepala Pusat hanya sampai mengetahui (tidak ada penolakan).
+        if ($approval->modul_approval === 'PERMINTAAN_PEMELIHARAAN' && (int) ($approval->approvalFlow?->step_order ?? 0) === 8) {
+            $permintaan = PermintaanPemeliharaan::find($approval->id_referensi);
+            if (
+                $permintaan
+                && (string) $permintaan->rekomendasi_akhir === PemeliharaanRekomendasi::TidakBisaDiperbaiki->value
+            ) {
+                throw new \RuntimeException('Rekomendasi tidak bisa diperbaiki hanya dapat diketahui (tanpa penolakan).');
+            }
+        }
+
         $this->approvalService->reject($approval, $user, $catatan);
     }
 

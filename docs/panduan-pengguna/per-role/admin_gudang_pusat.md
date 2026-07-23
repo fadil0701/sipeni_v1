@@ -23,8 +23,8 @@ Admin gudang **semua kategori** (Persediaan, Farmasi, Aset) — setara operasion
 ## Tugas
 
 1. Kelola **data inventory & stock** semua gudang pusat
-2. **Proses disposisi** permintaan (draft distribusi) untuk semua kategori
-3. Dukung **compile & kirim SBBK**
+2. **Proses disposisi** permintaan → buat SBBK untuk semua kategori
+3. **Kirim SBBK** dari menu Distribusi Barang
 4. **Stock opname** & adjustment berkala
 5. **Import** data inventory bila ada batch penerimaan besar
 

@@ -357,8 +357,13 @@ class DashboardController extends Controller
             $farmasiExpiryPreview = FarmasiExpiryReminderService::previewRows($user, 8);
         }
 
-        $panduanRoleGuides = PanduanPenggunaService::roleGuidesForUser($user);
-        $panduanPrimaryGuide = PanduanPenggunaService::primaryRoleGuide($user);
+        $canAccessPanduan = PanduanPenggunaService::userCanAccess($user);
+        $panduanRoleGuides = $canAccessPanduan
+            ? PanduanPenggunaService::roleGuidesForUser($user)
+            : [];
+        $panduanPrimaryGuide = $canAccessPanduan
+            ? PanduanPenggunaService::primaryRoleGuide($user)
+            : null;
 
         return view('user.dashboard', compact(
             'totalAssets',
@@ -381,6 +386,7 @@ class DashboardController extends Controller
             'workspaceScope',
             'farmasiExpiryKpi',
             'farmasiExpiryPreview',
+            'canAccessPanduan',
             'panduanRoleGuides',
             'panduanPrimaryGuide',
         ));

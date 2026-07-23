@@ -259,7 +259,7 @@
                         @if($dataInventory->upload_foto)
                             <div class="mb-2">
                                 <p class="text-sm text-gray-600 mb-2">Foto saat ini:</p>
-                                <img src="{{ asset('storage/' . $dataInventory->upload_foto) }}" alt="Foto Inventory" class="h-32 w-auto rounded-md border border-gray-300">
+                                <img src="{{ \App\Helpers\ImageHelper::getImageUrl($dataInventory->upload_foto) }}" alt="Foto Inventory" class="h-32 w-auto rounded-md border border-gray-300">
                             </div>
                         @endif
                         <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">

@@ -26,9 +26,9 @@ Mengelola gudang pusat **kategori aset** — inventory aset tetap, register aset
 ## Alur disposisi permintaan aset
 
 1. Terima disposisi dari pengurus barang (kategori aset)
-2. Daftar Permintaan → buat **draft distribusi**
+2. Daftar Permintaan → **Proses** → buat **SBBK**
 3. Isi qty real dari stok gudang aset
-4. Forward ke pengurus barang untuk compile SBBK
+4. Simpan SBBK, lalu **kirim** dari menu Distribusi Barang (SBBK)
 
 ## Tips
 
