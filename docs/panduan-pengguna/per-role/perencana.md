@@ -19,7 +19,7 @@ Perencanaan kebutuhan — review **RKU**, kelola **Program/Kegiatan/Sub Kegiatan
 | Menu | Kegunaan |
 |------|----------|
 | **Perencanaan → Program/Kegiatan/Sub Kegiatan** | Master perencanaan |
-| **Perencanaan → RKU & Aktivitas / Daftar RKU** | Review & proses RKU |
+| **Perencanaan → Daftar RKU** | Review & proses seluruh RKU lintas unit; boleh tambah RKU |
 | **Perencanaan → Rekap Tahunan** | Rekap kebutuhan |
 | **Approval** | Disposisi terkait perencanaan (jika diizinkan) |
 

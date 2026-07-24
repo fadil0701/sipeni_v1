@@ -93,6 +93,7 @@ class StandardRolePermissionV2Seeder extends Seeder
                 'transaction.peminjaman-barang.approve-pengurus',
                 'transaction.approval.index', 'transaction.approval.show', 'transaction.approval.mengetahui',
                 'maintenance.permintaan-pemeliharaan.index', 'maintenance.permintaan-pemeliharaan.show',
+                'planning.rku.index', 'planning.rku.show',
                 'inventory.data-stock.index',
                 'inventory.data-inventory.index', 'inventory.data-inventory.show',
                 'asset.register-aset.index', 'asset.register-aset.show',
@@ -128,6 +129,7 @@ class StandardRolePermissionV2Seeder extends Seeder
                 'transaction.retur-barang.destroy', 'transaction.retur-barang.ajukan',
                 'planning.rku.index', 'planning.rku.create', 'planning.rku.store',
                 'planning.rku.edit', 'planning.rku.update', 'planning.rku.submit',
+                'planning.rku.show',
                 'maintenance.permintaan-pemeliharaan.index',
                 'maintenance.permintaan-pemeliharaan.create', 'maintenance.permintaan-pemeliharaan.store',
                 'maintenance.permintaan-pemeliharaan.edit', 'maintenance.permintaan-pemeliharaan.update',
@@ -139,7 +141,7 @@ class StandardRolePermissionV2Seeder extends Seeder
             // ===== perencana: planning full + approval =====
             'perencana' => $explicit([
                 'user.dashboard',
-                'planning.rku.index', 'planning.rku.create', 'planning.rku.store',
+                'planning.rku.index', 'planning.rku.view_all', 'planning.rku.create', 'planning.rku.store',
                 'planning.rku.edit', 'planning.rku.update', 'planning.rku.destroy',
                 'planning.rku.submit', 'planning.rku.approve', 'planning.rku.reject',
                 'planning.rku.cancel', 'planning.rku.revise',
@@ -157,6 +159,8 @@ class StandardRolePermissionV2Seeder extends Seeder
                 'procurement.paket-pengadaan.create', 'procurement.paket-pengadaan.store',
                 'procurement.paket-pengadaan.edit', 'procurement.paket-pengadaan.update',
                 'procurement.paket-pengadaan.destroy',
+                'procurement.paket-pengadaan.process',
+                'procurement.paket-pengadaan.mark-barang-tersedia',
                 'procurement.proses-pengadaan.index', 'procurement.proses-pengadaan.show',
                 'transaction.approval.index', 'transaction.approval.show', 'transaction.approval.disposisi',
                 'reports.index',
@@ -176,9 +180,11 @@ class StandardRolePermissionV2Seeder extends Seeder
             // ===== pptk_apbd: monitoring planning + procurement + laporan =====
             'pptk_apbd' => $explicit([
                 'user.dashboard',
-                'planning.rku.index', 'planning.rku.show', 'planning.rekap-tahunan',
+                'planning.rku.index', 'planning.rku.view_all', 'planning.rku.show', 'planning.rekap-tahunan',
                 'planning.rku.approve', 'planning.rku.reject', 'planning.rku.cancel',
                 'procurement.paket-pengadaan.index', 'procurement.paket-pengadaan.show',
+                'procurement.paket-pengadaan.process',
+                'procurement.paket-pengadaan.mark-barang-tersedia',
                 'procurement.proses-pengadaan.index', 'procurement.proses-pengadaan.show',
                 'reports.index', 'reports.kartu-stok', 'reports.stock-gudang',
                 'reports.transaksi-summary',
@@ -187,9 +193,11 @@ class StandardRolePermissionV2Seeder extends Seeder
             // ===== pptk_blud: same as pptk_apbd =====
             'pptk_blud' => $explicit([
                 'user.dashboard',
-                'planning.rku.index', 'planning.rku.show', 'planning.rekap-tahunan',
+                'planning.rku.index', 'planning.rku.view_all', 'planning.rku.show', 'planning.rekap-tahunan',
                 'planning.rku.approve', 'planning.rku.reject', 'planning.rku.cancel',
                 'procurement.paket-pengadaan.index', 'procurement.paket-pengadaan.show',
+                'procurement.paket-pengadaan.process',
+                'procurement.paket-pengadaan.mark-barang-tersedia',
                 'procurement.proses-pengadaan.index', 'procurement.proses-pengadaan.show',
                 'reports.index', 'reports.kartu-stok', 'reports.stock-gudang',
                 'reports.transaksi-summary',

@@ -3,8 +3,8 @@
 @section('content')
 <div class="mb-6 flex justify-between items-center">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">Proses Pengadaan</h1>
-        <p class="mt-1 text-sm text-gray-600">Paket pengadaan yang sedang dalam proses (Diajukan / Diproses)</p>
+        <h1 class="text-2xl font-bold text-gray-900">Paket Berjalan</h1>
+        <p class="mt-1 text-sm text-gray-600">Paket pengadaan yang sedang diajukan atau diproses</p>
     </div>
     <a href="{{ route('procurement.paket-pengadaan.index') }}" class="inline-flex items-center px-4 py-2.5 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">Semua Paket Pengadaan</a>
 </div>
@@ -66,8 +66,22 @@
                         <span class="px-2 py-1 text-xs font-medium rounded-full {{ $c }}">{{ $paket->status_paket }}</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <a href="{{ route('procurement.paket-pengadaan.show', $paket->id_paket) }}" class="text-blue-600 hover:text-blue-900">Detail</a>
-                        <a href="{{ route('procurement.paket-pengadaan.edit', $paket->id_paket) }}" class="ml-3 text-blue-700 hover:text-blue-900">Edit</a>
+                        <div class="inline-flex flex-wrap items-center justify-end gap-2">
+                            <a href="{{ route('procurement.paket-pengadaan.show', $paket->id_paket) }}" class="text-blue-600 hover:text-blue-900">Detail</a>
+                            @if($paket->status_paket === 'DIAJUKAN')
+                                <form action="{{ route('procurement.paket-pengadaan.process', $paket->id_paket) }}" method="POST" class="inline">
+                                    @csrf
+                                    <button type="submit" class="text-indigo-600 hover:text-indigo-900" onclick="return confirm('Mulai proses pengadaan?')">Mulai proses</button>
+                                </form>
+                            @endif
+                            @if(in_array($paket->status_paket, ['DIAJUKAN', 'DIPROSES'], true))
+                                <form action="{{ route('procurement.paket-pengadaan.mark-barang-tersedia', $paket->id_paket) }}" method="POST" class="inline">
+                                    @csrf
+                                    <button type="submit" class="text-green-700 hover:text-green-900" onclick="return confirm('Tandai barang sudah tersedia?')">Barang tersedia</button>
+                                </form>
+                            @endif
+                            <a href="{{ route('procurement.paket-pengadaan.edit', $paket->id_paket) }}" class="text-blue-700 hover:text-blue-900">Edit</a>
+                        </div>
                     </td>
                 </tr>
                 @empty

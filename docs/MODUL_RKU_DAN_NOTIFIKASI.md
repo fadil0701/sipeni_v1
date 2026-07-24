@@ -23,9 +23,9 @@ Dokumen ini merangkum implementasi perbaikan RKU + fondasi notifikasi global (Me
 
 ## 4. Sidebar & menu modul
 
-- **Layout utama** (`layouts/app.blade.php`): menu **Input RKU** membutuhkan permission `planning.rku.create` (bukan hanya `index`).
-- **Enterprise sidebar**: dua entri — **Input RKU** → `planning.rku.create`, **Daftar RKU** → `planning.rku.index`.
-- **PermissionHelper** (`planning` → `submenus`): `rku-input` + `rku-daftar` menggantikan satu kunci `rku` agar default navigasi modul konsisten.
+- **Transaksi → RKU** (`?context=unit`): role unit-scoped (`admin_unit`, dll.) — hanya RKU unit sendiri.
+- **Perencanaan → Daftar RKU** (`?context=daftar`): tim pusat/perencana (`planning.rku.view_all` atau bukan unit-scoped) — seluruh unit; boleh tambah RKU.
+- Jangan memasang kedua label ke URL yang sama tanpa `context` — itu menyebabkan highlight ganda di sidebar.
 
 ## 5. Standarisasi notifikasi (fondasi global)
 

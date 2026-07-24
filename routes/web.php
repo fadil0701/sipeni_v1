@@ -341,6 +341,8 @@ Route::middleware(['auth', 'scope.unit'])->group(function () {
     Route::prefix('procurement')->name('procurement.')->middleware(['role'])->group(function () {
         Route::get('proses-pengadaan', [ProsesPengadaanController::class, 'index'])->name('proses-pengadaan.index');
         Route::get('proses-pengadaan/{id}', [ProsesPengadaanController::class, 'show'])->name('proses-pengadaan.show');
+        Route::post('paket-pengadaan/{id}/process', [PaketPengadaanController::class, 'process'])->name('paket-pengadaan.process');
+        Route::post('paket-pengadaan/{id}/mark-barang-tersedia', [PaketPengadaanController::class, 'markBarangTersedia'])->name('paket-pengadaan.mark-barang-tersedia');
         Route::resource('paket-pengadaan', PaketPengadaanController::class);
     });
 

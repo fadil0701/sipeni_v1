@@ -1,35 +1,20 @@
 # Panduan: Keuangan
 
-> **Akses di aplikasi:** Menu sidebar **Panduan Pengguna** — bab ini otomatis ditampilkan untuk role Anda.
+> **Status modul (Juli 2026):** Menu **Keuangan → Pembayaran** **belum tersedia** di aplikasi. Controller historis masih stub; akses HTTP ditolak (`FEATURE_FINANCE_PEMBAYARAN=false`).
 
-## Profil role
+Role `keuangan` tetap ada di katalog RBAC untuk persiapan, tetapi **tidak ada workflow pembayaran yang bisa dijalankan di UI** saat ini.
 
-| | |
-|---|---|
-| **Level** | Pusat |
-| **Modul default** | Finance, Transaksi |
-| **Legacy setara** | `admin_keuangan` |
+## Yang harus diketahui Administrator
 
-## Kegunaan
+- Jangan menjanjikan user bahwa mereka bisa “input pembayaran” di SI-MANTIK sampai modul diimplementasi.
+- Desain alur target (RKU → pengadaan → pembayaran) ada di dokumen teknis historis; bukan panduan operasional aktif.
+- Setelah modul siap: set `FEATURE_FINANCE_PEMBAYARAN=true`, kembalikan menu sidebar, dan lengkapi view/controller.
 
-Pencatatan **pembayaran** terkait pengadaan barang/jasa.
+## Sementara
 
-## Menu utama
+| Kebutuhan | Alternatif |
+|-----------|------------|
+| Monitoring paket pengadaan | Menu **Pengadaan → Paket Pengadaan** / **Paket Berjalan** |
+| Realisasi anggaran | Proses di luar SI-MANTIK / modul nanti |
 
-| Menu | Kegunaan |
-|------|----------|
-| **Keuangan → Pembayaran** | Input & monitoring pembayaran |
-| **Pengadaan → Proses** | Referensi tagihan/realisasi (view) |
-
-## Alur kerja
-
-1. Terima dokumen tagihan dari pengadaan (SPK/BA/BAST)
-2. Keuangan → Pembayaran → **Tambah**
-3. Link ke paket pengadaan / referensi kontrak
-4. Input nominal, tanggal, bukti bayar
-5. Rekonsiliasi dengan laporan pengadaan
-
-## Tips
-
-- Pastikan realisasi pengadaan sudah update sebelum bayar
-- Koordinasi PPTK untuk sumber dana APBD vs BLUD
+Lihat juga: [PERBAIKAN_AUDIT_UI_CETAK_2026-07-24.md](../../PERBAIKAN_AUDIT_UI_CETAK_2026-07-24.md)

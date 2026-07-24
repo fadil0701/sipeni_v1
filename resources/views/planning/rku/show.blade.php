@@ -335,6 +335,7 @@ $statusLabel = \App\Models\RkuHeader::STATUSES[$rku->status_rku] ?? $rku->status
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Satuan</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Subtotal</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Foto</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
@@ -347,10 +348,20 @@ $statusLabel = \App\Models\RkuHeader::STATUSES[$rku->status_rku] ?? $rku->status
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $detail->satuan?->nama_satuan ?? '-' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">Rp {{ number_format($detail->harga_satuan_rencana ?? 0, 0, ',', '.') }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-medium">Rp {{ number_format($detail->subtotal_rencana ?? 0, 0, ',', '.') }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        @if($detail->foto_path)
+                            <a href="{{ route('media.show', ['path' => $detail->foto_path]) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800">
+                                <img src="{{ route('media.show', ['path' => $detail->foto_path]) }}" alt="Foto item" class="h-12 w-12 rounded border border-gray-200 object-cover">
+                                Lihat
+                            </a>
+                        @else
+                            <span class="text-gray-400">-</span>
+                        @endif
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500">Tidak ada detail barang.</td>
+                    <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">Tidak ada detail barang.</td>
                 </tr>
                 @endforelse
             </tbody>

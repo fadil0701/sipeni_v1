@@ -65,13 +65,15 @@ Modul operasional **unit kerja** dan permintaan lintas unit.
 | **Halaman** | Daftar, form pengembalian |
 | **Role umum** | `admin_unit`, `kepala_unit` |
 
-### Daftar RKU
+### RKU (Transaksi)
 
 | Item | Keterangan |
 |------|------------|
-| **Kegunaan** | Rencana Kebutuhan Unit — perencanaan kebutuhan barang/jasa tahunan |
-| **Halaman** | Index, create, edit, show, submit |
-| **Role umum** | `admin_unit` (input), `perencana`, `kasubbag_tu`, `kepala_pusat` (review) |
+| **Kegunaan** | Form Permintaan Rencana Kebutuhan Unit — diinput & dimonitor **unit kerja sendiri** sampai selesai |
+| **Halaman** | Index (scope unit), create, show, submit |
+| **Role umum** | `admin_unit` (dan role unit-scoped lain yang punya permission RKU) |
+
+> **Daftar RKU** untuk tim perencana ada di menu **Perencanaan** (lintas unit).
 
 ---
 
@@ -101,10 +103,12 @@ Modul operasional **unit kerja** dan permintaan lintas unit.
 | **Program** | Master program kerja |
 | **Kegiatan** | Master kegiatan under program |
 | **Sub Kegiatan** | Master sub kegiatan |
-| **RKU & Aktivitas** | Kelola RKU (overlap dengan Transaksi → Daftar RKU) |
+| **Daftar RKU** | Seluruh RKU lintas unit untuk tim perencana/pusat; dapat menambah RKU |
 | **Rekap Tahunan** | Rekapitulasi kebutuhan tahun berjalan |
 
-**Role umum:** `perencana`, `admin_unit`, `pptk_apbd`, `pptk_blud`, `kasubbag_tu`, `kepala_pusat`
+**Catatan:** Form RKU unit sendiri ada di **Transaksi → RKU** (bukan di sini).
+
+**Role umum:** `perencana`, `pptk_apbd`, `pptk_blud` (+ review pusat sesuai permission)
 
 ---
 
@@ -113,7 +117,7 @@ Modul operasional **unit kerja** dan permintaan lintas unit.
 | Submenu | Kegunaan |
 |---------|----------|
 | **Paket Pengadaan** | Definisi paket pengadaan barang/jasa |
-| **Proses & Realisasi Pengadaan** | Monitoring pelaksanaan pengadaan |
+| **Paket Berjalan** | Daftar paket yang sedang diajukan / diproses |
 
 **Role umum:** `pengadaan`, `pptk_apbd`, `pptk_blud`
 
@@ -204,11 +208,8 @@ Modul **Pengurus Barang** — fulfillment setelah permintaan disetujui.
 
 ## Keuangan
 
-| Submenu | Kegunaan |
-|---------|----------|
-| **Pembayaran** | Pencatatan pembayaran terkait pengadaan |
-
-**Role umum:** `keuangan`
+> **Belum tersedia di UI** (Juli 2026). Menu disembunyikan; flag `FEATURE_FINANCE_PEMBAYARAN` default `false`.  
+> Lihat [per-role/keuangan.md](./per-role/keuangan.md) dan [PERBAIKAN_AUDIT_UI_CETAK_2026-07-24.md](../PERBAIKAN_AUDIT_UI_CETAK_2026-07-24.md).
 
 ---
 
@@ -244,7 +245,7 @@ Modul **Pengurus Barang** — fulfillment setelah permintaan disetujui.
 |---------|----------|
 | **User & Account Directory** | CRUD user, assign role |
 | **Role & Workflow Authority** | CRUD role, permission matrix, workflow permission |
-| **Workflow Template** | Template cetak (jika `FEATURE_PRINT_TEMPLATES=true`) |
+| **Workflow Template** | Template cetak (default aktif; matikan lewat `FEATURE_PRINT_TEMPLATES=false`) |
 | **Executive Activity Timeline** | Audit trail aktivitas sistem |
 
 **Role umum:** `super_administrator`, `admin`/`administrator` (permission-based)
@@ -256,7 +257,7 @@ Modul **Pengurus Barang** — fulfillment setelah permintaan disetujui.
 | Fitur | Status |
 |-------|--------|
 | Pemakaian Barang | Route dinonaktifkan |
-| RKU Aktivitas (sub-modul terpisah) | Placeholder sidebar |
+| RKU Aktivitas (sub-modul terpisah) | Diganti: **Transaksi → RKU** vs **Perencanaan → Daftar RKU** |
 | Notifikasi bell (header) | UI placeholder |
 
 ---

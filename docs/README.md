@@ -8,7 +8,8 @@ Sistem Informasi Manajemen Terintegrasi (SI-MANTIK) — indeks dokumentasi aktif
 
 | Dokumen | Isi |
 |---------|-----|
-| [Audit Sistem Lengkap (Juni 2026)](./AUDIT_SISTEM_LENGKAP_2026-06-21.md) | Temuan keamanan, fitur, operasional, roadmap perbaikan |
+| [Perbaikan audit UI & cetak (Juli 2026)](./PERBAIKAN_AUDIT_UI_CETAK_2026-07-24.md) | Tindak lanjut: hide stub, print templates, rename menu, cleanup |
+| [Audit Sistem Lengkap (Juni 2026)](./AUDIT_SISTEM_LENGKAP_2026-06-21.md) | Temuan historis keamanan/fitur/ops (sebagian fitur sudah diperbarui) |
 
 ---
 

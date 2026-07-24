@@ -14,7 +14,7 @@ class RkuValidationService
     {
         $rules = [
             'id_unit_kerja' => 'required|exists:master_unit_kerja,id_unit_kerja',
-            'tahun_anggaran' => 'required|digits:4|integer|min:2020|max:2100',
+            'tahun_anggaran' => 'required|digits:4|integer|min:2000|max:'.((int) date('Y') + 2),
             'jenis_rku' => 'nullable|in:BARANG,JASA,MODAL',
             'id_rekening_belanja' => 'nullable|exists:master_rekening_belanja,id',
             'priority' => 'nullable|in:normal,urgent,cito',

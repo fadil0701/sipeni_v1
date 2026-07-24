@@ -5,61 +5,53 @@ namespace App\Http\Controllers\Finance;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
+/**
+ * Modul Pembayaran belum diimplementasi (controller stub historis).
+ * Route tetap ada untuk kompatibilitas permission; akses HTTP ditolak.
+ *
+ * @see docs/PERBAIKAN_AUDIT_UI_CETAK_2026-07-24.md
+ */
 class PembayaranController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct()
+    {
+        if (! config('sipeni.feature_finance_pembayaran', false)) {
+            abort(404, 'Modul Keuangan / Pembayaran belum tersedia.');
+        }
+    }
+
     public function index()
     {
-        //
+        abort(501, 'Modul Pembayaran belum diimplementasi.');
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        abort(501, 'Modul Pembayaran belum diimplementasi.');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        abort(501, 'Modul Pembayaran belum diimplementasi.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
-        //
+        abort(501, 'Modul Pembayaran belum diimplementasi.');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
-        //
+        abort(501, 'Modul Pembayaran belum diimplementasi.');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        //
+        abort(501, 'Modul Pembayaran belum diimplementasi.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        //
+        abort(501, 'Modul Pembayaran belum diimplementasi.');
     }
 }

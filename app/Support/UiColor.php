@@ -156,8 +156,8 @@ final class UiColor
             // Alur kerja maju (proses pengerjaan, disposisi, mengetahui)
             'proses', 'process', 'disposisi', 'mengetahui', 'ketahui' => self::PRIMARY,
 
-            // Persetujuan positif
-            'setujui', 'approve', 'menyetujui', 'verifikasi', 'verify', 'ajukan', 'submit' => self::SUCCESS,
+            // Persetujuan positif / selesai pengadaan
+            'setujui', 'approve', 'menyetujui', 'verifikasi', 'verify', 'ajukan', 'submit', 'barang_tersedia' => self::SUCCESS,
 
             // Perhatian / lanjut siklus
             'lanjut', 'lanjut_perbaikan', 'warning' => self::WARNING,
@@ -190,6 +190,7 @@ final class UiColor
             'setujui', 'approve', 'menyetujui' => 'Setujui',
             'verifikasi', 'verify' => 'Verifikasi',
             'ajukan', 'submit' => 'Ajukan',
+            'barang_tersedia' => 'Barang tersedia',
             'lanjut', 'lanjut_perbaikan', 'warning' => 'Lanjut Perbaikan',
             'tolak', 'reject', 'kembalikan' => 'Tolak',
             'hapus', 'delete', 'destroy' => 'Hapus',

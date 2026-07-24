@@ -84,7 +84,8 @@ Panduan tampil di aplikasi lewat `/panduan` (tanpa permission khusus — semua u
 
 | Variabel | Default | Catatan |
 |----------|---------|---------|
-| `FEATURE_PRINT_TEMPLATES` | false | Aktifkan di staging untuk UAT cetak SBBK |
+| `FEATURE_PRINT_TEMPLATES` | true | Admin template + cetak SBBK/retur; set false hanya jika sengaja dimatikan |
+| `FEATURE_FINANCE_PEMBAYARAN` | false | Modul pembayaran belum diimplementasi; biarkan false |
 | `NOTIFICATIONS_MAIL_ENABLED` | false | Email notifikasi (butuh SMTP) |
 | `SECURITY_CSP_ENABLED` | false | CSP; mulai report-only |
 | `TWO_FACTOR_REQUIRED_ROLES` | super_administrator,admin | Role wajib 2FA |
@@ -99,4 +100,4 @@ Panduan tampil di aplikasi lewat `/panduan` (tanpa permission khusus — semua u
 
 ## Kontak & eskalasi
 
-Dokumentasi teknis lengkap: [AGENTS.md](../AGENTS.md), audit: [AUDIT_SISTEM_LENGKAP_2026-06-21.md](./AUDIT_SISTEM_LENGKAP_2026-06-21.md)
+Dokumentasi teknis lengkap: [AGENTS.md](../AGENTS.md), perbaikan audit UI/cetak: [PERBAIKAN_AUDIT_UI_CETAK_2026-07-24.md](./PERBAIKAN_AUDIT_UI_CETAK_2026-07-24.md), audit Juni 2026 (historis): [AUDIT_SISTEM_LENGKAP_2026-06-21.md](./AUDIT_SISTEM_LENGKAP_2026-06-21.md)

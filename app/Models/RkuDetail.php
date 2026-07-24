@@ -24,6 +24,7 @@ class RkuDetail extends Model
         'harga_satuan_rencana',
         'subtotal_rencana',
         'keterangan',
+        'foto_path',
         'created_by',
         'updated_by',
         'is_approved',

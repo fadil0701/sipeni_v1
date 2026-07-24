@@ -1,19 +1,24 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $context = $context ?? 'unit';
+    $lockUnitKerja = $lockUnitKerja ?? ($context === 'unit');
+    $indexUrl = route('planning.rku.index', ['context' => $context]);
+@endphp
 <div class="page-enterprise space-y-4">
     <div class="mb-4">
-        <a href="{{ route('planning.rku.index') }}" class="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
+        <a href="{{ $indexUrl }}" class="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
             <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
-            Kembali ke daftar RKU
+            Kembali ke {{ $context === 'daftar' ? 'Daftar RKU' : 'RKU' }}
         </a>
     </div>
 
     <nav class="mb-1 text-sm text-gray-500" aria-label="Breadcrumb">
         <ol class="flex flex-wrap items-center gap-2">
-            <li><a href="{{ route('planning.rku.index') }}" class="text-blue-600 hover:underline">RKU</a></li>
+            <li><a href="{{ $indexUrl }}" class="text-blue-600 hover:underline">{{ $context === 'daftar' ? 'Daftar RKU' : 'RKU' }}</a></li>
             <li aria-hidden="true">/</li>
             <li class="font-medium text-gray-800">Input baru</li>
         </ol>
@@ -22,11 +27,20 @@
     <div class="bg-white shadow-sm rounded-lg border border-gray-200">
         <div class="border-b border-gray-200 px-6 py-5">
             <h1 class="text-xl font-semibold text-gray-900">Buat RKU Baru</h1>
-            <p class="mt-1 text-sm text-gray-600">Lengkapi unit kerja, tahun anggaran, dan minimal satu baris detail rencana.</p>
+            <p class="mt-1 text-sm text-gray-600">
+                @if($context === 'daftar')
+                    Tim perencana dapat menambah Rencana Kebutuhan Unit untuk unit kerja mana pun.
+                @else
+                    Lengkapi rencana kebutuhan unit Anda (minimal satu baris detail).
+                @endif
+            </p>
         </div>
 
-        <form method="POST" action="{{ route('planning.rku.store') }}" id="rkuForm" class="space-y-6 p-6">
+        <form method="POST" action="{{ route('planning.rku.store') }}" id="rkuForm" class="space-y-6 p-6" enctype="multipart/form-data">
             @csrf
+            <input type="hidden" name="context" value="{{ $context }}">
+            @php $tahunAnggaranOtomatis = (int) date('Y') + 2; @endphp
+            <input type="hidden" name="tahun_anggaran" value="{{ $tahunAnggaranOtomatis }}">
 
             @if ($errors->any())
                 <div class="alert-box alert-error" role="alert">
@@ -51,6 +65,19 @@
                     <label for="id_unit_kerja" class="mb-2 block text-sm font-medium text-gray-700">
                         Unit Kerja <span class="text-red-600">*</span>
                     </label>
+                    @if($lockUnitKerja)
+                        <input type="hidden" name="id_unit_kerja" value="{{ old('id_unit_kerja', $selectedUnit) }}">
+                        <select
+                            id="id_unit_kerja"
+                            disabled
+                            class="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm shadow-sm"
+                        >
+                            @foreach ($unitKerjaList ?? [] as $uk)
+                                <option value="{{ $uk->id_unit_kerja }}" selected>{{ $uk->nama_unit_kerja }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">Unit kerja mengikuti akun Anda.</p>
+                    @else
                     <select
                         id="id_unit_kerja"
                         name="id_unit_kerja"
@@ -64,25 +91,25 @@
                             </option>
                         @endforeach
                     </select>
+                    @endif
                     @error('id_unit_kerja')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
 
                 <div>
-                    <label for="tahun_anggaran" class="mb-2 block text-sm font-medium text-gray-700">
+                    <label for="tahun_anggaran_display" class="mb-2 block text-sm font-medium text-gray-700">
                         Tahun Anggaran <span class="text-red-600">*</span>
                     </label>
-                    <select
-                        id="tahun_anggaran"
-                        name="tahun_anggaran"
-                        required
-                        class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 @error('tahun_anggaran') border-red-500 @enderror"
+                    <input
+                        type="text"
+                        id="tahun_anggaran_display"
+                        value="{{ $tahunAnggaranOtomatis }}"
+                        readonly
+                        tabindex="-1"
+                        class="block w-full cursor-not-allowed rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800 shadow-sm"
                     >
-                        @for ($y = date('Y') + 1; $y >= date('Y') - 2; $y--)
-                            <option value="{{ $y }}" {{ old('tahun_anggaran', date('Y')) == $y ? 'selected' : '' }}>{{ $y }}</option>
-                        @endfor
-                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Otomatis: tahun berjalan + 2 (tidak dapat diubah).</p>
                     @error('tahun_anggaran')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -128,13 +155,14 @@
                     <table class="min-w-full divide-y divide-gray-200" id="detailsTable">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 14%">Jenis</th>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 26%">Nama item</th>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 12%">Qty</th>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 15%">Satuan</th>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 18%">Harga satuan</th>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 18%">Subtotal</th>
-                                <th class="px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 2%"></th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Jenis</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Nama item</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Qty</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Satuan</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Harga satuan</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Subtotal</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Foto <span class="normal-case font-normal text-gray-400">(opsional)</span></th>
+                                <th class="px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-600"></th>
                             </tr>
                         </thead>
                         <tbody id="detailsBody" class="divide-y divide-gray-100 bg-white">
@@ -183,6 +211,9 @@
                                             >
                                         </td>
                                         <td class="row-subtotal px-3 py-2 text-right text-sm font-semibold text-gray-800">Rp 0</td>
+                                        <td class="px-3 py-2">
+                                            <input type="file" name="details[{{ $index }}][foto]" accept="image/jpeg,image/png,image/webp,image/jpg" class="block w-full max-w-[11rem] text-xs text-gray-600 file:mr-2 file:rounded file:border-0 file:bg-blue-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-blue-700 hover:file:bg-blue-100">
+                                        </td>
                                         <td class="px-3 py-2 text-center">
                                             <button type="button" class="remove-row inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 text-red-700 hover:bg-red-50" aria-label="Hapus baris">
                                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -194,7 +225,7 @@
                                 @endforeach
                             @else
                                 <tr id="emptyRow">
-                                    <td colspan="7" class="px-3 py-10 text-center text-sm text-gray-500">
+                                    <td colspan="8" class="px-3 py-10 text-center text-sm text-gray-500">
                                         <svg class="mx-auto mb-2 h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6m16 0v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4m16 0H4" />
                                         </svg>
@@ -207,7 +238,7 @@
                             <tr>
                                 <td colspan="5" class="px-3 py-3 text-right text-sm font-semibold text-gray-700">Total anggaran</td>
                                 <td class="px-3 py-3 text-right text-base font-semibold text-blue-600" id="grandTotal">Rp 0</td>
-                                <td></td>
+                                <td colspan="2"></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -215,7 +246,7 @@
             </div>
 
             <div class="flex flex-wrap justify-end gap-3 border-t border-gray-200 pt-5">
-                <a href="{{ route('planning.rku.index') }}" class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+                <a href="{{ $indexUrl }}" class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
                     <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -289,6 +320,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 '<input type="number" name="details[' + index + '][harga_satuan_rencana]" step="1" min="0" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm" placeholder="0" required>',
             '</td>',
             '<td class="row-subtotal px-3 py-2 text-right text-sm font-semibold text-gray-800">Rp 0</td>',
+            '<td class="px-3 py-2">',
+                '<input type="file" name="details[' + index + '][foto]" accept="image/jpeg,image/png,image/webp,image/jpg" class="block w-full max-w-[11rem] text-xs text-gray-600 file:mr-2 file:rounded file:border-0 file:bg-blue-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-blue-700 hover:file:bg-blue-100">',
+            '</td>',
             '<td class="px-3 py-2 text-center">',
                 '<button type="button" class="remove-row inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 text-red-700 hover:bg-red-50" aria-label="Hapus baris"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m4 0V4a1 1 0 011-1h4a1 1 0 011 1v3m-8 0h10M10 11v6m4-6v6"></path></svg></button>',
             '</td>',

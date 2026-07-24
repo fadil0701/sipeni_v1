@@ -2,80 +2,33 @@
 
 namespace App\Http\Controllers\User;
 
-use App\Support\Rbac\RbacRoles;
-use App\Support\Rbac\UserScope;
-
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use App\Models\PermintaanBarang;
-use App\Models\MasterDataBarang;
-use App\Models\MasterPegawai;
-use App\Models\User;
-use App\Services\PermintaanService;
 
-
+/**
+ * Portal permintaan legacy — dialihkan ke modul transaksi utama
+ * (`transaction.permintaan-barang`) agar satu pintu UI.
+ */
 class RequestController extends Controller
 {
-    public function __construct(
-        private readonly PermintaanService $permintaanService
-    ) {}
-
     public function index(Request $request)
     {
-        /** @var User $user */
-        $user = Auth::user();
-        $pegawai = MasterPegawai::where('user_id', Auth::id())->first();
-        $perPage = \App\Helpers\PaginationHelper::getPerPage($request, 10);
-        $requests = PermintaanBarang::with(['pemohon', 'detailPermintaan'])
-            ->when(! UserScope::canViewCrossUnitData($user), function ($q) use ($pegawai) {
-                if ($pegawai) {
-                    $q->where('id_pemohon', $pegawai->id);
-                } else {
-                    $q->whereRaw('1 = 0');
-                }
-            })
-            ->latest()
-            ->paginate($perPage)->appends($request->query());
-
-        return view('user.requests.index', compact('requests'));
+        return redirect()->route('transaction.permintaan-barang.index', $request->query());
     }
 
     public function create()
     {
-        $barangs = MasterDataBarang::all();
-        return view('user.requests.create', compact('barangs'));
+        return redirect()->route('transaction.permintaan-barang.create');
     }
 
-    public function store(Request $request)
+    public function store()
     {
-        $validated = $request->validate([
-            'id_data_barang' => 'required|exists:master_data_barang,id_data_barang',
-            'qty_permintaan' => 'required|integer|min:1',
-            'keterangan' => 'nullable|string',
-        ]);
-
-        $this->permintaanService->createAndSubmitFromUser((int) Auth::id(), $validated);
-
-        return redirect()->route('user.requests.index')
-            ->with('success', 'Permintaan berhasil diajukan.');
+        return redirect()->route('transaction.permintaan-barang.create')
+            ->with('info', 'Gunakan form Permintaan Barang di menu Transaksi.');
     }
 
     public function show($id)
     {
-        /** @var User $user */
-        $user = Auth::user();
-        $request = PermintaanBarang::with(['pemohon', 'detailPermintaan.dataBarang'])
-            ->findOrFail($id);
-
-        if (! UserScope::canViewCrossUnitData($user)) {
-            $pegawai = MasterPegawai::where('user_id', Auth::id())->first();
-            if (! $pegawai || (int) $request->id_pemohon !== (int) $pegawai->id) {
-                abort(403, 'Anda tidak dapat mengakses permintaan ini.');
-            }
-        }
-
-        return view('user.requests.show', compact('request'));
+        return redirect()->route('transaction.permintaan-barang.show', $id);
     }
 }
-

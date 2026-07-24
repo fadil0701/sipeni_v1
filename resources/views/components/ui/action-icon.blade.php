@@ -13,6 +13,7 @@
         'approve', 'menyetujui' => 'setujui',
         'verify' => 'verifikasi',
         'submit' => 'ajukan',
+        'barang_tersedia' => 'setujui',
         'lanjut_perbaikan', 'warning' => 'lanjut',
         'reject', 'kembalikan' => 'tolak',
         'delete', 'destroy' => 'hapus',

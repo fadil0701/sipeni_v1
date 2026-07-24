@@ -155,24 +155,51 @@
                         $canAccessAsset = isset($accessibleMenus['aset-kir']);
                         $canAccessPlanning = isset($accessibleMenus['planning']);
                         $canAccessProcurement = isset($accessibleMenus['procurement']);
-                        $canAccessFinance = isset($accessibleMenus['finance']);
                         $canAccessMaintenance = isset($accessibleMenus['maintenance']);
                         $canAccessReports = isset($accessibleMenus['laporan']);
                     @endphp
                     @php
                         $isRoute = fn (array $patterns) => request()->routeIs(...$patterns);
-                        $isRkuDaftarRoute = $isRoute(['planning.rku.index', 'planning.rku.create', 'planning.rku.show', 'planning.rku.edit']);
+                        $onRkuPages = $isRoute(['planning.rku.index', 'planning.rku.create', 'planning.rku.store', 'planning.rku.show', 'planning.rku.edit', 'planning.rku.update']);
+                        $effectiveRkuContext = request('context');
+                        if (! in_array($effectiveRkuContext, ['unit', 'daftar'], true)) {
+                            $effectiveRkuContext = ($currentUser && \App\Support\Rbac\UserScope::mustScopeToUnitKerja($currentUser))
+                                ? 'unit'
+                                : 'daftar';
+                        }
+                        $isRkuUnitHighlight = $onRkuPages && $effectiveRkuContext === 'unit';
+                        $isRkuDaftarHighlight = $onRkuPages && $effectiveRkuContext === 'daftar';
+                        $canMenuRkuUnit = $currentUser
+                            && PermissionHelper::canAccess($currentUser, 'planning.rku.index')
+                            && (
+                                // Unit kerja: admin_unit / kepala_unit / legacy unit
+                                \App\Support\Rbac\UserScope::mustScopeToUnitKerja($currentUser)
+                                // Super admin & bypass: boleh uji kedua pintu (Transaksi + Perencanaan)
+                                || PermissionHelper::hasEnterpriseBypassRole($currentUser)
+                                // Cadangan: punya form create + terhubung unit kerja (meski role pusat)
+                                || (
+                                    PermissionHelper::canAccess($currentUser, 'planning.rku.create')
+                                    && (int) ($currentUser->pegawai?->id_unit_kerja ?? 0) > 0
+                                    && ! $currentUser->hasPermission('planning.rku.view_all')
+                                )
+                            );
+                        $canMenuRkuDaftar = $currentUser
+                            && PermissionHelper::canAccess($currentUser, 'planning.rku.index')
+                            && (
+                                $currentUser->hasPermission('planning.rku.view_all')
+                                || ! \App\Support\Rbac\UserScope::mustScopeToUnitKerja($currentUser)
+                                || PermissionHelper::hasEnterpriseBypassRole($currentUser)
+                            );
                         $isRkuInputRoute = $isRoute(['planning.rku.create', 'planning.rku.edit']);
-                        $isRkuActivityRoute = $isRoute(['rku-aktivitas.*', 'planning.rku.aktivitas.*']);
                         $linkClass = fn (bool $active = false) => 'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 '.($active ? 'bg-blue-600 text-white border-l-4 border-white shadow-md' : 'text-blue-200 hover:bg-blue-800');
                         $groupClass = fn (bool $open = false) => 'pl-4 mt-2 space-y-1 '.($open ? '' : 'hidden');
                         $showPlanningSidebar = $currentUser
-                            && ($canAccessPlanning || $canAccessMasterManajemen)
+                            && ($canAccessPlanning || $canAccessMasterManajemen || $canMenuRkuDaftar)
                             && (
                                 PermissionHelper::canAccess($currentUser, 'master.program.index')
                                 || PermissionHelper::canAccess($currentUser, 'master.kegiatan.index')
                                 || PermissionHelper::canAccess($currentUser, 'master.sub-kegiatan.index')
-                                || PermissionHelper::canAccess($currentUser, 'planning.rku.index')
+                                || $canMenuRkuDaftar
                                 || PermissionHelper::canAccess($currentUser, 'planning.rekap-tahunan')
                             );
                     @endphp
@@ -200,9 +227,9 @@
                         @endif
 
                 
-                        @if($currentUser && ($canAccessPermintaan || PermissionHelper::canAccess($currentUser, 'user.requests.index')))
+                        @if($currentUser && ($canAccessPermintaan || PermissionHelper::canAccess($currentUser, 'user.requests.index') || $canMenuRkuUnit))
                             @php
-                                $permintaanOpen = $isRoute(['transaction.permintaan-barang.*', 'maintenance.permintaan-pemeliharaan.*', 'user.requests.*', 'transaction.peminjaman-barang.*', 'transaction.pengembalian-barang.*']) || $isRkuDaftarRoute || $isRkuInputRoute;
+                                $permintaanOpen = $isRoute(['transaction.permintaan-barang.*', 'maintenance.permintaan-pemeliharaan.*', 'user.requests.*', 'transaction.peminjaman-barang.*', 'transaction.pengembalian-barang.*']) || $isRkuUnitHighlight || ($isRkuInputRoute && $effectiveRkuContext === 'unit');
                             @endphp
                             <li>
                                 <div class="flex items-center px-4 py-2 rounded-lg text-blue-200 hover:bg-blue-800 cursor-pointer" onclick="toggleSubmenu('permintaan-unit')">
@@ -210,10 +237,8 @@
                                     <svg id="permintaan-unit-arrow" class="w-4 h-4 ml-auto transition-transform {{ $permintaanOpen ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </div>
                                 <ul id="permintaan-unit-submenu" class="{{ $groupClass($permintaanOpen) }}">
-                                    @if(PermissionHelper::canAccess($currentUser, 'transaction.permintaan-barang.index'))
-                                        <li><a href="{{ route('transaction.permintaan-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.permintaan-barang.*'])) }}">Permintaan Barang</a></li>
-                                    @elseif(PermissionHelper::canAccess($currentUser, 'user.requests.index'))
-                                        <li><a href="{{ route('user.requests.index') }}" class="{{ $linkClass($isRoute(['user.requests.*'])) }}">Permintaan Barang</a></li>
+                                    @if(PermissionHelper::canAccess($currentUser, 'transaction.permintaan-barang.index') || PermissionHelper::canAccess($currentUser, 'user.requests.index'))
+                                        <li><a href="{{ route('transaction.permintaan-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.permintaan-barang.*', 'user.requests.*'])) }}">Permintaan Barang</a></li>
                                     @endif
                                     @if(PermissionHelper::canAccess($currentUser, 'maintenance.permintaan-pemeliharaan.index'))
                                         <li><a href="{{ route('maintenance.permintaan-pemeliharaan.index') }}" class="{{ $linkClass($isRoute(['maintenance.permintaan-pemeliharaan.*'])) }}">Permintaan Pemeliharaan</a></li>
@@ -222,8 +247,8 @@
                                         <li><a href="{{ route('transaction.peminjaman-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.peminjaman-barang.*'])) }}">Peminjaman Barang</a></li>
                                         <li><a href="{{ route('transaction.pengembalian-barang.index') }}" class="{{ $linkClass($isRoute(['transaction.pengembalian-barang.*'])) }}">Pengembalian Barang</a></li>
                                     @endif
-                                    @if(PermissionHelper::canAccess($currentUser, 'planning.rku.index'))
-                                        <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass($isRkuDaftarRoute) }}">Daftar RKU</a></li>
+                                    @if($canMenuRkuUnit)
+                                        <li><a href="{{ route('planning.rku.index', ['context' => 'unit']) }}" class="{{ $linkClass($isRkuUnitHighlight) }}" title="Permintaan Rencana Kebutuhan Unit (unit sendiri)">RKU</a></li>
                                     @endif
                                 </ul>
                             </li>
@@ -246,7 +271,7 @@
 
                         @if($showPlanningSidebar)
                             @php
-                                $planningOpen = $isRoute(['planning.rekap-tahunan','master.program.*','master.kegiatan.*','master.sub-kegiatan.*']);
+                                $planningOpen = $isRoute(['planning.rekap-tahunan','master.program.*','master.kegiatan.*','master.sub-kegiatan.*']) || $isRkuDaftarHighlight;
                             @endphp
                             <li>
                                 <div class="flex items-center px-4 py-2 rounded-lg text-blue-200 hover:bg-blue-800 cursor-pointer" onclick="toggleSubmenu('planning')">
@@ -263,8 +288,8 @@
                                     @if(PermissionHelper::canAccess($currentUser, 'master.sub-kegiatan.index'))
                                         <li><a href="{{ route('master.sub-kegiatan.index') }}" class="{{ $linkClass($isRoute(['master.sub-kegiatan.*'])) }}">Sub Kegiatan</a></li>
                                     @endif
-                                    @if(PermissionHelper::canAccess($currentUser, 'planning.rku.index'))
-                                        <li><a href="{{ route('planning.rku.index') }}" class="{{ $linkClass($isRkuActivityRoute) }}">RKU &amp; Aktivitas</a></li>
+                                    @if($canMenuRkuDaftar)
+                                        <li><a href="{{ route('planning.rku.index', ['context' => 'daftar']) }}" class="{{ $linkClass($isRkuDaftarHighlight) }}" title="Seluruh permintaan RKU lintas unit">Daftar RKU</a></li>
                                     @endif
                                     @if(PermissionHelper::canAccess($currentUser, 'planning.rekap-tahunan'))
                                         <li><a href="{{ route('planning.rekap-tahunan') }}" class="{{ $linkClass($isRoute(['planning.rekap-tahunan'])) }}">Rekap Tahunan</a></li>
@@ -284,7 +309,7 @@
                                 </div>
                                 <ul id="procurement-submenu" class="{{ $groupClass($procOpen) }}">
                                     <li><a href="{{ route('procurement.paket-pengadaan.index') }}" class="{{ $linkClass($isRoute(['procurement.paket-pengadaan.*'])) }}">Paket Pengadaan</a></li>
-                                    <li><a href="{{ route('procurement.proses-pengadaan.index') }}" class="{{ $linkClass($isRoute(['procurement.proses-pengadaan.*'])) }}">Proses &amp; Realisasi Pengadaan</a></li>
+                                    <li><a href="{{ route('procurement.proses-pengadaan.index') }}" class="{{ $linkClass($isRoute(['procurement.proses-pengadaan.*'])) }}">Paket Berjalan</a></li>
                                 </ul>
                             </li>
                         @endif
@@ -474,20 +499,7 @@
                             </li>
                         @endif
 
-                        @if($canAccessFinance)
-                            @php
-                                $financeOpen = $isRoute(['finance.*']);
-                            @endphp
-                            <li>
-                                <div class="flex items-center px-4 py-2 rounded-lg text-blue-200 hover:bg-blue-800 cursor-pointer" onclick="toggleSubmenu('finance')">
-                                    <span>Keuangan</span>
-                                    <svg id="finance-arrow" class="w-4 h-4 ml-auto transition-transform {{ $financeOpen ? 'rotate-90' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                                </div>
-                                <ul id="finance-submenu" class="{{ $groupClass($financeOpen) }}">
-                                    <li><a href="{{ route('finance.pembayaran.index') }}" class="{{ $linkClass($isRoute(['finance.pembayaran.*'])) }}">Pembayaran</a></li>
-                                </ul>
-                            </li>
-                        @endif
+                        {{-- Menu Keuangan/Pembayaran disembunyikan: controller masih stub (lihat docs/PERBAIKAN_AUDIT_UI_CETAK_2026-07-24.md) --}}
 
                         @if($canAccessReports)
                             @php
@@ -592,12 +604,6 @@
                         <div class="flex flex-shrink-0 items-center gap-1 sm:gap-4">
                             <!-- Notifications (desktop/tablet landscape) -->
                             <div class="hidden items-center gap-1 md:flex">
-                            <button type="button" class="relative p-2 text-gray-600 hover:text-gray-900" aria-label="Pesan">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                                <span class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-                            </button>
                             <a href="{{ route('notifications.index') }}" class="relative p-2 text-gray-600 hover:text-gray-900" aria-label="Notifikasi">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -702,6 +708,15 @@
                     @yield('content')
                 </div>
             </main>
+
+            <footer class="flex-shrink-0 border-t border-gray-200 bg-white">
+                <div class="px-3 py-3 text-center sm:px-6">
+                    <p class="text-xs font-medium text-gray-700">SIMANTIK-PPKP Versi 1.01.1</p>
+                    <p class="mt-0.5 text-[11px] leading-snug text-gray-500">
+                        Copyright &copy; 2026 Pusat Pelayanan Kesehatan Pegawai DKI Jakarta
+                    </p>
+                </div>
+            </footer>
         </div>
     </div>
 

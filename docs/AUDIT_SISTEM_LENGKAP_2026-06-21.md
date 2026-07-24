@@ -1,5 +1,9 @@
 # Laporan Audit Sistem SI-MANTIK
 
+> **Pembaruan Juli 2026:** Bagian **kelengkapan fitur** (menu Keuangan “CRUD sederhana”, bell notifikasi placeholder, default print templates OFF, dsb.) **sebagian sudah tidak berlaku**.  
+> Lihat tindak lanjut: [PERBAIKAN_AUDIT_UI_CETAK_2026-07-24.md](./PERBAIKAN_AUDIT_UI_CETAK_2026-07-24.md).  
+> Temuan **keamanan** dan banyak catatan operasional di dokumen ini tetap relevan sebagai referensi historis.
+
 **Tanggal audit:** 21 Juni 2026  
 **Versi aplikasi:** sipeni_v1 (Laravel 13 + Blade + Tailwind v4)  
 **Metode:** Review statis kode sumber, konfigurasi, routes, middleware, tests, dan dokumentasi — dibandingkan dengan panduan pengguna, alur transaksi, dan roadmap RBAC.
@@ -243,7 +247,7 @@ Dokumentasi menjelaskan approve/reject terpisah di kepala pusat. Kode dapat lang
 
 #### GAP-WF-03: Handoff pengadaan → distribusi
 
-Setelah paket pengadaan selesai, status permintaan berhenti di `barang_tersedia`. **Tidak ada otomatisasi** lanjut ke disposisi/distribusi. Permintaan bisa "terjebak" tanpa aksi manual pengurus barang.
+Setelah paket pengadaan ditandai **Barang tersedia** (UI detail paket), status permintaan sempat `barang_tersedia` lalu otomatis lanjut ke `proses_distribusi` via `PengadaanService::resumeToDistribusi` (perbaikan Juli 2026).
 
 #### GAP-WF-04: Semantik "kirim" distribusi
 

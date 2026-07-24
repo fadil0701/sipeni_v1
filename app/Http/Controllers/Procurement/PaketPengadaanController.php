@@ -73,8 +73,48 @@ class PaketPengadaanController extends Controller
 
     public function show(string $id)
     {
-        $paket = PengadaanPaket::with(['subKegiatan.kegiatan.program', 'rku', 'kontrak'])->findOrFail($id);
+        $paket = PengadaanPaket::with(['subKegiatan.kegiatan.program', 'rku', 'kontrak', 'permintaan'])->findOrFail($id);
         return view('procurement.paket-pengadaan.show', compact('paket'));
+    }
+
+    /**
+     * Tandai paket sedang diproses (DRAFT/DIAJUKAN → DIPROSES) dan sync status permintaan.
+     */
+    public function process(string $id)
+    {
+        $paket = PengadaanPaket::with('permintaan')->findOrFail($id);
+
+        if (in_array($paket->status_paket, ['SELESAI', 'DIBATALKAN'], true)) {
+            return redirect()
+                ->route('procurement.paket-pengadaan.show', $paket->id_paket)
+                ->with('error', 'Paket yang sudah selesai atau dibatalkan tidak dapat diproses ulang.');
+        }
+
+        $this->pengadaanService->processProcurement($paket);
+
+        return redirect()
+            ->route('procurement.paket-pengadaan.show', $paket->id_paket)
+            ->with('success', 'Paket ditandai sedang diproses.');
+    }
+
+    /**
+     * Tandai barang tersedia: paket → SELESAI, permintaan → barang_tersedia → proses_distribusi.
+     */
+    public function markBarangTersedia(string $id)
+    {
+        $paket = PengadaanPaket::with('permintaan')->findOrFail($id);
+
+        if (! in_array($paket->status_paket, ['DRAFT', 'DIAJUKAN', 'DIPROSES'], true)) {
+            return redirect()
+                ->route('procurement.paket-pengadaan.show', $paket->id_paket)
+                ->with('error', 'Hanya paket draft/diajukan/diproses yang dapat ditandai barang tersedia.');
+        }
+
+        $this->pengadaanService->markBarangTersedia($paket);
+
+        return redirect()
+            ->route('procurement.paket-pengadaan.show', $paket->id_paket)
+            ->with('success', 'Barang ditandai tersedia. Permintaan terkait dilanjutkan ke proses distribusi (SBBK).');
     }
 
     public function edit(string $id)

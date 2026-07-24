@@ -9,10 +9,11 @@
 - **Inventory & stok** (persediaan, farmasi, aset)
 - **Register aset & KIR** (Kartu Inventaris Ruangan)
 - **Pemeliharaan, kalibrasi, dan peminjaman barang**
-- **Keuangan** (pembayaran terkait pengadaan)
 - **Monitoring & laporan**
 
-Semua modul terhubung dalam satu ekosistem: kebutuhan unit → perencanaan → pengadaan → stok pusat → distribusi → penerimaan unit.
+> Modul **Keuangan / Pembayaran** belum tersedia di UI (sedang disiapkan). Role keuangan boleh ada di RBAC tanpa menu aktif.
+
+Alur inti: kebutuhan unit → perencanaan → pengadaan → stok pusat → distribusi → penerimaan unit.
 
 ---
 

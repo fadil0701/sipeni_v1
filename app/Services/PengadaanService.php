@@ -86,7 +86,10 @@ class PengadaanService
     {
         DB::transaction(function () use ($paket): void {
             if ($paket->status_paket !== 'SELESAI') {
-                $paket->update(['status_paket' => 'SELESAI']);
+                $paket->update([
+                    'status_paket' => 'SELESAI',
+                    'tanggal_selesai' => $paket->tanggal_selesai ?? now()->toDateString(),
+                ]);
             }
             if ($paket->permintaan) {
                 $this->permintaanStatusService->setStatus($paket->permintaan, PermintaanBarangStatus::BarangTersedia);

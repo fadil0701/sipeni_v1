@@ -19,7 +19,7 @@ Pelaksanaan **pengadaan barang/jasa** berdasarkan RKU/paket yang disetujui.
 | Menu | Kegunaan |
 |------|----------|
 | **Pengadaan → Paket Pengadaan** | Buat/kelola paket |
-| **Pengadaan → Proses & Realisasi** | Monitoring pelaksanaan kontrak/spk |
+| **Pengadaan → Paket Berjalan** | Monitoring paket yang diajukan / diproses |
 | **Approval** | Monitoring permintaan status pengadaan (view) |
 
 ## Alur kerja

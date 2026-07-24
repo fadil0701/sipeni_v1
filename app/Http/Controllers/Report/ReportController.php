@@ -245,13 +245,12 @@ class ReportController extends Controller
             ->when($from, fn ($q) => $q->whereDate('tanggal_distribusi', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('tanggal_distribusi', '<=', $to))
             ->count();
-        $pemakaian = 0; // Modul Pemakaian Barang dinonaktifkan
         $retur = ReturBarang::query()
             ->when($from, fn ($q) => $q->whereDate('tanggal_retur', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('tanggal_retur', '<=', $to))
             ->count();
 
-        return view('report.transaksi-summary', compact('distribusi', 'pemakaian', 'retur'));
+        return view('report.transaksi-summary', compact('distribusi', 'retur'));
     }
 
     public function asetSummary(Request $request)

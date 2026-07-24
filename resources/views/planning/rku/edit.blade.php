@@ -11,6 +11,7 @@
             'qty_rencana' => $d->qty_rencana,
             'id_satuan' => $d->id_satuan,
             'harga_satuan_rencana' => $d->harga_satuan_rencana,
+            'foto_path' => $d->foto_path,
         ];
     })->toArray();
 @endphp
@@ -41,9 +42,10 @@
             <p class="mt-1 text-sm text-gray-600">Perbarui header dan detail selama status masih dapat diedit.</p>
         </div>
 
-        <form method="POST" action="{{ route('planning.rku.update', $rku->id_rku) }}" id="rkuForm" class="space-y-6 p-6">
+        <form method="POST" action="{{ route('planning.rku.update', $rku->id_rku) }}" id="rkuForm" class="space-y-6 p-6" enctype="multipart/form-data">
             @csrf
             @method('PUT')
+            <input type="hidden" name="tahun_anggaran" value="{{ old('tahun_anggaran', $rku->tahun_anggaran) }}">
 
             @if ($errors->any())
                 <div class="alert-box alert-error" role="alert">
@@ -87,19 +89,18 @@
                 </div>
 
                 <div>
-                    <label for="tahun_anggaran" class="mb-2 block text-sm font-medium text-gray-700">
+                    <label for="tahun_anggaran_display" class="mb-2 block text-sm font-medium text-gray-700">
                         Tahun Anggaran <span class="text-red-600">*</span>
                     </label>
-                    <select
-                        id="tahun_anggaran"
-                        name="tahun_anggaran"
-                        required
-                        class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 @error('tahun_anggaran') border-red-500 @enderror"
+                    <input
+                        type="text"
+                        id="tahun_anggaran_display"
+                        value="{{ old('tahun_anggaran', $rku->tahun_anggaran) }}"
+                        readonly
+                        tabindex="-1"
+                        class="block w-full cursor-not-allowed rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800 shadow-sm"
                     >
-                        @for ($y = date('Y') + 1; $y >= date('Y') - 2; $y--)
-                            <option value="{{ $y }}" {{ old('tahun_anggaran', $rku->tahun_anggaran) == $y ? 'selected' : '' }}>{{ $y }}</option>
-                        @endfor
-                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Tahun anggaran terkunci (tidak dapat diubah).</p>
                     @error('tahun_anggaran')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -145,13 +146,14 @@
                     <table class="min-w-full divide-y divide-gray-200" id="detailsTable">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 14%">Jenis</th>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 26%">Nama item</th>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 12%">Qty</th>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 15%">Satuan</th>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 18%">Harga satuan</th>
-                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 18%">Subtotal</th>
-                                <th class="px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-600" style="width: 2%"></th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Jenis</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Nama item</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Qty</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Satuan</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Harga satuan</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Subtotal</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Foto <span class="normal-case font-normal text-gray-400">(opsional)</span></th>
+                                <th class="px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-600"></th>
                             </tr>
                         </thead>
                         <tbody id="detailsBody" class="divide-y divide-gray-100 bg-white">
@@ -201,6 +203,12 @@
                                             >
                                         </td>
                                         <td class="row-subtotal px-3 py-2 text-right text-sm font-semibold text-gray-800">Rp 0</td>
+                                        <td class="px-3 py-2">
+                                            @if(!empty($detail['foto_path']))
+                                                <a href="{{ route('media.show', ['path' => $detail['foto_path']]) }}" target="_blank" rel="noopener" class="mb-1 inline-block text-xs text-blue-600 hover:underline">Lihat foto</a>
+                                            @endif
+                                            <input type="file" name="details[{{ $index }}][foto]" accept="image/jpeg,image/png,image/webp,image/jpg" class="block w-full max-w-[11rem] text-xs text-gray-600 file:mr-2 file:rounded file:border-0 file:bg-blue-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-blue-700 hover:file:bg-blue-100">
+                                        </td>
                                         <td class="px-3 py-2 text-center">
                                             <button type="button" class="remove-row inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 text-red-700 hover:bg-red-50" aria-label="Hapus baris">
                                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -212,7 +220,7 @@
                                 @endforeach
                             @else
                                 <tr id="emptyRow">
-                                    <td colspan="7" class="px-3 py-10 text-center text-sm text-gray-500">
+                                    <td colspan="8" class="px-3 py-10 text-center text-sm text-gray-500">
                                         <svg class="mx-auto mb-2 h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6m16 0v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4m16 0H4" />
                                         </svg>
@@ -225,7 +233,7 @@
                             <tr>
                                 <td colspan="5" class="px-3 py-3 text-right text-sm font-semibold text-gray-700">Total anggaran</td>
                                 <td class="px-3 py-3 text-right text-base font-semibold text-blue-600" id="grandTotal">Rp 0</td>
-                                <td></td>
+                                <td colspan="2"></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -308,6 +316,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 '<input type="number" name="details[' + index + '][harga_satuan_rencana]" step="1" min="0" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm" placeholder="0" required>',
             '</td>',
             '<td class="row-subtotal px-3 py-2 text-right text-sm font-semibold text-gray-800">Rp 0</td>',
+            '<td class="px-3 py-2">',
+                '<input type="file" name="details[' + index + '][foto]" accept="image/jpeg,image/png,image/webp,image/jpg" class="block w-full max-w-[11rem] text-xs text-gray-600 file:mr-2 file:rounded file:border-0 file:bg-blue-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-blue-700 hover:file:bg-blue-100">',
+            '</td>',
             '<td class="px-3 py-2 text-center">',
                 '<button type="button" class="remove-row inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 text-red-700 hover:bg-red-50" aria-label="Hapus baris"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m4 0V4a1 1 0 011-1h4a1 1 0 011 1v3m-8 0h10M10 11v6m4-6v6"></path></svg></button>',
             '</td>',

@@ -434,12 +434,9 @@
                                 </span>
                             </label>
 
-                            <a 
-                                href="#"
-                                class="login-link"
-                            >
-                                Lupa Password?
-                            </a>
+                            <span class="text-xs text-slate-400">
+                                Lupa password? Hubungi Administrator.
+                            </span>
                         </div>
 
                         <!-- Submit -->

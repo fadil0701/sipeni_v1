@@ -18,7 +18,7 @@ class UpdateRkuRequest extends FormRequest
 
         return [
             'id_unit_kerja' => ['sometimes', 'required', 'exists:master_unit_kerja,id_unit_kerja'],
-            'tahun_anggaran' => ['sometimes', 'required', 'digits:4', 'integer', 'min:2020', 'max:2100'],
+            'tahun_anggaran' => ['sometimes', 'required', 'digits:4', 'integer', 'min:2000', 'max:'.((int) date('Y') + 2)],
             'jenis_rku' => ['sometimes', 'nullable', 'in:BARANG,JASA,MODAL'],
             'id_rekening_belanja' => ['nullable', 'exists:master_rekening_belanja,id'],
             'priority' => ['nullable', 'in:normal,urgent,cito'],
@@ -37,6 +37,7 @@ class UpdateRkuRequest extends FormRequest
             'details.*.id_satuan' => ['required_with:details', 'exists:master_satuan,id_satuan'],
             'details.*.harga_satuan_rencana' => ['required_with:details', 'numeric', 'min:0'],
             'details.*.keterangan' => ['nullable', 'string', 'max:500'],
+            'details.*.foto' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ];
     }
 

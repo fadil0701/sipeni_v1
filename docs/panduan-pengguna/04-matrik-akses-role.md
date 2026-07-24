@@ -36,7 +36,7 @@ Bayangkan akses seperti pintu + peta menu:
 | `admin_unit` | Admin Unit | Unit | Transaksi, Inventory, Aset, Planning | Input permintaan, RKU, stok unit |
 | `perencana` | Perencana | Pusat | Planning, Transaksi | Review RKU, disposisi perencanaan |
 | `pengadaan` | Pengadaan | Pusat | Procurement, Transaksi | Paket & proses pengadaan |
-| `keuangan` | Keuangan | Pusat | Finance, Transaksi | Pembayaran |
+| `keuangan` | Keuangan | Pusat | — (modul belum live) | Role disiapkan; menu pembayaran disembunyikan |
 | `pptk_apbd` | PPTK APBD | Pusat | Planning, Procurement, Reports | Monitoring kegiatan APBD |
 | `pptk_blud` | PPTK BLUD | Pusat | Planning, Procurement, Reports | Monitoring kegiatan BLUD |
 | `pengurus_barang` | Pengurus Barang | Pusat | Inventory, Transaksi, Aset, **Pemeliharaan** | Disposisi, SBBK, oversight gudang + pemeliharaan |
@@ -61,7 +61,7 @@ Bayangkan akses seperti pintu + peta menu:
 | Aset | admin_gudang_aset, pengurus_barang, admin_unit, teknisi_* (lihat) |
 | Planning (RKU) | admin_unit, perencana, kasubbag_tu, kepala_pusat, pptk_* |
 | Pengadaan | pengadaan, pptk_* |
-| Keuangan | keuangan |
+| Keuangan | — (belum live; role `keuangan` disiapkan) |
 | **Pemeliharaan** | **pengurus_barang**, **teknisi_atem**, **teknisi_it**, super_admin |
 | Akses & Kontrol (user/role) | super_administrator, admin / administrator |
 | Panduan Pengguna (in-app) | **hanya** admin / administrator / super_administrator |
@@ -125,7 +125,7 @@ Bayangkan akses seperti pintu + peta menu:
 | Approve RKU | `kepala_pusat` |
 | Monitoring PPTK | `pptk_apbd`, `pptk_blud` |
 | Paket pengadaan | `pengadaan` |
-| Pembayaran | `keuangan` |
+| Pembayaran | — (modul belum live) |
 
 ---
 

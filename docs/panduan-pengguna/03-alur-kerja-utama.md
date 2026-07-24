@@ -74,14 +74,16 @@ RKU disetujui menjadi dasar **paket pengadaan**.
 ```
 RKU disetujui
     ↓
-Paket Pengadaan + Proses Realisasi
+Paket Pengadaan (menu Paket Berjalan)
     ↓
-Penerimaan barang di gudang pusat (Data Inventory / Stock)
+Mulai proses → DIPROSES / proses_pengadaan
     ↓
-Stok tersedia → permintaan unit dapat dipenuhi (distribusi)
+Barang tersedia → SELESAI + permintaan proses_distribusi
     ↓
-Pembayaran (Keuangan) — paralel/sesudah realisasi kontrak
+Penerimaan stok di gudang pusat (jika perlu) → buat SBBK / distribusi
 ```
+
+**Catatan:** Tombol **Mulai proses** dan **Barang tersedia** ada di detail paket pengadaan (dan aksi cepat di daftar Paket Berjalan). Setelah *Barang tersedia*, permintaan otomatis lanjut ke `proses_distribusi` agar bisa dibuat SBBK.
 
 Detail: [alur_rku_pengadaan_pembayaran_serah_terima.md](../alur_rku_pengadaan_pembayaran_serah_terima.md)
 
@@ -146,10 +148,12 @@ Detail tambahan: [alur_pemeliharaan_aset_maintenance_kalibrasi.md](../alur_pemel
 
 ## 8. Keuangan
 
+> Modul pembayaran **belum tersedia** di aplikasi. Alur di bawah adalah target bisnis, bukan langkah UI aktif.
+
 ```
 Proses Pengadaan selesai / tagihan
     ↓
-Input Pembayaran (Keuangan)
+(Modul Pembayaran — belum live)
     ↓
 Rekonsiliasi dengan paket pengadaan
 ```

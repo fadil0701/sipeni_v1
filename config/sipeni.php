@@ -10,15 +10,21 @@ return [
     | Fitur template cetak dinamis (Admin + cetak SBBK dari template)
     |--------------------------------------------------------------------------
     |
-    | Matikan untuk menyembunyikan menu "Template Cetak", tombol cetak SBBK,
-    | dan menolak akses HTTP ke rute terkait. KIR / dokumen aset tidak
-    | bergantung pada flag ini. Setel true saat modul siap dipakai lagi.
+    | Default ON (true). Matikan hanya jika sengaja menyembunyikan menu
+    | "Workflow Template" dan tombol cetak SBBK/retur via template.
+    | KIR / dokumen aset tidak bergantung pada flag ini.
     |
     */
-    'feature_print_templates' => env('FEATURE_PRINT_TEMPLATES', false),
+    'feature_print_templates' => env('FEATURE_PRINT_TEMPLATES', true),
 
     /** Modul Pemakaian Barang (default nonaktif — controller abort 404). */
     'feature_pemakaian_barang' => env('FEATURE_PEMAKAIAN_BARANG', false),
+
+    /**
+     * Modul Keuangan / Pembayaran (default nonaktif — UI sidebar disembunyikan;
+     * controller abort 404 sampai implementasi + view siap).
+     */
+    'feature_finance_pembayaran' => env('FEATURE_FINANCE_PEMBAYARAN', false),
 
     /*
     |--------------------------------------------------------------------------

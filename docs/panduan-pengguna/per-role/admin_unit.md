@@ -22,7 +22,7 @@
 | **Permintaan Barang** | Buat, edit draft, ajukan |
 | **Permintaan Pemeliharaan** | Ajukan servis aset |
 | **Peminjaman / Pengembalian** | Kelola pinjam antar unit |
-| **Daftar RKU** | Input kebutuhan tahunan unit |
+| **Transaksi → RKU** | Input & monitoring Rencana Kebutuhan Unit sendiri |
 | **Penerimaan Barang** | Terima & verifikasi distribusi |
 | **Retur Barang** | Retur jika rusak |
 | **Data Stock (unit)** | Monitor stok |
@@ -38,9 +38,10 @@
 
 ## Langkah: RKU
 
-1. Transaksi / Perencanaan → Daftar RKU → **Tambah**
-2. Isi header RKU + detail kebutuhan per item
+1. Transaksi → **RKU** → **Buat RKU**
+2. Lengkapi header + detail kebutuhan unit → simpan
 3. **Submit** untuk review perencana/TU/kepala pusat
+4. Monitor status di tab Aktif / Riwayat sampai selesai
 
 ## Langkah: Penerimaan
 

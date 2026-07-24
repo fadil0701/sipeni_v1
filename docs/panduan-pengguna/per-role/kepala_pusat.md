@@ -19,7 +19,7 @@ Pimpinan tertinggi operasional — **persetujuan akhir** permintaan barang dan *
 | Menu | Kegunaan |
 |------|----------|
 | **Approval** | Approve / reject permintaan barang |
-| **Transaksi → Daftar RKU** | Review & approve RKU |
+| **Perencanaan → Daftar RKU** | Review & approve RKU (lintas unit) |
 | **Monitoring** | Laporan ringkasan & stok gudang |
 | **Dashboard** | Overview |
 
@@ -33,7 +33,7 @@ Pimpinan tertinggi operasional — **persetujuan akhir** permintaan barang dan *
 
 ### RKU
 
-1. Transaksi / Perencanaan → **Daftar RKU**
+1. Perencanaan → **Daftar RKU**
 2. Buka RKU status review kepala pusat
 3. **Setujui** / **Tolak** / minta **Revisi**
 

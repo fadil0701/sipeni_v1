@@ -13,7 +13,7 @@ Dokumen di folder ini menjelaskan **tugas tiap role** untuk dibaca **Administrat
 | Admin Unit | [admin_unit.md](./admin_unit.md) |
 | Perencana | [perencana.md](./perencana.md) |
 | Pengadaan | [pengadaan.md](./pengadaan.md) |
-| Keuangan | [keuangan.md](./keuangan.md) |
+| Keuangan | [keuangan.md](./keuangan.md) — **modul UI belum live** |
 | PPTK APBD | [pptk_apbd.md](./pptk_apbd.md) |
 | PPTK BLUD | [pptk_blud.md](./pptk_blud.md) |
 | Pengurus Barang | [pengurus_barang.md](./pengurus_barang.md) |

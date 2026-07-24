@@ -283,6 +283,11 @@ class PermissionHelper
             'inventory.data-stock.merk-breakdown' => ['inventory.data-stock.index'],
             'reports.kartu-stok.merk-breakdown' => ['reports.kartu-stok'],
             'inventory.farmasi-kedaluwarsa.export' => ['inventory.farmasi-kedaluwarsa.index'],
+            // Legacy portal user.requests → satu pintu transaction.permintaan-barang
+            'transaction.permintaan-barang.index' => ['user.requests.index'],
+            'transaction.permintaan-barang.create' => ['user.requests.create'],
+            'transaction.permintaan-barang.store' => ['user.requests.store'],
+            'transaction.permintaan-barang.show' => ['user.requests.show'],
             default => [],
         };
     }
@@ -367,6 +372,7 @@ class PermissionHelper
                     'peminjaman-barang' => ['route' => 'transaction.peminjaman-barang.index', 'permission' => 'transaction.peminjaman-barang.index'],
                     'permintaan-pemeliharaan' => ['route' => 'maintenance.permintaan-pemeliharaan.index', 'permission' => 'maintenance.permintaan-pemeliharaan.index'],
                     'permintaan-pengadaan-barang' => ['route' => 'planning.rku.index', 'permission' => 'planning.rku.index'],
+                    'rku-unit' => ['route' => 'planning.rku.index', 'permission' => 'planning.rku.index'],
                 ],
             ],
             'approval' => [
@@ -402,8 +408,8 @@ class PermissionHelper
                 'route' => null,
                 'permission' => 'planning.*',
                 'submenus' => [
-                    'rku-input' => ['route' => 'planning.rku.create', 'permission' => 'planning.rku.create'],
-                    'rku-daftar' => ['route' => 'planning.rku.index', 'permission' => 'planning.rku.index'],
+                    'rku-unit' => ['route' => 'planning.rku.index', 'permission' => 'planning.rku.index'],
+                    'rku-daftar' => ['route' => 'planning.rku.index', 'permission' => 'planning.rku.view_all'],
                     'rekap-tahunan' => ['route' => 'planning.rekap-tahunan', 'permission' => 'planning.rekap-tahunan'],
                 ],
             ],
@@ -415,13 +421,8 @@ class PermissionHelper
                     'paket-pengadaan' => ['route' => 'procurement.paket-pengadaan.index', 'permission' => 'procurement.paket-pengadaan.index'],
                 ],
             ],
-            'finance' => [
-                'route' => null,
-                'permission' => 'finance.*',
-                'submenus' => [
-                    'pembayaran' => ['route' => 'finance.pembayaran.index', 'permission' => 'finance.pembayaran.index'],
-                ],
-            ],
+            // finance/pembayaran: disembunyikan dari sidebar sampai modul diimplementasi
+            // (lihat FEATURE_FINANCE_PEMBAYARAN / docs/PERBAIKAN_AUDIT_UI_CETAK_2026-07-24.md)
             'maintenance' => [
                 'route' => null,
                 'permission' => 'maintenance.*',

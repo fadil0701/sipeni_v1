@@ -11,11 +11,20 @@ class CreateRkuRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'tahun_anggaran' => (string) ((int) date('Y') + 2),
+        ]);
+    }
+
     public function rules(): array
     {
+        $tahunOtomatis = (int) date('Y') + 2;
+
         return [
             'id_unit_kerja' => ['required', 'exists:master_unit_kerja,id_unit_kerja'],
-            'tahun_anggaran' => ['required', 'digits:4', 'integer', 'min:2020', 'max:2100'],
+            'tahun_anggaran' => ['required', 'digits:4', 'integer', 'in:'.$tahunOtomatis],
             'jenis_rku' => ['nullable', 'in:BARANG,JASA,MODAL'],
             'id_rekening_belanja' => ['nullable', 'exists:master_rekening_belanja,id'],
             'priority' => ['nullable', 'in:normal,urgent,cito'],
@@ -29,6 +38,7 @@ class CreateRkuRequest extends FormRequest
             'details.*.id_satuan' => ['required', 'exists:master_satuan,id_satuan'],
             'details.*.harga_satuan_rencana' => ['required', 'numeric', 'min:0'],
             'details.*.keterangan' => ['nullable', 'string', 'max:500'],
+            'details.*.foto' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ];
     }
 
@@ -37,7 +47,7 @@ class CreateRkuRequest extends FormRequest
         return [
             'id_unit_kerja.required' => 'Unit kerja wajib dipilih.',
             'tahun_anggaran.required' => 'Tahun anggaran wajib diisi.',
-            'tahun_anggaran.digits' => 'Tahun anggaran harus 4 digit.',
+            'tahun_anggaran.in' => 'Tahun anggaran harus otomatis (tahun berjalan + 2).',
             'jenis_rku.required' => 'Jenis RKU wajib dipilih.',
             'details.required' => 'Minimal harus ada 1 item barang.',
             'details.min' => 'Minimal harus ada 1 item barang.',
@@ -48,6 +58,8 @@ class CreateRkuRequest extends FormRequest
             'details.*.id_satuan.required' => 'Satuan wajib dipilih.',
             'details.*.harga_satuan_rencana.required' => 'Harga satuan wajib diisi.',
             'details.*.jenis_rku.in' => 'Jenis item detail harus Barang, Jasa, Modal.',
+            'details.*.foto.image' => 'File foto harus berupa gambar.',
+            'details.*.foto.max' => 'Ukuran foto maksimal 5 MB.',
         ];
     }
 

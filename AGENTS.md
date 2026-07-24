@@ -82,7 +82,9 @@ Global: `SecurityHeaders` (CSP / Permissions-Policy).
 
 ## Key env vars
 
-- `FEATURE_PRINT_TEMPLATES` — enable print template admin module (default `false`).
+- `FEATURE_PRINT_TEMPLATES` — enable print template admin module + cetak SBBK/retur template (default `true`).
+- `FEATURE_PEMAKAIAN_BARANG` — modul pemakaian barang (default `false`).
+- `FEATURE_FINANCE_PEMBAYARAN` — modul keuangan/pembayaran (default `false`; sidebar disembunyikan).
 - `SUPERADMIN_BYPASS_SCOPE` — admin bypasses unit scope (default `true`).
 - `APP_SUBPATH` / `APP_USE_REQUEST_URL` / `APP_PORT` — subpath & URL mode (portal vs LAN).
 - `APP_ROUTE_PREFIX` — `false` di Docker (nginx strip subpath).

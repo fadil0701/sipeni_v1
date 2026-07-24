@@ -6,6 +6,8 @@ use App\Models\RkuHeader;
 use App\Models\RkuDetail;
 use App\Models\RkuAuditLog;
 use App\Models\MasterDataBarang;
+use App\Support\Storage\PrivateStorage;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -171,6 +173,7 @@ class RkuService
                 'harga_satuan_rencana' => $detail['harga_satuan_rencana'],
                 'subtotal_rencana' => $detail['qty_rencana'] * $detail['harga_satuan_rencana'],
                 'keterangan' => $detail['keterangan'] ?? null,
+                'foto_path' => $this->storeDetailFoto($detail['foto'] ?? null),
             ];
 
             $created[] = RkuDetail::create($detailData);
@@ -191,8 +194,12 @@ class RkuService
         $toDelete = array_diff($existingIds, $newIds);
         $toUpdate = array_intersect($existingIds, $newIds);
 
-        if (!empty($toDelete)) {
-            RkuDetail::whereIn('id_rku_detail', $toDelete)->delete();
+        if (! empty($toDelete)) {
+            $rows = RkuDetail::whereIn('id_rku_detail', $toDelete)->get();
+            foreach ($rows as $row) {
+                PrivateStorage::delete($row->foto_path);
+                $row->delete();
+            }
         }
 
         foreach ($details as $detail) {
@@ -207,15 +214,30 @@ class RkuService
                 'keterangan' => $detail['keterangan'] ?? null,
             ];
 
-            if (!empty($detail['id_rku_detail']) && in_array($detail['id_rku_detail'], $toUpdate)) {
+            if (! empty($detail['id_rku_detail']) && in_array($detail['id_rku_detail'], $toUpdate)) {
+                $existing = RkuDetail::find($detail['id_rku_detail']);
+                if ($existing && ! empty($detail['foto']) && $detail['foto'] instanceof UploadedFile) {
+                    PrivateStorage::delete($existing->foto_path);
+                    $detailData['foto_path'] = $this->storeDetailFoto($detail['foto']);
+                }
                 RkuDetail::where('id_rku_detail', $detail['id_rku_detail'])->update($detailData);
             } else {
                 $detailData['id_rku'] = $rku->id_rku;
+                $detailData['foto_path'] = $this->storeDetailFoto($detail['foto'] ?? null);
                 RkuDetail::create($detailData);
             }
         }
 
         $rku->recalculateTotal()->save();
+    }
+
+    private function storeDetailFoto(mixed $file): ?string
+    {
+        if (! $file instanceof UploadedFile) {
+            return null;
+        }
+
+        return PrivateStorage::storeUploadedFile($file, 'rku/detail');
     }
 
     public function getPaginatedList(array $filters = [], int $perPage = 15)

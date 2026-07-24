@@ -14,9 +14,12 @@ use App\Services\Rku\RkuValidationService;
 use App\Services\Rku\RkuCalculationService;
 use App\Models\MasterSubKegiatankegitan;
 use App\Support\Http\SafeUserMessage;
+use App\Support\Rbac\UserScope;
+use App\Helpers\PermissionHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class RkuController extends Controller
 {
@@ -35,12 +38,19 @@ class RkuController extends Controller
 
     /**
      * Display a listing of the resource.
+     *
+     * context=unit  → RKU unit (Transaksi): hanya unit kerja sendiri, monitoring sampai selesai
+     * context=daftar → Daftar RKU (Perencanaan): seluruh unit untuk tim perencana/pusat
      */
     public function index(Request $request)
     {
         if (!Gate::allows('viewAny', RkuHeader::class)) {
             abort(403, 'Unauthorized access.');
         }
+
+        /** @var User $user */
+        $user = Auth::user();
+        $context = $this->resolveRkuListContext($request, $user);
 
         $viewType = $request->query('view_type', 'aktif');
         if (! in_array($viewType, ['aktif', 'riwayat'], true)) {
@@ -60,42 +70,63 @@ class RkuController extends Controller
             $filters['view_type'] = $viewType;
             $filters['riwayat_statuses'] = $riwayatStatuses;
         }
-        
-        // Filter by user's unit if no permission to view all
-        if (!Auth::user()->hasPermission('planning.rku.view_all')) {
-            $filters['id_unit_kerja'] = $filters['id_unit_kerja'] ?? Auth::user()->pegawai?->id_unit_kerja;
+
+        if ($context === 'unit') {
+            $unitId = $user->pegawai?->id_unit_kerja;
+            $filters['id_unit_kerja'] = $unitId ?: 0;
+        } elseif (! $this->userCanViewAllRku($user)) {
+            // Cadangan: tanpa view_all / pusat, tetap batasi ke unit sendiri
+            $filters['id_unit_kerja'] = $filters['id_unit_kerja'] ?? $user->pegawai?->id_unit_kerja;
         }
 
-        $rkus = $this->rkuService->getPaginatedList($filters, 15);
+        $rkus = $this->rkuService->getPaginatedList($filters, 15)->appends($request->query());
 
+        $tahunBerjalan = (int) date('Y');
+        $tahunOtomatis = collect(range($tahunBerjalan, $tahunBerjalan + 2));
         $tahunList = RkuHeader::select('tahun_anggaran')
             ->distinct()
             ->orderByDesc('tahun_anggaran')
-            ->pluck('tahun_anggaran');
+            ->pluck('tahun_anggaran')
+            ->merge($tahunOtomatis)
+            ->map(fn ($y) => (string) $y)
+            ->unique()
+            ->sortDesc()
+            ->values();
 
-        $unitKerjaList = MasterUnitKerja::orderBy('nama_unit_kerja')->get();
+        $unitKerjaList = $context === 'daftar'
+            ? MasterUnitKerja::orderBy('nama_unit_kerja')->get()
+            : collect();
 
-        return view('planning.rku.index', compact('rkus', 'tahunList', 'unitKerjaList', 'viewType'));
+        return view('planning.rku.index', compact('rkus', 'tahunList', 'unitKerjaList', 'viewType', 'context'));
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
         if (!Gate::allows('create', RkuHeader::class)) {
             abort(403, 'Unauthorized to create RKU.');
         }
 
+        /** @var User $user */
         $user = Auth::user();
-        $unitKerjaList = MasterUnitKerja::orderBy('nama_unit_kerja')->get();
+        $context = $this->resolveRkuListContext($request, $user);
 
-        // Pre-select user's unit
         $selectedUnit = $user->pegawai?->id_unit_kerja;
+        $lockUnitKerja = $context === 'unit' || ! $this->userCanViewAllRku($user);
+
+        if ($lockUnitKerja) {
+            $unitKerjaList = $selectedUnit
+                ? MasterUnitKerja::where('id_unit_kerja', $selectedUnit)->get()
+                : collect();
+        } else {
+            $unitKerjaList = MasterUnitKerja::orderBy('nama_unit_kerja')->get();
+        }
 
         $satuanList = MasterSatuan::orderBy('nama_satuan')->get();
 
-        return view('planning.rku.create', compact('unitKerjaList', 'selectedUnit', 'satuanList'));
+        return view('planning.rku.create', compact('unitKerjaList', 'selectedUnit', 'satuanList', 'context', 'lockUnitKerja'));
     }
 
     /**
@@ -108,9 +139,21 @@ class RkuController extends Controller
         }
 
         try {
+            /** @var User $user */
+            $user = Auth::user();
             $data = $request->validated();
-            $data['id_pengaju'] = Auth::user()->pegawai?->id;
-            
+            $data['id_pengaju'] = $user->pegawai?->id;
+            $data['tahun_anggaran'] = (string) ((int) date('Y') + 2);
+
+            $context = $this->resolveRkuListContext($request, $user);
+            if ($context === 'unit' || ! $this->userCanViewAllRku($user)) {
+                $unitId = $user->pegawai?->id_unit_kerja;
+                if (! $unitId) {
+                    return back()->withInput()->with('error', 'Akun Anda belum terhubung ke unit kerja.');
+                }
+                $data['id_unit_kerja'] = $unitId;
+            }
+
             $rku = $this->rkuService->createRku($data);
 
             return redirect()->route('planning.rku.show', $rku->id_rku)
@@ -417,5 +460,53 @@ class RkuController extends Controller
         }
 
         return view('planning.rekap-tahunan', compact('rekap', 'tahun', 'tahunList'));
+    }
+
+    /**
+     * Apakah user boleh melihat seluruh RKU lintas unit (Daftar RKU).
+     */
+    private function userCanViewAllRku(User $user): bool
+    {
+        if (PermissionHelper::hasEnterpriseBypassRole($user)) {
+            return true;
+        }
+
+        if ($user->hasPermission('planning.rku.view_all')) {
+            return true;
+        }
+
+        // Role pusat (bukan unit-scoped) dengan akses index = daftar lintas unit
+        return PermissionHelper::canAccess($user, 'planning.rku.index')
+            && ! UserScope::mustScopeToUnitKerja($user);
+    }
+
+    /**
+     * @return 'unit'|'daftar'
+     */
+    private function resolveRkuListContext(Request $request, User $user): string
+    {
+        $requested = $request->query('context', $request->input('context'));
+        $canDaftar = $this->userCanViewAllRku($user);
+        $canUnit = UserScope::mustScopeToUnitKerja($user)
+            || PermissionHelper::hasEnterpriseBypassRole($user);
+
+        if ($requested === 'daftar') {
+            return $canDaftar ? 'daftar' : 'unit';
+        }
+
+        if ($requested === 'unit') {
+            if ($canUnit) {
+                return 'unit';
+            }
+
+            return $canDaftar ? 'daftar' : 'unit';
+        }
+
+        // Default: unit-scoped → unit; pusat/perencana → daftar
+        if (UserScope::mustScopeToUnitKerja($user)) {
+            return 'unit';
+        }
+
+        return $canDaftar ? 'daftar' : 'unit';
     }
 }

@@ -14,7 +14,7 @@ Dokumen ini menyamakan persepsi **modul sumber** ↔ **nama dokumen yang dicetak
 |----|---------------------|--------------------|---------------------------|------------------------------|
 | 1 | Permintaan Barang | Dokumen Permintaan Barang | `permintaan.dokumen` | **Belum** terhubung `PrintTemplate`; cetak biasanya perlu rute + payload baru. |
 | 2 | Distribusi Barang | Dokumen SBBK (Surat Bukti Barang Keluar) | `distribusi.sbbk` | **Sudah**: admin template + `DistribusiController::printSbbk` + `SbbkPrintTemplateData`. |
-| 3 | Retur Barang | Dokumen Pengembalian Barang | `retur.pengembalian` | **Belum** terhubung `PrintTemplate`; siap diimplementasi mengikuti pola SBBK. |
+| 3 | Retur Barang | Dokumen Pengembalian Barang | `retur.pengembalian` | **Sudah** (kode + UI) bila `FEATURE_PRINT_TEMPLATES=true` dan template aktif; default flag ON sejak Juli 2026. |
 | 4 | Kartu Inventaris Ruangan (KIR) | Dokumen KIR | `aset.kir` | **Sebagian**: halaman KIR mendukung mode cetak browser (`?print=1`); belum memakai `PrintTemplate` / placeholder dinamis. |
 | 5 | Laporan Service (Maintenance) | Dokumen Service Report | `maintenance.service_report` | **Belum** terhubung `PrintTemplate`; data ada di `ServiceReportController` (show/dll.). |
 | 6 | Kalibrasi Aset | Dokumen Daftar kalibrasi aset | `maintenance.kalibrasi_daftar` | **Belum** terhubung `PrintTemplate`; modul kalibrasi ada, cetak daftar formal perlu rute + payload. |
