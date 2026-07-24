@@ -376,13 +376,43 @@ class ApprovalPermintaanController extends Controller
                 ? ($permintaansPemeliharaan[$group['permintaan_id']] ?? null)
                 : ($permintaansBarang[$group['permintaan_id']] ?? null);
 
+            $hasPendingApproval = collect($group['approvals'])
+                ->contains(fn ($approval) => $approval->status === 'MENUNGGU');
+
+            $currentStatus = $group['current_status'];
+            $lastCompletedStep = $group['last_completed_step'];
+
+            // Pemeliharaan: jika tidak ada step menunggu, tampilkan status dokumen
+            // (bukan status log terakhir seperti DIKETAHUI step 8).
+            if ($modul === 'PERMINTAAN_PEMELIHARAAN' && $permintaan && ! $hasPendingApproval) {
+                $docStatus = (string) $permintaan->status_permintaan;
+                $currentStatus = match ($docStatus) {
+                    'SELESAI', 'DIKEMBALIKAN_PENGURUS' => 'SELESAI',
+                    'DITOLAK' => 'DITOLAK',
+                    'MENUNGGU_PENGADAAN' => 'DIDISPOSISIKAN',
+                    'DIPROSES' => 'DIPROSES',
+                    'DISETUJUI' => 'DISETUJUI',
+                    default => $currentStatus,
+                };
+
+                // Data lama: step 8 SR sudah selesai tetapi status dokumen belum SELESAI.
+                if (
+                    (int) ($lastCompletedStep ?? 0) >= 8
+                    && in_array($currentStatus, ['DIKETAHUI', 'MENUNGGU', 'MENUNGGU_DIKETAHUI_SR'], true)
+                    && ! in_array($docStatus, ['MENUNGGU_PENGADAAN', 'DIPROSES', 'DITOLAK'], true)
+                ) {
+                    $currentStatus = 'SELESAI';
+                }
+            }
+
             return [
                 'modul_approval' => $modul,
                 'permintaan' => $permintaan,
                 'current_step' => $group['current_step'],
-                'current_status' => $group['current_status'],
-                'last_completed_step' => $group['last_completed_step'],
+                'current_status' => $currentStatus,
+                'last_completed_step' => $lastCompletedStep,
                 'approvals' => $group['approvals'],
+                'has_pending_approval' => $hasPendingApproval,
             ];
         })->filter(function ($item) {
             return $item['permintaan'] !== null;
@@ -391,6 +421,14 @@ class ApprovalPermintaanController extends Controller
         // Tab Aktif vs Riwayat berdasarkan status tampilan approval.
         $riwayatDisplayStatuses = ['DISETUJUI', 'DIDISPOSISIKAN', 'DIPROSES', 'SELESAI', 'DITOLAK'];
         $permintaanList = $permintaanList->filter(function ($item) use ($viewType, $riwayatDisplayStatuses) {
+            if (($item['modul_approval'] ?? '') === 'PERMINTAAN_PEMELIHARAAN') {
+                $hasPending = (bool) ($item['has_pending_approval'] ?? false);
+
+                // Aktif = masih ada step approval yang menunggu aksi.
+                // Riwayat = rantai approval untuk fase itu sudah selesai.
+                return $viewType === 'aktif' ? $hasPending : ! $hasPending;
+            }
+
             $isRiwayat = in_array($item['current_status'], $riwayatDisplayStatuses, true);
 
             return $viewType === 'riwayat' ? $isRiwayat : ! $isRiwayat;
@@ -569,7 +607,19 @@ class ApprovalPermintaanController extends Controller
                 ->where('id_referensi', $approval->id_referensi)
                 ->where('status', 'DITOLAK')
                 ->first();
-            $displayStatus = $rejectedApproval ? 'DITOLAK' : $approval->status;
+            $hasPending = ApprovalLog::where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+                ->where('id_referensi', $approval->id_referensi)
+                ->where('status', 'MENUNGGU')
+                ->exists();
+            $displayStatus = $rejectedApproval
+                ? 'DITOLAK'
+                : (
+                    ! $hasPending && in_array((string) $permintaan->status_permintaan, ['SELESAI', 'DIKEMBALIKAN_PENGURUS'], true)
+                        ? 'SELESAI'
+                        : (! $hasPending && (string) $permintaan->status_permintaan === 'MENUNGGU_PENGADAAN'
+                            ? 'DIDISPOSISIKAN'
+                            : $approval->status)
+                );
             $currentFlow = $approval->approvalFlow;
             $nextFlow = $currentFlow ? $currentFlow->getNextStep() : null;
             $pegawaiPelaksanaOptions = \App\Models\MasterPegawai::query()

@@ -27,7 +27,6 @@
     $jenisPelaksanaOptions = \App\Enums\PemeliharaanJenisPelaksana::cases();
     $rekomendasiAkhir = $permintaan->rekomendasi_akhir ? (string) $permintaan->rekomendasi_akhir : null;
     $isPendingSparepart = $rekomendasiAkhir === \App\Enums\PemeliharaanRekomendasi::PendingSparepart->value;
-    $isTidakBisaDiperbaiki = $rekomendasiAkhir === \App\Enums\PemeliharaanRekomendasi::TidakBisaDiperbaiki->value;
 @endphp
 
 <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
@@ -186,14 +185,13 @@
                             @if($stepOrder === 3) Setujui & Disposisi ke Pengurus Barang
                             @elseif($stepOrder === 8)
                                 @if($isPendingSparepart) Setujui Pembelian
-                                @elseif($isTidakBisaDiperbaiki) Ketahui
-                                @else Ketahui / Tindak Lanjut Rekomendasi
+                                @else Ketahui (Selesai)
                                 @endif
                             @else Setujui Pembelian
                             @endif
                         </x-ui.btn>
                     </form>
-                    @if(!($stepOrder === 8 && $isTidakBisaDiperbaiki) && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.approval.reject'))
+                    @if(!($stepOrder === 8 && ! $isPendingSparepart) && \App\Helpers\PermissionHelper::canAccess($user, 'transaction.approval.reject'))
                         <form method="POST" action="{{ route('transaction.approval.reject', $approval->id) }}" class="space-y-4" data-confirm="Tolak permintaan ini?">
                             @csrf
                             <div>

@@ -112,6 +112,8 @@ class KartuInventarisRuanganController extends Controller
                 'registerAset.inventory.dataBarang',
                 'registerAset.inventory.satuan',
                 'registerAset.inventoryItem',
+                'registerAset.latestPemeliharaan',
+                'registerAset.latestKalibrasi',
                 'registerAset',
                 'ruangan',
                 'penanggungJawab',

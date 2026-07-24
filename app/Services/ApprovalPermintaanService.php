@@ -182,14 +182,13 @@ class ApprovalPermintaanService
     {
         $approval = ApprovalLog::with('approvalFlow.role')->findOrFail($approvalId);
 
-        // Guard: untuk rekomendasi "TIDAK_BISA_DIPERBAIKI" Kepala Pusat hanya sampai mengetahui (tidak ada penolakan).
+        // Step 8 SR: penolakan hanya untuk rekomendasi pending pembelian spare part.
+        // Rekomendasi lain (BAIK / TIDAK_ADA / TIDAK_BISA_DIPERBAIKI) hanya diketahui → SELESAI.
         if ($approval->modul_approval === 'PERMINTAAN_PEMELIHARAAN' && (int) ($approval->approvalFlow?->step_order ?? 0) === 8) {
             $permintaan = PermintaanPemeliharaan::find($approval->id_referensi);
-            if (
-                $permintaan
-                && (string) $permintaan->rekomendasi_akhir === PemeliharaanRekomendasi::TidakBisaDiperbaiki->value
-            ) {
-                throw new \RuntimeException('Rekomendasi tidak bisa diperbaiki hanya dapat diketahui (tanpa penolakan).');
+            $rekomendasi = (string) ($permintaan?->rekomendasi_akhir ?? '');
+            if ($rekomendasi !== PemeliharaanRekomendasi::PendingSparepart->value) {
+                throw new \RuntimeException('Rekomendasi ini hanya dapat diketahui (tanpa penolakan). Status akan selesai setelah diketahui.');
             }
         }
 

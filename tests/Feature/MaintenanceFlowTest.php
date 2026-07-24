@@ -629,6 +629,80 @@ class MaintenanceFlowTest extends TestCase
 
         $permintaan->refresh();
         $this->assertSame('SELESAI', $permintaan->status_permintaan);
+
+        $aktif = $this->actingAs($admin)
+            ->get(route('transaction.approval.index', ['view_type' => 'aktif']));
+        $aktif->assertOk();
+        $aktif->assertDontSee('PMH/'.now()->year.'/9101', false);
+
+        $riwayat = $this->actingAs($admin)
+            ->get(route('transaction.approval.index', ['view_type' => 'riwayat']));
+        $riwayat->assertOk();
+        $riwayat->assertSee('PMH/'.now()->year.'/9101', false);
+        $riwayat->assertSee('SELESAI', false);
+    }
+
+    public function test_pemeliharaan_sr_diketahui_tidak_bisa_diperbaiki_closes_request(): void
+    {
+        $admin = User::query()->where('email', 'pusdatinppkp@gmail.com')->firstOrFail();
+        $register = $this->findRegisterWithKirAndPemohon();
+        $pemohon = $this->findPemohonByUnit((int) $register->id_unit_kerja);
+
+        $permintaan = PermintaanPemeliharaan::query()->create([
+            'no_permintaan_pemeliharaan' => 'PMH/'.now()->year.'/9103',
+            'id_register_aset' => $register->id_register_aset,
+            'id_unit_kerja' => $register->id_unit_kerja,
+            'id_pemohon' => $pemohon->id,
+            'tanggal_permintaan' => now()->toDateString(),
+            'jenis_pemeliharaan' => 'PERBAIKAN',
+            'prioritas' => 'TINGGI',
+            'status_permintaan' => 'DIPROSES',
+            'jenis_pelaksana' => 'TEKNISI_IT',
+            'deskripsi_kerusakan' => 'Uji SR tidak bisa diperbaiki',
+        ]);
+
+        $service = ServiceReport::query()->create([
+            'no_service_report' => 'SR/'.now()->year.'/9103',
+            'id_permintaan_pemeliharaan' => $permintaan->id_permintaan_pemeliharaan,
+            'id_register_aset' => $register->id_register_aset,
+            'tanggal_service' => now()->toDateString(),
+            'tanggal_selesai' => now()->toDateString(),
+            'jenis_service' => 'PERBAIKAN',
+            'status_service' => 'SELESAI',
+            'kondisi_setelah_service' => 'TIDAK_BISA_DIPERBAIKI',
+            'rekomendasi' => 'TIDAK_BISA_DIPERBAIKI',
+            'rekomendasi_catatan' => 'Rusak total',
+            'biaya_service' => 0,
+            'biaya_sparepart' => 0,
+            'total_biaya' => 0,
+            'created_by' => $admin->id,
+        ]);
+
+        $workflow = app(\App\Services\PemeliharaanWorkflowService::class);
+        $workflow->startServiceReportAcknowledgement($service->fresh(['permintaanPemeliharaan']));
+
+        $approval = app(\App\Services\ApprovalService::class);
+        foreach ([6, 7, 8] as $step) {
+            $log = \App\Models\ApprovalLog::query()
+                ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+                ->where('id_referensi', $permintaan->id_permintaan_pemeliharaan)
+                ->where('status', 'MENUNGGU')
+                ->whereHas('approvalFlow', fn ($q) => $q->where('step_order', $step))
+                ->firstOrFail();
+            $approval->approve($log, $admin, 'Diketahui step '.$step);
+        }
+
+        $permintaan->refresh();
+        $register->refresh();
+        $this->assertSame('SELESAI', $permintaan->status_permintaan);
+        $this->assertSame('TIDAK_BISA_DIPERBAIKI', $register->kondisi_aset);
+        $this->assertFalse(
+            \App\Models\ApprovalLog::query()
+                ->where('modul_approval', 'PERMINTAAN_PEMELIHARAAN')
+                ->where('id_referensi', $permintaan->id_permintaan_pemeliharaan)
+                ->whereHas('approvalFlow', fn ($q) => $q->whereIn('step_order', [9, 10]))
+                ->exists()
+        );
     }
 
     public function test_pemeliharaan_pending_sparepart_creates_pengadaan_step(): void

@@ -24,8 +24,8 @@ Laporan SR diketahui: Pengurus Barang → Kepala Unit → Kepala PPKP
    Pending pembelian        Baik / tidak ada       Rusak berat /
    spare part               kendala                tidak bisa diperbaiki
               ↓                     ↓                     ↓
-   Approve Kepala PPKP           Selesai           Pengembalian barang
-   untuk pembelian                                     (ke Pengurus)
+   Approve Kepala PPKP           Selesai                 Selesai
+   untuk pembelian                              (update kondisi aset)
               ↓
    Disposisi Pengadaan
               ↓
@@ -43,19 +43,19 @@ Laporan SR diketahui: Pengurus Barang → Kepala Unit → Kepala PPKP
 | Identifikasi & perbaikan teknisi | Status `DIPROSES` | **Pemeliharaan → Daftar Permintaan** → tombol **Proses** |
 | Service Report | Dokumen `service_report` | **Proses** membuka form Laporan Servis |
 | SR diketahui Ka.Unit / PB / Ka.PPKP | Approval step 6–8 | **Approval** |
-| Baik / tidak ada kendala | Rekomendasi `BAIK` / `TIDAK_ADA` → `SELESAI` | Otomatis setelah step 8 |
-| Pending spare part | Rekomendasi `PENDING_SPAREPART` → `MENUNGGU_PENGADAAN` | Step 9–10 (approve pembelian + disposisi pengadaan) |
+| Baik / tidak ada kendala | Rekomendasi `BAIK` / `TIDAK_ADA` → `SELESAI` | Otomatis setelah step 8 (diketahui Kepala Pusat) |
+| Pending spare part | Rekomendasi `PENDING_SPAREPART` → `MENUNGGU_PENGADAAN` | Step 8 = setujui/tolak pembelian → disposisi pengadaan (step 10) |
 | Setelah pembelian lanjut perbaikan | Status kembali `DIPROSES` | **Daftar Permintaan** → **Lanjut Perbaikan**, lalu **Proses** (SR berikutnya) |
-| Tidak bisa diperbaiki | Rekomendasi `TIDAK_BISA_DIPERBAIKI` → `DIKEMBALIKAN_PENGURUS` | Update kondisi register aset |
+| Tidak bisa diperbaiki | Rekomendasi `TIDAK_BISA_DIPERBAIKI` → `SELESAI` | Diketahui Kepala Pusat; kondisi register aset di-update |
 
 ## Rekomendasi Service Report
 
-| Nilai | Arti flowchart | Hasil |
+| Nilai | Arti flowchart | Hasil setelah diketahui Kepala Pusat |
 |-------|----------------|-------|
-| `BAIK` | Baik | Selesai |
-| `TIDAK_ADA` | Tidak ada kendala | Selesai |
-| `PENDING_SPAREPART` | Pending pembelian spare part | Rantai pembelian → lanjut perbaikan → SR lagi |
-| `TIDAK_BISA_DIPERBAIKI` | Rusak berat / tidak bisa diperbaiki | Pengembalian ke Pengurus (`DIKEMBALIKAN_PENGURUS`) |
+| `BAIK` | Baik | `SELESAI` |
+| `TIDAK_ADA` | Tidak ada kendala | `SELESAI` |
+| `PENDING_SPAREPART` | Pending pembelian spare part | Setujui/tolak pembelian → disposisi pengadaan → lanjut perbaikan → SR lagi |
+| `TIDAK_BISA_DIPERBAIKI` | Rusak berat / tidak bisa diperbaiki | `SELESAI` (+ update kondisi register aset) |
 
 ## Catatan peran
 

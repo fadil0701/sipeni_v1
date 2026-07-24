@@ -294,6 +294,8 @@
                     $inventory = $register?->inventory;
                     $inventoryItem = $register?->inventoryItem;
                     $dataBarang = $inventory?->dataBarang;
+                    $tanggalPemeliharaan = $register?->latestPemeliharaan?->tanggal_pemeliharaan;
+                    $tanggalKalibrasi = $register?->latestKalibrasi?->tanggal_kalibrasi;
                 @endphp
                 <tr>
                     <td class="text-center">{{ $loop->iteration }}</td>
@@ -309,8 +311,8 @@
                     <td>{{ $inventory?->satuan?->nama_satuan ?? '-' }}</td>
                     <td class="text-right">{{ $inventory?->harga_satuan ? number_format((float) $inventory->harga_satuan, 0, ',', '.') : '-' }}</td>
                     <td>{{ $register?->kondisi_aset ?? '-' }}</td>
-                    <td></td>
-                    <td></td>
+                    <td class="text-center">{{ $tanggalPemeliharaan ? $tanggalPemeliharaan->format('d/m/Y') : '-' }}</td>
+                    <td class="text-center">{{ $tanggalKalibrasi ? $tanggalKalibrasi->format('d/m/Y') : '-' }}</td>
                     <td>{{ $row->penanggungJawab?->nama_pegawai ?? '-' }}</td>
                 </tr>
             @endforeach

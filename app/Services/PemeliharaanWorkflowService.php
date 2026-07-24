@@ -108,6 +108,9 @@ class PemeliharaanWorkflowService
 
     /**
      * Setelah step 8 (Kepala Pusat mengetahui SR): cabang berdasarkan rekomendasi.
+     *
+     * - BAIK / TIDAK_ADA / TIDAK_BISA_DIPERBAIKI → permintaan SELESAI (tidak ada tindak lanjut).
+     * - PENDING_SPAREPART → disposisi pengadaan (pembelian spare part).
      */
     public function resolveAfterServiceReportKnown(PermintaanPemeliharaan $permintaan, ApprovalLog $approvalLog): void
     {
@@ -116,30 +119,25 @@ class PemeliharaanWorkflowService
             throw new \RuntimeException('Rekomendasi Service Report belum diisi.');
         }
 
-        if ($rekomendasi->isClosing()) {
-            $permintaan->update(['status_permintaan' => 'SELESAI']);
+        if ($rekomendasi->requiresPengadaan()) {
+            $actor = $approvalLog->user
+                ?? User::find($approvalLog->user_id)
+                ?? auth()->user();
+
+            $this->createPengadaanDisposisi($permintaan, $actor, $approvalLog->catatan);
 
             return;
         }
 
         if ($rekomendasi === PemeliharaanRekomendasi::TidakBisaDiperbaiki) {
-            $permintaan->update(['status_permintaan' => 'DIKEMBALIKAN_PENGURUS']);
             $register = RegisterAset::find($permintaan->id_register_aset);
             if ($register) {
                 $register->update(['kondisi_aset' => 'TIDAK_BISA_DIPERBAIKI']);
             }
-
-            return;
         }
 
-        // PENDING_SPAREPART:
-        // Kepala Pusat langsung mengetahui sekaligus menyetujui/menolak pembelian pada step 8.
-        // Maka: skip step 9 dan langsung buat disposisi pengadaan (step 10).
-        $actor = $approvalLog->user
-            ?? User::find($approvalLog->user_id)
-            ?? auth()->user();
-
-        $this->createPengadaanDisposisi($permintaan, $actor, $approvalLog->catatan);
+        // Tidak ada rekomendasi tindak lanjut → selesai setelah diketahui Kepala Pusat.
+        $permintaan->update(['status_permintaan' => 'SELESAI']);
     }
 
     /**

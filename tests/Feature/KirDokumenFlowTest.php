@@ -21,6 +21,62 @@ class KirDokumenFlowTest extends TestCase
         $this->seed(ComprehensiveDummySeeder::class);
     }
 
+    public function test_kir_dokumen_includes_latest_pemeliharaan_and_kalibrasi_dates(): void
+    {
+        $admin = User::query()->where('email', 'pusdatinppkp@gmail.com')->firstOrFail();
+
+        $kir = DB::table('kartu_inventaris_ruangan')
+            ->join('register_aset', 'kartu_inventaris_ruangan.id_register_aset', '=', 'register_aset.id_register_aset')
+            ->whereNotNull('register_aset.id_unit_kerja')
+            ->whereNotNull('register_aset.id_ruangan')
+            ->select(
+                'kartu_inventaris_ruangan.id_kir',
+                'kartu_inventaris_ruangan.id_register_aset',
+                'register_aset.id_unit_kerja',
+                'register_aset.nomor_register'
+            )
+            ->orderBy('kartu_inventaris_ruangan.id_kir')
+            ->first();
+        $this->assertNotNull($kir);
+
+        $tanggalPemeliharaan = now()->subDays(10)->toDateString();
+        $tanggalKalibrasi = now()->subDays(5)->toDateString();
+
+        DB::table('riwayat_pemeliharaan')->insert([
+            'id_register_aset' => $kir->id_register_aset,
+            'tanggal_pemeliharaan' => $tanggalPemeliharaan,
+            'jenis_pemeliharaan' => 'PERBAIKAN',
+            'status' => 'SELESAI',
+            'keterangan' => 'Uji KIR tanggal pemeliharaan',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('kalibrasi_aset')->insert([
+            'no_kalibrasi' => 'KAL/TEST/'.now()->format('YmdHis'),
+            'id_register_aset' => $kir->id_register_aset,
+            'tanggal_kalibrasi' => $tanggalKalibrasi,
+            'tanggal_berlaku' => $tanggalKalibrasi,
+            'tanggal_kadaluarsa' => now()->addYear()->toDateString(),
+            'status_kalibrasi' => 'VALID',
+            'created_by' => $admin->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('asset.kartu-inventaris-ruangan.dokumen-unit', [
+            'id_unit_kerja' => $kir->id_unit_kerja,
+            'print' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee(\Carbon\Carbon::parse($tanggalPemeliharaan)->format('d/m/Y'), false);
+        $response->assertSee(\Carbon\Carbon::parse($tanggalKalibrasi)->format('d/m/Y'), false);
+        if (! empty($kir->nomor_register)) {
+            $response->assertSee($kir->nomor_register, false);
+        }
+    }
+
     public function test_kir_dokumen_download_mode_returns_html_attachment(): void
     {
         $admin = User::query()->where('email', 'pusdatinppkp@gmail.com')->firstOrFail();

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Schema;
 
 class RegisterAset extends Model
@@ -146,5 +147,28 @@ class RegisterAset extends Model
     public function riwayatPemeliharaan(): HasMany
     {
         return $this->hasMany(RiwayatPemeliharaan::class, 'id_register_aset', 'id_register_aset');
+    }
+
+    /**
+     * Riwayat pemeliharaan terakhir (bukan kalibrasi).
+     */
+    public function latestPemeliharaan(): HasOne
+    {
+        return $this->hasOne(RiwayatPemeliharaan::class, 'id_register_aset', 'id_register_aset')
+            ->ofMany(
+                ['tanggal_pemeliharaan' => 'max', 'id_riwayat' => 'max'],
+                function ($query) {
+                    $query->whereNull('id_kalibrasi');
+                }
+            );
+    }
+
+    /**
+     * Kalibrasi terakhir untuk aset ini.
+     */
+    public function latestKalibrasi(): HasOne
+    {
+        return $this->hasOne(KalibrasiAset::class, 'id_register_aset', 'id_register_aset')
+            ->latestOfMany(['tanggal_kalibrasi', 'id_kalibrasi']);
     }
 }

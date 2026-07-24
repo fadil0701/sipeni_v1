@@ -21,7 +21,12 @@ enum PemeliharaanRekomendasi: string
 
     public function isClosing(): bool
     {
-        return in_array($this, [self::Baik, self::TidakAda], true);
+        return in_array($this, [self::Baik, self::TidakAda, self::TidakBisaDiperbaiki], true);
+    }
+
+    public function requiresPengadaan(): bool
+    {
+        return $this === self::PendingSparepart;
     }
 
     /**
